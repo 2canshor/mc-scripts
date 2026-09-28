@@ -22,6 +22,8 @@
   --glass-shadow:0 1px 1px rgba(26,26,24,.04),0 8px 28px rgba(26,26,24,.12);
   --serif:"Noto Serif TC","Songti TC","PMingLiU",Georgia,serif;
   --pt:1.5455px;
+  /* Where the content column starts; floating controls line up with it on wide screens */
+  --side:max(16px, calc((100vw - 860px) / 2));
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -46,13 +48,13 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{background:var(--canvas)}
-body{color:var(--text);font-family:var(--serif);font-size:17px;line-height:1.6;padding-inline:16px;padding-block:0 120px;-webkit-text-size-adjust:100%}
+body{margin:0;color:var(--text);font-family:var(--serif);font-size:17px;line-height:1.6;padding-inline:16px;padding-block:0 120px;-webkit-text-size-adjust:100%}
 button{font:inherit;color:inherit;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.3;cursor:default}
 svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round} /* stroke-ok: line icons */
 
 /* Control layer: one floating toolbar; content scrolls beneath it behind a scroll-edge fade */
-.edge{position:fixed;top:0;right:0;z-index:20;padding:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) 0 0;pointer-events:none}
+.edge{position:fixed;top:0;right:0;z-index:20;padding:calc(16px + env(safe-area-inset-top,0px)) calc(var(--side) + env(safe-area-inset-right,0px)) 0 0;pointer-events:none}
 .toolbar{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:flex-end;gap:8px;pointer-events:none}
 .glass{pointer-events:auto;background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(1.6);backdrop-filter:blur(22px) saturate(1.6);box-shadow:var(--glass-shadow);border-radius:999px}
 .group{display:flex;align-items:center;gap:2px;padding:4px}
@@ -65,7 +67,7 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 @media (max-width:640px){.t-label{display:none}}
 
 /* Back to the script list: leading edge */
-.lead{position:fixed;top:0;left:0;z-index:20;padding:calc(16px + env(safe-area-inset-top,0px)) 0 0 calc(16px + env(safe-area-inset-left,0px));pointer-events:none}
+.lead{position:fixed;top:0;left:0;z-index:20;padding:calc(16px + env(safe-area-inset-top,0px)) 0 0 calc(var(--side) + env(safe-area-inset-left,0px));pointer-events:none}
 .lead .tb{width:48px;height:48px;padding:0}
 .lead svg.i{width:22px;height:22px}
 
@@ -78,7 +80,7 @@ body[data-view="doc"] .lib{display:none}
 .lib ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
 .lib li button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;text-align:left;padding:16px 18px;border-radius:18px;background:var(--current)}
 .lib li button:hover,.lib li button:focus-visible{background:var(--field);outline:none}
-.lib .emptystate{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
+.lib .emptystate{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
 .lib .emptystate svg.i{width:52px;height:52px;stroke-width:1.4;color:var(--caption);margin-bottom:8px} /* stroke-ok: line icons */
 .lib .emptystate h2{margin:0;font-size:20px;font-weight:600}
 .lib .emptystate p{margin:0;font-size:15px;color:var(--secondary)}
@@ -87,7 +89,7 @@ body[data-view="doc"] .lib{display:none}
 .lib .s{font-size:14px;color:var(--secondary)}
 
 /* Add button: floats at the bottom trailing corner */
-.fab{position:fixed;z-index:20;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;color:var(--text)}
+.fab{position:fixed;z-index:20;right:calc(var(--side) + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;color:var(--text)}
 .fab svg.i{width:24px;height:24px}
 .fab:not([aria-disabled="true"]){background:var(--blue);color:#fff}
 .fab[aria-disabled="true"]{opacity:.3}
@@ -112,7 +114,8 @@ body[data-view="doc"] .lib{display:none}
 .toast .tb{height:36px}
 
 /* Joining the shared scripts: a passcode, once per iPad */
-.join{display:none;max-width:420px;min-height:80vh;margin:0 auto;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
+body[data-view="join"]{padding-bottom:0}
+.join{display:none;max-width:420px;min-height:100vh;min-height:100dvh;margin:0 auto;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
 body[data-view="join"] .join{display:flex}
 body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .edge,body[data-view="join"] .lead,body[data-view="join"] .fab{display:none}
 .join svg.i{width:52px;height:52px;stroke-width:1.4;color:var(--caption);margin-bottom:8px} /* stroke-ok: line icons */
