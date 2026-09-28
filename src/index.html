@@ -524,6 +524,11 @@ var CLOUD = {"api":"/api"};
   /* Title */
   oneLine($("event"), function (v) { state.event = v; applyLanguage(ScriptGen.isEnglish(state)); changed(); });
   $("date").addEventListener("input", function () { state.date = $("date").value; renderDate(); changed(); });
+  // The date field itself is invisible; a click on it opens the calendar (a Mac browser would
+  // otherwise only focus the hidden field and show nothing).
+  $("date").addEventListener("click", function (e) {
+    if (typeof this.showPicker === "function") { try { this.showPicker(); e.preventDefault(); } catch (err) {} }
+  });
   function renderDate() {
     var t = $("date-text"), v = ScriptGen.yymmdd(state.date, "/");
     t.textContent = v || "YY/MM/DD"; t.className = v ? "" : "ph";
