@@ -6,12 +6,14 @@
 import base64, os
 here = os.path.dirname(os.path.abspath(__file__))
 root = os.path.dirname(here)
-p = open(os.path.join(here, 'page.src.html')).read()
-g = open(os.path.join(here, 'gen.js')).read()
+p = open(os.path.join(here, 'page.src.html'), encoding='utf-8').read()
+g = open(os.path.join(here, 'gen.js'), encoding='utf-8').read()
 tpl = base64.b64encode(open(os.path.join(here, 'tpl', 'clean.docx'), 'rb').read()).decode()
 page = p.replace('%%GEN%%', g).replace('%%TPL%%', tpl)
 # The claude.ai copy cannot reach the network, so it keeps scripts on the device only.
-open(os.path.join(here, 'MC Scripts.html'), 'w').write(page.replace('%%CLOUD%%', 'null'))
+# It starts with its own charset: opened straight from disk, Chromium otherwise guesses the
+# encoding and sometimes shows Chinese as Latin-1 (the cause of the flaky ＋ menu test).
+open(os.path.join(here, 'MC Scripts.html'), 'w', encoding='utf-8').write('<meta charset="utf-8">\n' + page.replace('%%CLOUD%%', 'null'))
 page = page.replace('%%CLOUD%%', '{"api":"/api"}')
 i = page.index('</style>') + len('</style>')
 head = ('<!doctype html>\n<html lang="zh-Hant-HK">\n<head>\n<meta charset="utf-8">\n'
@@ -19,6 +21,6 @@ head = ('<!doctype html>\n<html lang="zh-Hant-HK">\n<head>\n<meta charset="utf-8
         '<meta name="apple-mobile-web-app-capable" content="yes">\n'
         '<meta name="apple-mobile-web-app-title" content="MC Scripts">\n<meta name="robots" content="noindex">\n')
 std = head + page[:i] + '\n</head>\n<body>' + page[i:] + '\n</body>\n</html>\n'
-open(os.path.join(root, 'src', 'index.html'), 'w').write(std)
+open(os.path.join(root, 'src', 'index.html'), 'w', encoding='utf-8').write(std)
 bad = [w for w in ['陳加森', '梁穎晞', '何秉諾', '曾崧茵', '鄭校長', '黃詩琦', '王姿曼', 'Carson'] if w in std]
 print('built', len(std), 'real names found:', bad)
