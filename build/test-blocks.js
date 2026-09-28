@@ -18,7 +18,7 @@ for (const [w,h,scheme] of [[820,1180,'light'],[1440,900,'dark']]){
  await p.click('#more');
  ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["複製成新講稿","刪除成份講稿"]','toolbar ⋯ has whole-script actions only');
  await p.keyboard.press('Escape');
- await p.click('.row.cue .bmore');
+ await p.click('.row.cue textarea');await p.click('.row.cue .bmore');
  ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["司儀對白","流程提示","得獎名單","上移","刪除此段"]','paragraph ⋯: type choice, only possible moves, delete');
  ok(await p.$eval('.menu [aria-checked="true"]',e=>e.textContent)==='流程提示','current type is ticked');
  await p.screenshot({path:`${out}/blocks-${w}.png`});
