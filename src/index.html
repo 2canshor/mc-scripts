@@ -77,7 +77,7 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 /* Views: the script list, or one script */
 body[data-view="list"] .doc,body[data-view="list"] .edge,body[data-view="list"] .lead{display:none}
 body[data-view="doc"] .lib{display:none}
-.lib{max-width:860px;margin:0 auto;padding-top:var(--top)}
+.lib{max-width:860px;margin:0 auto;padding-top:48px}
 /* Two text styles only: the page title, and one body size for everything in the list.
    Hierarchy comes from order, position, space and colour, not from more sizes and weights. */
 .lib h1{font-size:34px;font-weight:700;line-height:1.2;margin:0 0 12px}
@@ -104,7 +104,7 @@ body[data-view="doc"] .lib{display:none}
 .lib .t.untitled{color:var(--caption)}
 
 /* Search: a glass field in the control layer, bottom leading, level with the add button */
-.search{position:fixed;z-index:20;left:calc(var(--side) + env(safe-area-inset-left,0px));right:calc(var(--side) + 56px + 12px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));height:56px;display:flex;align-items:center;gap:10px;padding:0 20px;cursor:text}
+.search{position:fixed;z-index:20;left:calc(var(--side) + env(safe-area-inset-left,0px));right:calc(var(--side) + 56px + 12px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px) + var(--kb,0px));height:56px;display:flex;align-items:center;gap:10px;padding:0 20px;cursor:text}
 .search svg.i{color:var(--secondary)}
 .search input{flex:1;min-width:0;height:100%;font:inherit;font-size:17px;color:var(--text);background:transparent;border:0;outline:none;padding:0;-webkit-appearance:none;appearance:none}
 .search input::placeholder{color:var(--secondary)}
@@ -112,7 +112,7 @@ body:not([data-view="list"]) .search,body.noscripts .search{display:none}
 .lib .nomatch{margin:40px 0 0;text-align:center;color:var(--secondary);font-size:15px}
 
 /* Add button: floats at the bottom trailing corner */
-.fab{position:fixed;z-index:20;right:calc(var(--side) + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;color:var(--text)}
+.fab{position:fixed;z-index:20;right:calc(var(--side) + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;color:var(--text)}
 .fab svg.i{width:24px;height:24px}
 .fab:not([aria-disabled="true"]){background:var(--primary);color:var(--on-primary)}
 .fab[aria-disabled="true"]{opacity:.3}
@@ -265,8 +265,6 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
   <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 2v13"/><path d="m16 6-4-4-4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/></symbol>
   <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
   <symbol id="i-updown" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></symbol>
-  <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
-  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
   <symbol id="i-new" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/></symbol>
@@ -779,15 +777,10 @@ var CLOUD = {"api":"/api"};
     keepFocus(btn);
     btn.addEventListener("click", function () {
       setCurrent(b.id);
-      var i = state.blocks.indexOf(b), items = [];
+      var items = [];
       ["line", "cue", "award"].forEach(function (t) {
         items.push(menuItem(t, TYPE[t], function () { if (b.type !== t) setType(t); }, { checked: b.type === t, disabled: t === "line" && !ScriptGen.named(state).length }));
       });
-      var moves = [];
-      if (i > 0) moves.push(menuItem("up", "上移", function () { moveBlock(-1); }));
-      if (i < state.blocks.length - 1) moves.push(menuItem("down", "下移", function () { moveBlock(1); }));
-      if (moves.length) items.push(el("div", { class: "gap" }));
-      items = items.concat(moves);
       items.push(el("div", { class: "gap" }), menuItem("trash", "刪除此段", function () { removeBlock(state.blocks.indexOf(b)); }, { danger: true }));
       openMenu(btn, "right", items);
     });
@@ -905,11 +898,6 @@ var CLOUD = {"api":"/api"};
     current = next ? next.id : null; renderRows(); save();
     if (next) focusBlock(next.id, true);
     toast(fromKeyboard ? "已刪除空白段落" : "已刪除" + TYPE[gone.type], false, { label: "復原", fn: undo });
-  }
-  function moveBlock(d) {
-    var i = curIndex(), j = i + d; if (i < 0 || j < 0 || j >= state.blocks.length) return;
-    var t = state.blocks[i]; state.blocks[i] = state.blocks[j]; state.blocks[j] = t;
-    renderRows(); save(); focusBlock(t.id);
   }
 
   /* Menus (control layer) */
