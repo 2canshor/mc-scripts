@@ -213,11 +213,11 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
   <h1>講稿</h1>
   <p class="count" id="libcount"></p>
   <div id="liblist"></div>
-  <p class="nomatch" id="nomatch" hidden>冇相符嘅講稿</p>
+  <p class="nomatch" id="nomatch" hidden>沒有相符的講稿</p>
   <div class="emptystate" id="libempty" hidden>
     <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg>
     <h2>未有講稿</h2>
-    <p>要新增講稿，請撳加號</p>
+    <p>按加號新增講稿</p>
   </div>
 </section>
 
@@ -432,7 +432,7 @@ var CLOUD = %%CLOUD%%;
   }
 
   /* Rows: the script body, one row per block */
-  function speakerName(m) { return ScriptGen.mcLabel(m) || "未填姓名"; }
+  function speakerName(m) { return ScriptGen.mcLabel(m) || "未填寫姓名"; }
   function nextSpeaker(index) {
     var list = ScriptGen.named(state); if (!list.length) list = state.mcs;
     if (!list.length) return "";
@@ -452,10 +452,10 @@ var CLOUD = %%CLOUD%%;
     var list = ScriptGen.named(state);
     var cur = list.filter(function (m) { return m.id === ((sp && sp.mc) || b.mc); })[0] || (list.length === 1 ? list[0] : null);
     if (!list.length) return el("span", { class: "who-slot" });
-    var kids = [cur ? speakerName(cur) + colon : "揀司儀"];
+    var kids = [cur ? speakerName(cur) + colon : "選擇司儀"];
     if (list.length > 1) {
       kids.push(icon("updown"));
-      var sel = el("select", { "aria-label": "邊位司儀講" }, list.map(function (m) { return el("option", { value: m.id, text: speakerName(m) }); }));
+      var sel = el("select", { "aria-label": "選擇司儀" }, list.map(function (m) { return el("option", { value: m.id, text: speakerName(m) }); }));
       if (cur) sel.value = cur.id; else sel.selectedIndex = -1;
       sel.addEventListener("focus", function () { setCurrent(b.id); });
       sel.addEventListener("change", function () { b.mc = sel.value; save(); refreshRows(); });
@@ -577,7 +577,7 @@ var CLOUD = %%CLOUD%%;
   }
   // Actions on one paragraph live with that paragraph; the toolbar ⋯ is for the whole script.
   function blockMore(b) {
-    var btn = el("button", { type: "button", class: "bmore", "aria-label": "呢段嘅更多操作", title: "呢段", "aria-haspopup": "menu", "aria-expanded": "false" }, [icon("more")]);
+    var btn = el("button", { type: "button", class: "bmore", "aria-label": "此段的更多操作", title: "此段", "aria-haspopup": "menu", "aria-expanded": "false" }, [icon("more")]);
     keepFocus(btn);
     btn.addEventListener("click", function () {
       setCurrent(b.id);
@@ -590,7 +590,7 @@ var CLOUD = %%CLOUD%%;
       if (i < state.blocks.length - 1) moves.push(menuItem("down", "下移", function () { moveBlock(1); }));
       if (moves.length) items.push(el("div", { class: "gap" }));
       items = items.concat(moves);
-      items.push(el("div", { class: "gap" }), menuItem("trash", "刪除呢段", function () { removeBlock(state.blocks.indexOf(b)); }, { danger: true }));
+      items.push(el("div", { class: "gap" }), menuItem("trash", "刪除此段", function () { removeBlock(state.blocks.indexOf(b)); }, { danger: true }));
       openMenu(btn, "right", items);
     });
     return btn;
@@ -612,7 +612,7 @@ var CLOUD = %%CLOUD%%;
   function updateAdd() {
     var off = !!entry && !ScriptGen.named(state).length;
     $("insert").setAttribute("aria-disabled", String(off));
-    $("insert").title = off ? "先填司儀姓名" : entry ? "加" : "新講稿";
+    $("insert").title = off ? "請先填寫司儀姓名" : entry ? "加" : "新講稿";
     $("insert").setAttribute("aria-label", $("insert").title);
     if (off) closeMenu();
   }
@@ -680,7 +680,7 @@ var CLOUD = %%CLOUD%%;
     if (t === "award") b.text = awardRowsOf({ text: b.text }).map(function (r) { return (r.cls + " " + r.name).trim(); }).join("\n");
     b.type = t; if (t === "line" && !b.mc) b.mc = nextSpeaker(i);
     renderRows(); save(); focusBlock(b.id, true);
-    toast("已轉做" + TYPE[t], false, { label: "復原", fn: undo });
+    toast("已改為" + TYPE[t], false, { label: "復原", fn: undo });
   }
   keepFocus($("insert"));
   function insertBlock(type) {
@@ -691,7 +691,7 @@ var CLOUD = %%CLOUD%%;
   $("insert").onclick = function () {
     if (!entry) { newScript(); return; }
     if ($("insert").getAttribute("aria-disabled") === "true") {
-      toast("先填司儀姓名"); var f = document.querySelector("#mcline input:not(.upper)"); if (f) f.focus(); return;
+      toast("請先填寫司儀姓名"); var f = document.querySelector("#mcline input:not(.upper)"); if (f) f.focus(); return;
     }
     openMenu($("insert"), "up", [
       menuItem("line", TYPE.line, function () { insertBlock("line"); }, { disabled: !ScriptGen.named(state).length }),
@@ -706,7 +706,7 @@ var CLOUD = %%CLOUD%%;
     var next = state.blocks[Math.max(0, i - 1)];
     current = next ? next.id : null; renderRows(); save();
     if (next) focusBlock(next.id, true);
-    toast(fromKeyboard ? "已刪除空白一段" : "已刪除" + TYPE[gone.type], false, { label: "復原", fn: undo });
+    toast(fromKeyboard ? "已刪除空白段落" : "已刪除" + TYPE[gone.type], false, { label: "復原", fn: undo });
   }
   function moveBlock(d) {
     var i = curIndex(), j = i + d; if (i < 0 || j < 0 || j >= state.blocks.length) return;
@@ -803,7 +803,7 @@ var CLOUD = %%CLOUD%%;
       var ul = el("ul", { hidden: !open, "aria-label": { soon: "即將舉行", none: "未有日期", past: "已舉行" }[g] });
       list.forEach(function (s) { ul.appendChild(row(s, today, tomorrow)); });
       box.appendChild(el("section", { class: "section" }, [
-        folds ? el("button", { type: "button", class: "sh", "aria-expanded": open, onclick: function () { lib.showPast = !lib.showPast; persistLib(); renderList(); } }, ["已舉行 " + list.length + " 份", icon("chevron")]) : null,
+        folds ? el("button", { type: "button", class: "sh", "aria-expanded": open, onclick: function () { lib.showPast = !lib.showPast; persistLib(); renderList(); } }, ["過往講稿（" + list.length + "）", icon("chevron")]) : null,
         ul]));
     });
     $("nomatch").hidden = !q || hits > 0;
@@ -851,7 +851,7 @@ var CLOUD = %%CLOUD%%;
     var st = JSON.parse(JSON.stringify(s.state)); st.date = "";
     var copy = { id: uid(), updated: Date.now(), state: st, dirty: true, edit: 1 };
     lib.scripts.push(copy); persistLib(); schedulePush();
-    if (open) { openScript(copy.id); toast("已複製，記得揀新日期"); }
+    if (open) { openScript(copy.id); toast("已複製，請選擇新日期"); }
     return copy;
   }
   function deleteMany(list) {
@@ -928,7 +928,7 @@ var CLOUD = %%CLOUD%%;
     if (mine) {
       lib.scripts.push(mine);
       if (entry === s) { entry = mine; state = mine.state; lib.open = mine.id; savedJson[mine.id] = JSON.stringify(state); renderAll(); }
-      toast("有人同時改咗，你嘅版本已另存一份");
+      toast("其他人同時修改了此講稿，你的版本已另存一份");
     }
     await pull(true); if (mine) push(mine);
   }
@@ -957,7 +957,7 @@ var CLOUD = %%CLOUD%%;
     if (s.rev === d.rev || s.dirty) return;
     if (d.deleted) {
       lib.scripts = lib.scripts.filter(function (x) { return x !== s; });
-      if (entry === s) { entry = null; backToList(); toast("呢份講稿已被刪除"); }
+      if (entry === s) { entry = null; backToList(); toast("此講稿已被刪除"); }
       return;
     }
     if (!validState(st)) return;
@@ -969,7 +969,7 @@ var CLOUD = %%CLOUD%%;
   async function checkSpace() {
     try {
       var r = await api("/join", "POST");
-      if (r.status === 403) { try { localStorage.removeItem(SPACE_KEY); } catch (e) {} cloud = null; askSpace("密碼已經改咗，請再輸入"); }
+      if (r.status === 403) { try { localStorage.removeItem(SPACE_KEY); } catch (e) {} cloud = null; askSpace("密碼已更改，請重新輸入"); }
       else setSync("error");
     } catch (e) { setSync("offline"); }
   }
@@ -977,12 +977,12 @@ var CLOUD = %%CLOUD%%;
   async function join(raw) {
     // Any characters; spaces are dropped and case is ignored, because iPad keyboards capitalise.
     var code = String(raw || "").replace(/\s+/g, "").toLowerCase();
-    if (code.length < 4 || code.length > 128) { $("joinerr").textContent = "密碼唔啱"; return; }
+    if (code.length < 4 || code.length > 128) { $("joinerr").textContent = "密碼不正確"; return; }
     $("joinerr").textContent = "";
     try {
       var r = await api("/join", "POST", null, code);
-      if (r.status !== 200) { $("joinerr").textContent = r.status === 403 ? "密碼唔啱" : "連唔到，請再試"; return; }
-    } catch (e) { $("joinerr").textContent = "連唔到，請再試"; return; }
+      if (r.status !== 200) { $("joinerr").textContent = r.status === 403 ? "密碼不正確" : "無法連線，請再試"; return; }
+    } catch (e) { $("joinerr").textContent = "無法連線，請再試"; return; }
     try { localStorage.setItem(SPACE_KEY, code); } catch (e) {}
     startCloud(code); showView("list"); renderList(); updateAdd();
   }
@@ -1074,14 +1074,14 @@ var CLOUD = %%CLOUD%%;
     } catch (e) {
       var code = e && e.code;
       if (code === "declined") toast("已取消");
-      else if (code === "rate_limited") toast("儲存視窗仲開緊", true);
-      else toast("分享唔到（" + (code || (e && e.message) || "未知原因") + "）", true);
+      else if (code === "rate_limited") toast("儲存視窗仍在開啟", true);
+      else toast("未能分享（" + (code || (e && e.message) || "未知原因") + "）", true);
     }
   }
   function showMissing() {
     var d = ScriptGen.describe(state);
     showProblems = true; markProblems();
-    toast(d.problems[0].msg + (d.problems.length > 1 ? "，另外 " + (d.problems.length - 1) + " 項" : ""), true, null, goToProblem);
+    toast(d.problems[0].msg + (d.problems.length > 1 ? "，另有 " + (d.problems.length - 1) + " 項" : ""), true, null, goToProblem);
     goToProblem();
   }
   $("share").onclick = function () {

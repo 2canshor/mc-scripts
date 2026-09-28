@@ -6,7 +6,7 @@ await p.goto('file://'+__dirname+'/MC Scripts.html');await p.waitForTimeout(300)
 await p.click('#insert');
 assert(await p.evaluate(()=>document.activeElement.id)==='event','new script starts at the event name');
 await p.click('#insert',{force:true});await p.waitForTimeout(100);
-assert((await p.textContent('.toast'))==='先填司儀姓名','tap on ＋ before an MC says why');
+assert((await p.textContent('.toast'))==='請先填寫司儀姓名','tap on ＋ before an MC says why');
 assert(await p.evaluate(()=>document.activeElement.matches('#mcline input:not(.upper)')),'and goes to the MC name');
 await p.keyboard.type('甲同學');
 const box=await p.evaluate(()=>{const r=document.querySelector('#mcline label.hit:nth-child(2)').getBoundingClientRect();return r.height});

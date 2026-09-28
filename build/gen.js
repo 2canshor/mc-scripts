@@ -86,13 +86,13 @@ var ScriptGen = (function () {
 
     var sp = speakers(state);
     var problems = [];
-    if (!state.event.trim()) problems.push({ msg: "未填活動名稱", target: "event" });
-    if (!date) problems.push({ msg: "未揀日期", target: "date" });
-    if (!mcs.length) problems.push({ msg: "未填司儀姓名", target: "mc" });
+    if (!state.event.trim()) problems.push({ msg: "未填寫活動名稱", target: "event" });
+    if (!date) problems.push({ msg: "未選擇日期", target: "date" });
+    if (!mcs.length) problems.push({ msg: "未填寫司儀姓名", target: "mc" });
     if (!state.blocks.length) problems.push({ msg: "未有內容", target: "blocks" });
     state.blocks.forEach(function (b, i) {
-      if (!lines(b.text).length) problems.push({ msg: "有一段未有內容", target: "block:" + b.id });
-      else if (b.type === "line" && sp[i] && !sp[i].mc) problems.push({ msg: "有一段未揀司儀", target: "block:" + b.id });
+      if (!lines(b.text).length) problems.push({ msg: "有段落未有內容", target: "block:" + b.id });
+      else if (b.type === "line" && sp[i] && !sp[i].mc) problems.push({ msg: "有段落未選擇司儀", target: "block:" + b.id });
     });
     return { en: en, colon: colon, byId: byId, speakers: sp, title: title, heading: heading, indent: indent, filename: filename, problems: problems };
   }
