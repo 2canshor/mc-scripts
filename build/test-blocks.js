@@ -19,11 +19,11 @@ for (const [w,h,scheme] of [[820,1180,'light'],[1440,900,'dark']]){
  ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["複製成新講稿","刪除成份講稿"]','toolbar ⋯ has whole-script actions only');
  await p.keyboard.press('Escape');
  await p.click('.row.cue textarea');await p.click('.row.cue .bmore');
- ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["司儀對白","流程提示","得獎名單","上移","刪除此段"]','paragraph ⋯: type choice, only possible moves, delete');
+ ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["司儀對白","流程提示","得獎名單","刪除此段"]','paragraph menu: type choice and delete');
  ok(await p.$eval('.menu [aria-checked="true"]',e=>e.textContent)==='流程提示','current type is ticked');
  await p.screenshot({path:`${out}/blocks-${w}.png`});
- await p.click('.menu >> text=上移');
- ok(await p.$$eval('#rows .row',x=>x.map(r=>r.className.split(' ')[1]).join())==='cue,line','move up works');
+ await p.click('.menu >> text=司儀對白');
+ ok(await p.$$eval('#rows .row',x=>x.map(r=>r.className.split(' ')[1]).join())==='line,line','type change from the paragraph menu');
  await p.hover('.row.line');await p.click('.row.line .bmore');await p.click('.menu >> text=刪除此段');
  ok((await p.$$('#rows .row')).length===1,'delete from the paragraph ⋯');
 }
