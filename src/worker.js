@@ -2,7 +2,7 @@
 // The page sends the CA passcode with each request; only its SHA-256 is kept here.
 import PAGE from "./index.html";
 
-const PASSCODE_SHA256 = "fc70d92d8fe9217aff1c132c0dc1111a9a0c3a2ef636b7c24fa0e7dd96398f47";
+const PASSCODE_SHA256 = "ce2325ecb6f8053ce8b4a754665425454d7a6cbd0460f64c8daa1155c2116845";
 const MAX_SCRIPT = 500000;
 
 let tablesReady = null;
