@@ -803,7 +803,7 @@ var CLOUD = %%CLOUD%%;
       var ul = el("ul", { hidden: !open, "aria-label": { soon: "即將舉行", none: "未有日期", past: "已舉行" }[g] });
       list.forEach(function (s) { ul.appendChild(row(s, today, tomorrow)); });
       box.appendChild(el("section", { class: "section" }, [
-        folds ? el("button", { type: "button", class: "sh", "aria-expanded": open, onclick: function () { lib.showPast = !lib.showPast; persistLib(); renderList(); } }, ["過往講稿（" + list.length + "）", icon("chevron")]) : null,
+        folds ? el("button", { type: "button", class: "sh", "aria-expanded": open, onclick: function () { lib.showPast = !lib.showPast; persistLib(); renderList(); } }, ["過往講稿", icon("chevron")]) : null,
         ul]));
     });
     $("nomatch").hidden = !q || hits > 0;
