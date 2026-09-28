@@ -946,7 +946,7 @@ var CLOUD = {"api":"/api"};
   function api(path, method, body, code) {
     return fetch(CLOUD.api + path, {
       method: method || "GET", cache: "no-store",
-      headers: { "Content-Type": "application/json", "X-Passcode": code || cloud.space },
+      headers: { "Content-Type": "application/json", "X-Passcode": encodeURIComponent(code || cloud.space) },
       body: body ? JSON.stringify(body) : undefined
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j || {} }; });
@@ -1033,8 +1033,9 @@ var CLOUD = {"api":"/api"};
   }
   function askSpace(msg) { entry = null; showView("join"); $("joinerr").textContent = msg || ""; }
   async function join(raw) {
-    var code = String(raw || "").trim().toLowerCase().replace(/\s+/g, "");
-    if (!/^[a-z0-9_-]{4,64}$/.test(code)) { $("joinerr").textContent = "密碼唔啱"; return; }
+    // Any characters; spaces are dropped and case is ignored, because iPad keyboards capitalise.
+    var code = String(raw || "").replace(/\s+/g, "").toLowerCase();
+    if (code.length < 4 || code.length > 128) { $("joinerr").textContent = "密碼唔啱"; return; }
     $("joinerr").textContent = "";
     try {
       var r = await api("/join", "POST", null, code);

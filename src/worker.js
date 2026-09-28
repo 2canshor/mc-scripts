@@ -30,8 +30,10 @@ export default {
       if (url.pathname !== "/") return Response.redirect(url.origin + "/" + url.hash, 302);
       return new Response(PAGE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-robots-tag": "noindex" } });
     }
-    const expected = env.PASSCODE ? await sha256(String(env.PASSCODE).trim().toLowerCase()) : PASSCODE_SHA256;
-    if (await sha256(request.headers.get("x-passcode") || "") !== expected) return json({ error: "passcode" }, 403);
+    const expected = env.PASSCODE ? await sha256(String(env.PASSCODE).replace(/\s+/g, "").toLowerCase()) : PASSCODE_SHA256;
+    let given = request.headers.get("x-passcode") || "";
+    try { given = decodeURIComponent(given); } catch { given = ""; }
+    if (await sha256(given.replace(/\s+/g, "").toLowerCase()) !== expected) return json({ error: "passcode" }, 403);
     await ensureTables(env.DB);
     const path = url.pathname.slice("/api/".length);
 
