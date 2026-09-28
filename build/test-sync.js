@@ -17,7 +17,7 @@ assert(await view(p1)==='list','right passcode opens the list');
 await p1.click('#insert');await p1.fill('#date','2026-09-28');await p1.dispatchEvent('#date','input');
 await p1.click('#event');await p1.keyboard.type(tag);
 let f=await p1.$$('#mcline input');await f[1].click();await p1.keyboard.type('甲同學');
-await p1.click('#insert');await p1.click('.menu >> text=對白');await p1.keyboard.type('各位早晨。');
+await p1.click('#insert');await p1.click('.menu >> text=司儀對白');await p1.keyboard.type('各位早晨。');
 await p1.waitForTimeout(2500);
 const p2=await dev(2,'#k='+CODE);await p2.waitForTimeout(1200);
 assert(await view(p2)==='list','join link opens the list');

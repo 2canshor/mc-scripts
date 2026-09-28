@@ -12,14 +12,14 @@ await p.keyboard.type('甲同學');
 const box=await p.evaluate(()=>{const r=document.querySelector('#mcline label.hit:nth-child(2)').getBoundingClientRect();return r.height});
 console.log('   MC name tap height',Math.round(box));
 const ids=()=>p.evaluate(()=>[...document.querySelectorAll('#rows .row')].map(r=>r.className.split(' ')[1]+':'+(r.querySelector('textarea')?r.querySelector('textarea').value:[...r.querySelectorAll('input')].map(i=>i.value).join('/'))));
-await p.click('#insert');await p.click('.menu >> text=對白');await p.keyboard.type('各位早晨');
-await p.click('#insert');await p.click('.menu >> text=對白');await p.keyboard.type('歡迎大家');
+await p.click('#insert');await p.click('.menu >> text=司儀對白');await p.keyboard.type('各位早晨');
+await p.click('#insert');await p.click('.menu >> text=司儀對白');await p.keyboard.type('歡迎大家');
 // two lines by the same MC? second defaults to same MC when one MC only
 await p.keyboard.press('Home');await p.evaluate(()=>{const t=document.activeElement;t.setSelectionRange(0,0)});await p.keyboard.press('Backspace');
 console.log('   ',JSON.stringify(await ids()));
 assert(JSON.stringify(await ids())==='["line:各位早晨歡迎大家"]','Backspace at start joins with the line above (same MC)');
 assert(await p.evaluate(()=>document.activeElement.selectionStart)===4,'cursor sits at the join');
-await p.click('#insert');await p.click('.menu >> text=台上動作');await p.keyboard.type('校長上台');
+await p.click('#insert');await p.click('.menu >> text=流程提示');await p.keyboard.type('校長上台');
 await p.evaluate(()=>document.activeElement.setSelectionRange(0,0));await p.keyboard.press('Backspace');
 assert(JSON.stringify(await ids())==='["line:各位早晨歡迎大家","cue:校長上台"]'&&await p.evaluate(()=>document.activeElement.value==='各位早晨歡迎大家'&&document.activeElement.selectionStart===8),'Backspace at start of a cue goes to the end of the line above');
 await p.click('.row.cue');

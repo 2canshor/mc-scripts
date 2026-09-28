@@ -119,6 +119,8 @@ body:not([data-view="list"]) .search,body.noscripts .search{display:none}
 .menu button{display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border-radius:12px;font-size:16px;text-align:left}
 .menu button:hover:not(:disabled),.menu button:focus-visible{background:var(--glass-hi);outline:none}
 .menu .danger{color:var(--danger)}
+.menu .label{flex:1}
+.menu button svg.i:last-child:not(:first-child){color:var(--text)}
 .menu .gap{height:6px}
 .toast{position:fixed;z-index:25;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 14px + var(--vvtop,0px));display:flex;align-items:center;gap:6px;padding:4px 4px 4px 16px;font-size:15px;max-width:min(300px,calc(100vw - 32px))}
 @media (max-width:760px){.toast{top:calc(env(safe-area-inset-top,0px) + 66px + var(--vvtop,0px))}}
@@ -243,6 +245,7 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.34-4.34"/></symbol>
   <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
@@ -271,10 +274,11 @@ var CLOUD = %%CLOUD%%;
   var KEY = "ca-script-builder-v2";
   var SVGNS = "http://www.w3.org/2000/svg";
   var uid = function () { return Math.random().toString(36).slice(2, 9); };
-  var TYPE = { line: "對白", cue: "台上動作", award: "得獎名單" };
+  // Paragraph types, named by what they are in the printed script: what the MC says, a cue for what happens, a list of awardees.
+  var TYPE = { line: "司儀對白", cue: "流程提示", award: "得獎名單" };
   // Placeholders in the script follow the script's own language, worked out from what is typed.
   var WORDS = {
-    yue: { event: "活動名稱", cls: "班別", mc: "司儀姓名", line: "對白", cue: "台上動作", name: "姓名", type: "講稿" },
+    yue: { event: "活動名稱", cls: "班別", mc: "司儀姓名", line: "司儀對白", cue: "流程提示", name: "姓名", type: "講稿" },
     en: { event: "Event", cls: "Class", mc: "MC name", line: "Line", cue: "Stage direction", name: "Name", type: "Script" }
   };
   var W = WORDS.yue;
@@ -449,9 +453,8 @@ var CLOUD = %%CLOUD%%;
     var kids = [cur ? speakerName(cur) + colon : "揀司儀"];
     if (list.length > 1) {
       kids.push(icon("updown"));
-      var sel = el("select", { "aria-label": "邊位司儀講" }, [el("option", { value: "", text: "揀司儀", disabled: true })]
-        .concat(list.map(function (m) { return el("option", { value: m.id, text: speakerName(m) }); })));
-      sel.value = cur ? cur.id : "";
+      var sel = el("select", { "aria-label": "邊位司儀講" }, list.map(function (m) { return el("option", { value: m.id, text: speakerName(m) }); }));
+      if (cur) sel.value = cur.id; else sel.selectedIndex = -1;
       sel.addEventListener("focus", function () { setCurrent(b.id); });
       sel.addEventListener("change", function () { b.mc = sel.value; save(); refreshRows(); });
       kids.push(sel);
@@ -578,15 +581,14 @@ var CLOUD = %%CLOUD%%;
       setCurrent(b.id);
       var i = state.blocks.indexOf(b), items = [];
       ["line", "cue", "award"].forEach(function (t) {
-        if (b.type !== t) items.push(menuItem(t, "轉做" + TYPE[t], function () { setType(t); }));
+        items.push(menuItem(t, TYPE[t], function () { if (b.type !== t) setType(t); }, { checked: b.type === t, disabled: t === "line" && !ScriptGen.named(state).length }));
       });
-      items.push(
-        el("div", { class: "gap" }),
-        menuItem("up", "上移", function () { moveBlock(-1); }, { disabled: i <= 0 }),
-        menuItem("down", "下移", function () { moveBlock(1); }, { disabled: i >= state.blocks.length - 1 }),
-        el("div", { class: "gap" }),
-        menuItem("trash", "刪除呢段", function () { removeBlock(state.blocks.indexOf(b)); }, { danger: true })
-      );
+      var moves = [];
+      if (i > 0) moves.push(menuItem("up", "上移", function () { moveBlock(-1); }));
+      if (i < state.blocks.length - 1) moves.push(menuItem("down", "下移", function () { moveBlock(1); }));
+      if (moves.length) items.push(el("div", { class: "gap" }));
+      items = items.concat(moves);
+      items.push(el("div", { class: "gap" }), menuItem("trash", "刪除呢段", function () { removeBlock(state.blocks.indexOf(b)); }, { danger: true }));
       openMenu(btn, "right", items);
     });
     return btn;
@@ -690,8 +692,8 @@ var CLOUD = %%CLOUD%%;
       toast("先填司儀姓名"); var f = document.querySelector("#mcline input:not(.upper)"); if (f) f.focus(); return;
     }
     openMenu($("insert"), "up", [
-      menuItem("line", "對白", function () { insertBlock("line"); }, { disabled: !ScriptGen.named(state).length }),
-      menuItem("cue", "台上動作", function () { insertBlock("cue"); }),
+      menuItem("line", TYPE.line, function () { insertBlock("line"); }, { disabled: !ScriptGen.named(state).length }),
+      menuItem("cue", TYPE.cue, function () { insertBlock("cue"); }),
       menuItem("award", "得獎名單", function () { insertBlock("award"); }),
     ]);
   };
@@ -715,8 +717,9 @@ var CLOUD = %%CLOUD%%;
   function closeMenu() { document.querySelectorAll("li.held").forEach(function (x) { x.classList.remove("held"); }); if (menuEl) { menuEl.remove(); menuEl = null; menuBtn.setAttribute("aria-expanded", "false"); menuBtn = null; } }
   function menuItem(ic, label, fn, opts) {
     opts = opts || {};
-    return el("button", { type: "button", role: "menuitem", class: opts.danger ? "danger" : "", disabled: !!opts.disabled,
-      onclick: function () { closeMenu(); fn(); } }, [icon(ic), label]);
+    return el("button", { type: "button", role: opts.checked != null ? "menuitemradio" : "menuitem", "aria-checked": opts.checked != null ? !!opts.checked : null,
+      class: opts.danger ? "danger" : "", disabled: !!opts.disabled,
+      onclick: function () { closeMenu(); fn(); } }, [icon(ic), el("span", { class: "label", text: label }), opts.checked ? icon("check") : null]);
   }
   function openMenu(btn, side, items) {
     var again = menuBtn === btn; closeMenu(); if (again) return;
