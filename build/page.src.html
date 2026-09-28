@@ -181,7 +181,8 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 .aw{display:grid;grid-template-columns:calc(80 * var(--pt)) minmax(0,1fr)}
 .aw input{font:inherit;color:inherit;background:transparent;border:0;outline:none;padding:0;margin:0;width:100%;min-width:0;line-height:1.6;height:1.6em;border-radius:4px}
 .aw input::placeholder{color:var(--caption)}
-.aw input.repeat{color:var(--faint)}
+/* A class that repeats the row above is not printed, so it is not shown either, until the row is being edited */
+.aw input.repeat:not(:focus){color:transparent}
 .aw input:focus{background:var(--canvas)}
 .who{position:relative;align-self:start;display:inline-flex;align-items:center;gap:2px;font-weight:600;height:1.6em;width:max-content;max-width:100%;border-radius:6px}
 .who.faint{color:var(--faint)}
@@ -555,7 +556,7 @@ var CLOUD = %%CLOUD%%;
         var line = box.children[focusIndex]; if (line) { var f = line.querySelectorAll("input")[field === "name" ? 1 : 0]; caretAt(f, f.value.length); }
       }
     }
-    // A class that repeats the row above is printed only once, so it is shown faint here.
+    // A class that repeats the row above is printed only once, so it is hidden here too.
     function markRepeats() {
       [].forEach.call(box.children, function (line, k) {
         line.querySelector("input").classList.toggle("repeat", k > 0 && !!rows[k].cls && rows[k].cls === rows[k - 1].cls);
