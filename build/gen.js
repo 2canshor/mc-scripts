@@ -163,7 +163,8 @@ var ScriptGen = (function () {
       }
     });
     var em = '<w:rPr><w:rStyle w:val="Emphasis"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>';
-    x += '<w:p><w:pPr><w:spacing w:before="240"/><w:jc w:val="center"/>' + em + "</w:pPr><w:r>" + em + t("{End of Script}") + "</w:r></w:p>";
+    // {End of Script} sits at the foot of the last page: a frame anchored to the bottom margin.
+    x += '<w:p><w:pPr><w:framePr w:wrap="around" w:vAnchor="margin" w:hAnchor="margin" w:xAlign="center" w:yAlign="bottom"/><w:jc w:val="center"/>' + em + "</w:pPr><w:r>" + em + t("{End of Script}") + "</w:r></w:p>";
     return x;
   }
 

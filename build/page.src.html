@@ -189,7 +189,9 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 .who select{position:absolute;inset:-9px -10px;width:calc(100% + 20px);height:calc(100% + 18px);opacity:0;font-size:16px;-webkit-appearance:none;appearance:none;cursor:pointer}
 .who svg.i{width:14px;height:14px;color:var(--caption)}
 .who:focus-within{background:var(--current)}
-.end{text-align:center;font-style:italic;color:var(--secondary);margin-top:calc(16 * var(--pt))}
+/* The script fills at least the window, so {End of Script} rests at the bottom, as on the printed page */
+.doc{display:flex;flex-direction:column;min-height:calc(100vh - 120px);min-height:calc(100dvh - 120px)}
+.end{text-align:center;font-style:italic;color:var(--secondary);margin:auto 0 0;padding-top:calc(16 * var(--pt))}
 @media (max-width:640px){:root{--pt:1.3636px}body{font-size:15px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
