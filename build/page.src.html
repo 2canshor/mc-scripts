@@ -80,6 +80,14 @@ body[data-view="doc"] .lib{display:none}
 .lib .t.untitled{color:var(--caption)}
 .lib .s{font-size:14px;color:var(--secondary)}
 
+/* Search: a glass field in the control layer, bottom leading, level with the add button */
+.search{position:fixed;z-index:20;left:calc(var(--side) + env(safe-area-inset-left,0px));right:calc(var(--side) + 56px + 12px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));height:56px;display:flex;align-items:center;gap:10px;padding:0 20px;cursor:text}
+.search svg.i{color:var(--secondary)}
+.search input{flex:1;min-width:0;height:100%;font:inherit;font-size:17px;color:var(--text);background:transparent;border:0;outline:none;padding:0;-webkit-appearance:none;appearance:none}
+.search input::placeholder{color:var(--secondary)}
+body:not([data-view="list"]) .search,body.noscripts .search{display:none}
+.lib .nomatch{margin:40px 0 0;text-align:center;color:var(--secondary);font-size:15px}
+
 /* Add button: floats at the bottom trailing corner */
 .fab{position:fixed;z-index:20;right:calc(var(--side) + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;color:var(--text)}
 .fab svg.i{width:24px;height:24px}
@@ -179,6 +187,7 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
   <h1>講稿</h1>
   <p class="count" id="libcount"></p>
   <ul id="liblist"></ul>
+  <p class="nomatch" id="nomatch" hidden>冇相符嘅講稿</p>
   <div class="emptystate" id="libempty" hidden>
     <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg>
     <h2>未有講稿</h2>
@@ -205,9 +214,12 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
   <p class="end">{End of Script}</p>
 </main>
 
+<label class="search glass" id="searchbar"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg><input id="q" type="search" placeholder="搜尋" aria-label="搜尋講稿" autocomplete="off" enterkeyhint="search"></label>
+
 <button type="button" class="fab glass" id="insert" aria-label="加" title="加" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg></button>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.34-4.34"/></symbol>
   <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
@@ -727,7 +739,11 @@ var CLOUD = %%CLOUD%%;
   function renderList() {
     var ul = $("liblist"); ul.textContent = "";
     renderStatus();
+    var q = $("q").value.replace(/\s+/g, "").toLowerCase(), hits = 0;
+    document.body.classList.toggle("noscripts", !shown().length);
     shown().sort(function (a, b) { return b.updated - a.updated; }).forEach(function (s) {
+      if (q && searchText(s.state).indexOf(q) < 0) return;
+      hits++;
       var st = s.state, en = ScriptGen.isEnglish(st), date = ScriptGen.yymmdd(st.date, "/");
       var name = st.event.trim(), title = [date, name].filter(Boolean).join(en ? " | " : "｜");
       var mcs = ScriptGen.named(st).map(function (m) { return m.name.trim(); }).join("．");
@@ -736,7 +752,15 @@ var CLOUD = %%CLOUD%%;
         el("span", { class: "s", text: [mcs, "改於 " + when(s.updated)].filter(Boolean).join("　") })
       ])]));
     });
+    $("nomatch").hidden = !q || hits > 0;
   }
+  // Everything a search can match: date, event, MCs and the script's own words.
+  function searchText(st) {
+    return [ScriptGen.yymmdd(st.date, "/"), st.event].concat(st.mcs.map(function (m) { return (m.cls || "") + (m.name || ""); }))
+      .concat(st.blocks.map(function (b) { return b.text || ""; })).join("\n").replace(/\s+/g, "").toLowerCase();
+  }
+  $("q").addEventListener("input", renderList);
+  $("q").addEventListener("keydown", function (e) { if (e.key === "Escape") { $("q").value = ""; renderList(); $("q").blur(); } });
   // Under the heading: how many scripts, and any not yet uploaded while offline.
   function renderStatus() {
     var n = shown().length, waiting = cloud ? lib.scripts.filter(pending).length : 0;
