@@ -1,0 +1,42 @@
+const {chromium}=require('/opt/node22/lib/node_modules/playwright');
+const assert=(c,m)=>{if(!c){console.log('FAIL',m);process.exitCode=1}else console.log('ok',m)};
+const BASE=process.argv[2]||'http://127.0.0.1:8787/'; const CODE=process.env.PASSCODE;
+(async()=>{
+const b=await chromium.launch(); const errs=[];
+async function dev(n,hash){const c=await b.newContext({viewport:{width:820,height:1180},hasTouch:true});
+  const p=await c.newPage(); p.on('pageerror',e=>errs.push(n+': '+e.message)); p.on('console',m=>{if(m.type()==='error'&&!/Failed to load|net::/.test(m.text()))errs.push(n+': '+m.text())});
+  await p.goto(BASE+(hash||''));await p.waitForTimeout(600);p.ctx=c;return p;}
+const view=p=>p.evaluate(()=>document.body.dataset.view);
+const titles=p=>p.$$eval('#liblist .t',x=>x.map(e=>e.textContent));
+const tag='測試'+Date.now()%10000;
+const p1=await dev(1); assert(await view(p1)==='join','first launch asks for the passcode');
+await p1.fill('#code','wrongcode1');await p1.click('.join button');await p1.waitForTimeout(500);
+assert(await p1.textContent('#joinerr')==='密碼唔啱','wrong passcode refused');
+await p1.fill('#code',' '+CODE.toUpperCase()+' ');await p1.click('.join button');await p1.waitForTimeout(800);
+assert(await view(p1)==='list','right passcode opens the list');
+await p1.click('#insert');await p1.fill('#date','2026-09-28');await p1.dispatchEvent('#date','input');
+await p1.click('#event');await p1.keyboard.type(tag);
+let f=await p1.$$('#mcline input');await f[1].click();await p1.keyboard.type('甲同學');
+await p1.click('#insert');await p1.click('.menu >> text=對白');await p1.keyboard.type('各位早晨。');
+await p1.waitForTimeout(2500);
+const p2=await dev(2,'#k='+CODE);await p2.waitForTimeout(1200);
+assert(await view(p2)==='list','join link opens the list');
+assert((await titles(p2)).includes('26/09/28｜'+tag),'iPad 2 sees iPad 1 script');
+await p1.click('#back');await p2.click('#liblist button >> text='+tag);await p2.click('#event');await p2.keyboard.press('End');await p2.keyboard.type('禮');
+await p2.waitForTimeout(2500);await p1.evaluate(()=>window.dispatchEvent(new Event('online')));await p1.waitForTimeout(800);
+assert((await titles(p1)).includes('26/09/28｜'+tag+'禮'),'iPad 1 sees iPad 2 edit');
+await p1.ctx.setOffline(true);await p1.click('#liblist button >> text='+tag);await p1.click('#event');await p1.keyboard.press('End');await p1.keyboard.type('一');
+await p1.waitForTimeout(2200);await p1.click('#back');await p1.waitForTimeout(400);
+assert(/1 份未上載/.test(await p1.textContent('#libcount')),'offline shows waiting count');
+await p2.click('#event');await p2.keyboard.press('End');await p2.keyboard.type('二');await p2.waitForTimeout(2500);
+await p1.ctx.setOffline(false);await p1.evaluate(()=>window.dispatchEvent(new Event('online')));await p1.waitForTimeout(2500);
+await p1.evaluate(()=>window.dispatchEvent(new Event('online')));await p1.waitForTimeout(1200);
+const t1=await titles(p1);
+assert(t1.includes('26/09/28｜'+tag+'禮二')&&t1.includes('26/09/28｜'+tag+'禮一'),'conflict keeps both versions');
+await p1.click('#liblist button >> text='+tag+'禮一');await p1.click('#more');await p1.click('.menu >> text=刪除成份講稿');await p1.waitForTimeout(2500);
+await p2.click('#back');await p2.waitForTimeout(1000);
+const t2=await titles(p2); assert(!t2.includes('26/09/28｜'+tag+'禮一')&&t2.includes('26/09/28｜'+tag+'禮二'),'deletion reaches iPad 2');
+// clean up: delete the test script too, so nothing stays in the live list
+await p2.click('#liblist button >> text='+tag+'禮二');await p2.click('#more');await p2.click('.menu >> text=刪除成份講稿');await p2.waitForTimeout(2500);
+await p2.reload();await p2.waitForTimeout(1000);assert(await view(p2)==='list'&&!(await titles(p2)).some(t=>t.includes(tag)),'passcode remembered; test scripts gone');
+console.log('errors:',JSON.stringify(errs));await b.close();})();

@@ -1,0 +1,962 @@
+<title>MC Scripts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&display=swap">
+<!-- Icons: Lucide (ISC licence), https://lucide.dev -->
+<style>
+:root{
+  --canvas:#FBFAF7; /* tell-ok: CA Design System token */
+  --current:#F1EFE8; --needs:#F3E3DE; --field:#EDEBE3; --blue:#007AFF;
+  --text:#1A1A18; /* tell-ok: CA Design System token */
+  --secondary:#6B6A64; --caption:#85837C; --faint:#85837C;
+  --danger:#9A3B2E; --btn:#1A1A18; --btn-text:#FBFAF7; /* tell-ok: CA Design System token */
+  --glass:rgba(255,255,255,.62); --glass-hi:rgba(255,255,255,.9); --glass-sel:rgba(26,26,24,.9);
+  --glass-shadow:0 1px 1px rgba(26,26,24,.04),0 8px 28px rgba(26,26,24,.12);
+  --serif:"Noto Serif TC","Songti TC","PMingLiU",Georgia,serif;
+  --pt:1.5455px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --canvas:#1C1C1A; --current:#262623; --needs:#43302B; --field:#2E2D2A; --blue:#0A84FF;
+    --text:#F2F0EA; /* tell-ok: CA Design System token (dark) */
+    --secondary:#B0AEA5; --caption:#8E8D87; --faint:#8E8D87;
+    --danger:#E59A8C; --btn:#F2F0EA; --btn-text:#1A1A18; /* tell-ok: CA Design System token (dark) */
+    --glass:rgba(44,44,41,.62); --glass-hi:rgba(70,70,66,.9); --glass-sel:rgba(242,240,234,.92);
+    --glass-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 28px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --canvas:#1C1C1A; --current:#262623; --needs:#43302B; --field:#2E2D2A; --blue:#0A84FF;
+  --text:#F2F0EA; /* tell-ok: CA Design System token (dark) */
+  --secondary:#B0AEA5; --caption:#8E8D87; --faint:#8E8D87;
+  --danger:#E59A8C; --btn:#F2F0EA; --btn-text:#1A1A18; /* tell-ok: CA Design System token (dark) */
+  --glass:rgba(44,44,41,.62); --glass-hi:rgba(70,70,66,.9); --glass-sel:rgba(242,240,234,.92);
+  --glass-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 28px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--canvas)}
+body{color:var(--text);font-family:var(--serif);font-size:17px;line-height:1.6;padding-inline:16px;padding-block:0 120px;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:disabled{opacity:.3;cursor:default}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round} /* stroke-ok: line icons */
+
+/* Control layer: one floating toolbar; content scrolls beneath it behind a scroll-edge fade */
+.edge{position:fixed;top:0;right:0;z-index:20;padding:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) 0 0;pointer-events:none}
+.toolbar{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:flex-end;gap:8px;pointer-events:none}
+.glass{pointer-events:auto;background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(1.6);backdrop-filter:blur(22px) saturate(1.6);box-shadow:var(--glass-shadow);border-radius:999px}
+.group{display:flex;align-items:center;gap:2px;padding:4px}
+.tb{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;height:44px;padding:0 12px;border-radius:999px;font-size:15px;color:var(--text)}
+.tb:hover:not(:disabled){background:var(--glass-hi)}
+.tb[aria-pressed="true"]{background:var(--glass-sel);color:var(--btn-text)}
+.tb.prominent{background:var(--btn);color:var(--btn-text);font-weight:600;padding:0 18px;height:48px}
+.tb:focus-visible{background:var(--glass-hi);outline:none}
+.tb.prominent:focus-visible{opacity:.85}
+@media (max-width:640px){.t-label{display:none}}
+
+/* Back to the script list: leading edge */
+.lead{position:fixed;top:0;left:0;z-index:20;padding:calc(16px + env(safe-area-inset-top,0px)) 0 0 calc(16px + env(safe-area-inset-left,0px));pointer-events:none}
+.lead .tb{width:48px;height:48px;padding:0}
+.lead svg.i{width:22px;height:22px}
+
+/* Views: the script list, or one script */
+body[data-view="list"] .doc,body[data-view="list"] .edge,body[data-view="list"] .lead{display:none}
+body[data-view="doc"] .lib{display:none}
+.lib{max-width:860px;margin:0 auto;padding-top:20px}
+.lib h1{font-size:34px;font-weight:600;line-height:1.2;margin:0}
+.lib .count{margin:2px 0 24px;font-size:15px;color:var(--secondary)}
+.lib ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.lib li button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;text-align:left;padding:16px 18px;border-radius:18px;background:var(--current)}
+.lib li button:hover,.lib li button:focus-visible{background:var(--field);outline:none}
+.lib .emptystate{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
+.lib .emptystate svg.i{width:52px;height:52px;stroke-width:1.4;color:var(--caption);margin-bottom:8px} /* stroke-ok: line icons */
+.lib .emptystate h2{margin:0;font-size:20px;font-weight:600}
+.lib .emptystate p{margin:0;font-size:15px;color:var(--secondary)}
+.lib .t{font-size:18px;font-weight:600;line-height:1.35}
+.lib .t.untitled{color:var(--caption)}
+.lib .s{font-size:14px;color:var(--secondary)}
+
+/* Add button: floats at the bottom trailing corner */
+.fab{position:fixed;z-index:20;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;color:var(--text)}
+.fab svg.i{width:24px;height:24px}
+.fab:not([aria-disabled="true"]){background:var(--blue);color:#fff}
+.fab[aria-disabled="true"]{opacity:.3}
+.fab:hover:not([aria-disabled="true"]){filter:brightness(1.08)}
+.fab:focus-visible{outline:none;filter:brightness(1.15)}
+.fab svg.i{transition:transform .2s ease}
+.fab[aria-expanded="true"],.tb[aria-expanded="true"]{background:var(--blue);color:#fff}
+.fab[aria-expanded="true"] svg.i{transform:rotate(45deg)}
+
+/* Menus and toast: also control layer */
+.menu{position:fixed;z-index:30;min-width:220px;padding:6px;border-radius:18px;display:flex;flex-direction:column}
+.menu button{display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border-radius:12px;font-size:16px;text-align:left}
+.menu button:hover:not(:disabled),.menu button:focus-visible{background:var(--glass-hi);outline:none}
+.menu .danger{color:var(--danger)}
+.menu .gap{height:6px}
+.toast{position:fixed;z-index:25;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 14px + var(--vvtop,0px));display:flex;align-items:center;gap:6px;padding:4px 4px 4px 16px;font-size:15px;max-width:min(300px,calc(100vw - 32px))}
+@media (max-width:760px){.toast{top:calc(env(safe-area-inset-top,0px) + 66px + var(--vvtop,0px))}}
+.toast.plain{padding-right:16px;min-height:44px}
+.toast .msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast .msg.link{text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.toast.bad .msg{color:var(--danger)}
+.toast .tb{height:36px}
+
+/* Joining the shared scripts: a passcode, once per iPad */
+.join{display:none;max-width:420px;min-height:80vh;margin:0 auto;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
+body[data-view="join"] .join{display:flex}
+body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .edge,body[data-view="join"] .lead,body[data-view="join"] .fab{display:none}
+.join svg.i{width:52px;height:52px;stroke-width:1.4;color:var(--caption);margin-bottom:8px} /* stroke-ok: line icons */
+.join h2{margin:0;font-size:20px;font-weight:600}
+.join form{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:18px}
+.join input{font:inherit;font-size:18px;height:50px;border:0;border-radius:14px;background:var(--field);color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none}
+.join input::placeholder{color:var(--caption)}
+.join input:focus{background:var(--current)}
+.join button{height:50px;border-radius:14px;background:var(--blue);color:#fff;font-weight:600}
+.join .err{min-height:1.6em;margin:0;font-size:15px;color:var(--danger)}
+
+/* Content layer: the script itself, laid out as it will print */
+.doc{max-width:860px;margin:0 auto}
+/* Inline fields: standard inputs (reliable with iPad Chinese input), sized to their text */
+.fld{font:inherit;font-weight:inherit;color:inherit;background:transparent;border:0;outline:none;margin:0;padding:0 .05em;box-sizing:content-box;border-radius:8px;max-width:100%;min-width:2em;vertical-align:baseline;-webkit-appearance:none;appearance:none}
+.fld::placeholder{color:var(--caption)}
+.fld:placeholder-shown,.date.empty{background:var(--field);padding:0 .35em;border-radius:8px}
+.fld:focus{background:var(--current)}
+.title .fld,.mcline .fld{font-weight:600}
+.hit{display:inline-block;padding:9px 0;margin:-9px 0;cursor:text}
+.title{font-size:calc(20 * var(--pt));font-weight:600;line-height:1.3;margin:0 0 calc(6 * var(--pt));padding:72px 0 0;text-wrap:balance}
+.title .sep{color:var(--secondary);margin:0 .15em}
+.date{position:relative;display:inline-block;border-radius:6px}
+.date input{position:absolute;left:0;top:-9px;width:100%;height:calc(100% + 18px);opacity:0;font-size:16px;-webkit-appearance:none;appearance:none;cursor:pointer}
+.date .ph{color:var(--caption)}
+.date:focus-within{background:var(--current)}
+.mcline{font-size:calc(12 * var(--pt));font-weight:600;margin:0 0 calc(24 * var(--pt));display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0}
+.mcline .mc{display:inline-flex;gap:.2em;align-items:baseline}
+.mcline .dot{color:var(--secondary);margin:0 .3em}
+.upper{text-transform:uppercase} /* tell-ok: class codes are capitals, e.g. 3C12 */
+.upper::placeholder{text-transform:none}
+.needs{background:var(--needs)!important}
+.row{cursor:text;display:grid;grid-template-columns:var(--ind) minmax(0,1fr);margin-inline:-10px;padding:4px 10px;border-radius:10px}
+.row.current{background:var(--current)}
+.row textarea{grid-column:2;font:inherit;color:inherit;background:transparent;border:0;outline:none;resize:none;overflow:hidden;padding:0;margin:0;width:100%;min-height:1.6em;line-height:1.6;display:block}
+.row textarea::placeholder{color:var(--caption)}
+.row.cue textarea{font-size:calc(9 * var(--pt));color:var(--secondary)}
+.awards{grid-column:2;display:flex;flex-direction:column}
+.aw{display:grid;grid-template-columns:calc(80 * var(--pt)) minmax(0,1fr)}
+.aw input{font:inherit;color:inherit;background:transparent;border:0;outline:none;padding:0;margin:0;width:100%;min-width:0;line-height:1.6;height:1.6em;border-radius:4px}
+.aw input::placeholder{color:var(--caption)}
+.aw input.repeat{color:var(--faint)}
+.aw input:focus{background:var(--canvas)}
+.who{position:relative;align-self:start;display:inline-flex;align-items:center;gap:2px;font-weight:600;height:1.6em;width:max-content;max-width:100%;border-radius:6px}
+.who.faint{color:var(--faint)}
+.who.unset{color:var(--danger);font-weight:400}
+.who select{position:absolute;inset:-9px -10px;width:calc(100% + 20px);height:calc(100% + 18px);opacity:0;font-size:16px;-webkit-appearance:none;appearance:none;cursor:pointer}
+.who svg.i{width:14px;height:14px;color:var(--caption)}
+.who:focus-within{background:var(--current)}
+.end{text-align:center;font-style:italic;color:var(--secondary);margin-top:calc(16 * var(--pt))}
+@media (max-width:640px){:root{--pt:1.3636px}body{font-size:15px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<div class="lead">
+  <button type="button" class="tb glass" id="back" aria-label="講稿列表" title="講稿列表"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg></button>
+</div>
+
+<div class="edge">
+  <div class="toolbar" role="toolbar" aria-label="講稿工具">
+    <div class="glass group">
+      <button type="button" class="tb" id="share" aria-label="分享講稿" title="分享講稿"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg></button>
+      <button type="button" class="tb" id="more" aria-label="更多" title="更多" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<section class="lib" aria-label="講稿列表">
+  <h1>講稿</h1>
+  <p class="count" id="libcount"></p>
+  <ul id="liblist"></ul>
+  <div class="emptystate" id="libempty" hidden>
+    <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg>
+    <h2>未有講稿</h2>
+    <p>要新增講稿，請撳加號</p>
+  </div>
+</section>
+
+<section class="join" aria-label="加入">
+  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-key"/></svg>
+  <h2>輸入 CA 密碼</h2>
+  <form id="joinform">
+    <input id="code" aria-label="密碼" placeholder="密碼" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go">
+    <button type="submit">加入</button>
+  </form>
+  <p class="err" id="joinerr" role="alert"></p>
+</section>
+
+<main class="doc" id="doc" aria-label="講稿">
+  <h1 class="title">
+    <label class="date" id="date-wrap"><span id="date-text"></span><input type="date" id="date" aria-label="日期"></label><span class="sep">｜</span><label class="hit"><input class="fld" id="event" aria-label="活動名稱" placeholder="活動名稱" autocomplete="off" enterkeyhint="done"></label><span class="sep">｜</span><span id="doc-type">講稿</span>
+  </h1>
+  <div class="mcline" id="mcline" aria-label="司儀"></div>
+  <div id="rows"></div>
+  <p class="end">{End of Script}</p>
+</main>
+
+<button type="button" class="fab glass" id="insert" aria-label="加" title="加" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg></button>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 2v13"/><path d="m16 6-4-4-4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+  <symbol id="i-updown" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-new" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/></symbol>
+  <symbol id="i-line" viewBox="0 0 24 24"><path d="M14 14a2 2 0 0 0 2-2V8h-2"/><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M8 14a2 2 0 0 0 2-2V8H8"/></symbol>
+  <symbol id="i-cue" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-award" viewBox="0 0 24 24"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></symbol>
+</svg>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+%%GEN%%
+</script>
+<script>
+var TEMPLATE_B64 = "%%TPL%%";
+var CLOUD = %%CLOUD%%;
+(function () {
+  var KEY = "ca-script-builder-v2";
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var uid = function () { return Math.random().toString(36).slice(2, 9); };
+  var TYPE = { line: "對白", cue: "台上動作", award: "得獎名單" };
+  // Placeholders in the script follow the script's own language, worked out from what is typed.
+  var WORDS = {
+    yue: { event: "活動名稱", cls: "班別", mc: "司儀姓名", line: "對白", cue: "台上動作", name: "姓名", type: "講稿" },
+    en: { event: "Event", cls: "Class", mc: "MC name", line: "Line", cue: "Stage direction", name: "Name", type: "Script" }
+  };
+  var W = WORDS.yue;
+  var PH = { line: W.line, cue: W.cue };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function blankState() {
+    var a = uid();
+    return { event: "", date: "", mcs: [{ id: a, cls: "", name: "" }], blocks: [] };
+  }
+  // Every script on this iPad, newest first. The single draft kept by earlier versions becomes the first entry.
+  var LIB_KEY = "ca-script-builder-v3";
+  function validState(s) { return s && Array.isArray(s.blocks) && Array.isArray(s.mcs) && s.mcs.length; }
+  function isBlank(s) { return !s.event.trim() && !s.date && !ScriptGen.named(s).length && !s.blocks.some(function (b) { return ScriptGen.lines(b.text).length; }); }
+  var lib = null;
+  try { lib = JSON.parse(localStorage.getItem(LIB_KEY) || "null"); } catch (e) { lib = null; }
+  if (!lib || !Array.isArray(lib.scripts)) {
+    lib = { scripts: [], open: null };
+    var old = null; try { old = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+    if (validState(old) && !isBlank(old)) lib.scripts.push({ id: uid(), updated: Date.now(), state: old });
+  }
+  lib.scripts = lib.scripts.filter(function (s) { return validState(s.state); });
+  var entry = null, state = blankState(), current = null, showProblems = false;
+  function persistLib() { try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch (e) {} }
+
+  var saveTimer = null, savedJson = {};
+  function save() {
+    if (typeof prebuild === "function") prebuild();
+    if (entry) {
+      var json = JSON.stringify(state);
+      if (json !== savedJson[entry.id]) {
+        savedJson[entry.id] = json;
+        entry.state = state; entry.updated = Date.now(); entry.dirty = true; entry.edit = (entry.edit || 0) + 1;
+        schedulePush();
+      }
+    }
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(persistLib, 300);
+  }
+  var refreshTimer = null;
+  function changed() {
+    save();
+    clearTimeout(refreshTimer); refreshTimer = setTimeout(refreshRows, 200);
+  }
+
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === "text") n.textContent = attrs[k];
+      else if (k.slice(0, 2) === "on") { if (attrs[k]) n.addEventListener(k.slice(2), attrs[k]); }
+      else if (k.slice(0, 5) === "aria-") n.setAttribute(k, String(attrs[k]));
+      else if (attrs[k] !== false && attrs[k] != null) n.setAttribute(k, attrs[k] === true ? "" : attrs[k]);
+    });
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function icon(name) {
+    var s = document.createElementNS(SVGNS, "svg");
+    s.setAttribute("class", "i"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true");
+    var u = document.createElementNS(SVGNS, "use"); u.setAttribute("href", "#i-" + name); s.appendChild(u);
+    return s;
+  }
+  function grow(t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
+
+  /* Single-line fields in the title and MC line: each is as wide as its text */
+  var measureCtx = document.createElement("canvas").getContext("2d");
+  function fit(inp) {
+    var cs = getComputedStyle(inp);
+    measureCtx.font = cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+    var text = inp.value ? (inp.classList.contains("upper") ? inp.value.toUpperCase() : inp.value) : (inp.placeholder || "");
+    var w = measureCtx.measureText(text).width;
+    inp.style.width = Math.ceil(w + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 2) + "px";
+  }
+  function oneLine(inp, onchange) {
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); inp.blur(); } });
+    inp.addEventListener("input", function () { fit(inp); onchange(inp.value); });
+    requestAnimationFrame(function () { fit(inp); });
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { document.querySelectorAll(".fld").forEach(fit); });
+
+  /* Undo */
+  var undoSnap = null;
+  function snapshot() { undoSnap = JSON.stringify({ state: state, current: current }); }
+  function undo() {
+    if (!undoSnap || !entry) return;
+    var s = JSON.parse(undoSnap); undoSnap = null; state = s.state; current = s.current; entry.state = state;
+    renderAll(); save(); toast("已復原");
+  }
+
+  /* Title */
+  oneLine($("event"), function (v) { state.event = v; applyLanguage(ScriptGen.isEnglish(state)); changed(); });
+  $("date").addEventListener("input", function () { state.date = $("date").value; renderDate(); changed(); });
+  function renderDate() {
+    var t = $("date-text"), v = ScriptGen.yymmdd(state.date, "/");
+    t.textContent = v || "YY/MM/DD"; t.className = v ? "" : "ph";
+    $("date-wrap").classList.toggle("empty", !v);
+  }
+
+  /* MC line: class and name for each MC. An empty slot for the next MC appears as soon as
+     the last one has a name, up to four. */
+  function renderMcs() {
+    var box = $("mcline"); box.textContent = "";
+    state.mcs.forEach(function (m, i) { addSlot(box, m, i); });
+    addGhostIfNeeded();
+  }
+  function addGhostIfNeeded() {
+    var box = $("mcline");
+    if (box.querySelector(".mc.ghost")) return;
+    if (state.mcs.length < 4 && state.mcs.every(function (m) { return (m.name || "").trim(); }))
+      addSlot(box, { id: "", cls: "", name: "", ghost: true }, state.mcs.length);
+  }
+  function addSlot(box, m, i) {
+    (function () {
+      if (i > 0) box.appendChild(el("span", { class: "dot", text: "．" }));
+      var c = el("input", { class: "fld upper", "aria-label": "司儀 " + (i + 1) + " 班別", placeholder: W.cls, autocomplete: "off", autocapitalize: "characters", spellcheck: "false", enterkeyhint: "next" });
+      var n = el("input", { class: "fld", "aria-label": "司儀 " + (i + 1) + " 姓名", placeholder: W.mc, autocomplete: "off", enterkeyhint: "done" });
+      c.value = m.cls || ""; n.value = m.name || "";
+      function real() {
+        if (m.ghost) { delete m.ghost; m.id = uid(); state.mcs.push(m); wrap.setAttribute("data-mc", m.id); wrap.classList.remove("ghost"); }
+        return m;
+      }
+      oneLine(c, function (v) { real().cls = v; changed(); });
+      oneLine(n, function (v) { real().name = v; changed(); if (v.trim()) addGhostIfNeeded(); });
+      c.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); n.focus(); } });
+      [c, n].forEach(function (f) {
+        f.addEventListener("blur", function () {
+          setTimeout(function () {
+            if (box.contains(document.activeElement)) return;
+            state.mcs.forEach(function (x) { x.cls = ScriptGen.cls(x.cls); });
+            // An MC cleared of both class and name, and not speaking anywhere, is removed.
+            state.mcs = state.mcs.filter(function (x, k) {
+              var empty = !(x.cls || "").trim() && !(x.name || "").trim();
+              var speaks = state.blocks.some(function (b) { return b.type === "line" && b.mc === x.id; });
+              return !(empty && !speaks && state.mcs.length > 1 && k > 0);
+            });
+            renderMcs(); refreshRows(); save();
+          }, 0);
+        });
+      });
+      var wrap = el("span", { class: "mc" + (m.ghost ? " ghost" : ""), "data-mc": m.id }, [el("label", { class: "hit" }, [c]), el("label", { class: "hit" }, [n])]);
+      box.appendChild(wrap);
+    })();
+  }
+
+  /* Rows: the script body, one row per block */
+  function speakerName(m) { return ScriptGen.mcLabel(m) || "未填姓名"; }
+  function nextSpeaker(index) {
+    var list = ScriptGen.named(state); if (!list.length) list = state.mcs;
+    if (!list.length) return "";
+    // Straight after an award list the same MC carries on; otherwise the next MC takes a turn.
+    var carryOn = state.blocks[index - 1] && state.blocks[index - 1].type === "award";
+    for (var k = index - 1; k >= 0; k--) {
+      var b = state.blocks[k];
+      if (b.type === "line") {
+        var idx = list.findIndex(function (m) { return m.id === b.mc; });
+        if (idx >= 0) return list[carryOn ? idx : (idx + 1) % list.length].id;
+      }
+    }
+    return list[0].id;
+  }
+  function whoControl(b, sp, colon) {
+    if (b.type !== "line") return el("span", { class: "who-slot" });
+    var list = ScriptGen.named(state);
+    var cur = list.filter(function (m) { return m.id === ((sp && sp.mc) || b.mc); })[0] || (list.length === 1 ? list[0] : null);
+    if (!list.length) return el("span", { class: "who-slot" });
+    var kids = [cur ? speakerName(cur) + colon : "揀司儀"];
+    if (list.length > 1) {
+      kids.push(icon("updown"));
+      var sel = el("select", { "aria-label": "邊位司儀講" }, [el("option", { value: "", text: "揀司儀", disabled: true })]
+        .concat(list.map(function (m) { return el("option", { value: m.id, text: speakerName(m) }); })));
+      sel.value = cur ? cur.id : "";
+      sel.addEventListener("focus", function () { setCurrent(b.id); });
+      sel.addEventListener("change", function () { b.mc = sel.value; save(); refreshRows(); });
+      kids.push(sel);
+    }
+    return el("span", { class: "who who-slot" + (cur ? "" : " unset") + (sp && !sp.show && cur ? " faint" : "") }, kids);
+  }
+  function wireText(ta, b) {
+    ta.addEventListener("input", function () { b.text = ta.value; grow(ta); changed(); });
+    ta.addEventListener("focus", function () { setCurrent(b.id); });
+    ta.addEventListener("keydown", function (e) {
+      // Backspace at the start of a row works as in Notes: an empty row goes; a row that follows
+      // the same kind of row (same MC) joins it; otherwise the cursor moves to the end of the row above.
+      if (e.key !== "Backspace" || e.isComposing || !atStart(ta)) return;
+      var i = state.blocks.indexOf(b), prev = state.blocks[i - 1];
+      if (!ta.value) { if (state.blocks.length > 1) { e.preventDefault(); removeBlock(i, true); } return; }
+      if (!prev) return;
+      e.preventDefault();
+      if (prev.type === b.type && prev.type !== "award" && (b.type === "cue" || prev.mc === b.mc)) {
+        var head = String(prev.text || "").replace(/\s+$/, "");
+        prev.text = head + b.text; state.blocks.splice(i, 1); current = prev.id;
+        renderRows(); save(); caretAt($("t-" + prev.id), head.length);
+      } else focusBlock(prev.id, true);
+    });
+  }
+  function atStart(f) { return f.selectionStart === 0 && f.selectionEnd === 0; }
+  function caretAt(f, pos) { if (!f) return; f.focus({ preventScroll: true }); f.setSelectionRange(pos, pos); }
+  function awardRowsOf(b) {
+    var rows = ScriptGen.lines(b.text).map(function (l) {
+      var m = /^(\d[A-Za-z]\d{0,2})\s*(.*)$/.exec(l) || /^(\S+)\s+(.+)$/.exec(l);
+      return m ? { cls: ScriptGen.cls(m[1]), name: m[2].trim() } : { cls: "", name: l };
+    });
+    return rows.length ? rows : [{ cls: "", name: "" }];
+  }
+  function makeAwards(b) {
+    var rows = awardRowsOf(b);
+    var box = el("div", { class: "awards", id: "t-" + b.id });
+    function store() {
+      b.text = rows.filter(function (r) { return r.cls || r.name; }).map(function (r) { return (r.cls + " " + r.name).trim(); }).join("\n");
+      changed();
+    }
+    // From the start of a row: to the end of the row above, or of the block above.
+    function back(k) {
+      if (k > 0) { var f = box.children[k - 1].querySelectorAll("input")[1]; caretAt(f, f.value.length); return; }
+      var prev = state.blocks[state.blocks.indexOf(b) - 1];
+      if (prev) focusBlock(prev.id, true); else caretAt(box.children[0].querySelector("input"), 0);
+    }
+    function dropRow(k) {
+      if (rows.length > 1) { rows.splice(k, 1); store(); draw(); back(k); }
+      else if (state.blocks.length > 1) removeBlock(state.blocks.indexOf(b), true);
+    }
+    function draw(focusIndex, field) {
+      box.textContent = "";
+      rows.forEach(function (r, k) {
+        var c = el("input", { class: "upper", placeholder: W.cls, "aria-label": "班別", autocapitalize: "characters", autocomplete: "off", spellcheck: "false" });
+        var n = el("input", { placeholder: W.name, "aria-label": "得獎者姓名", autocomplete: "off" });
+        c.value = r.cls; n.value = r.name;
+        [c, n].forEach(function (f) { f.addEventListener("focus", function () { setCurrent(b.id); }); });
+        c.addEventListener("input", function () { r.cls = ScriptGen.cls(c.value); store(); markRepeats(); });
+        c.addEventListener("keydown", function (e) {
+          if (e.isComposing) return;
+          if (e.key === "Enter") { e.preventDefault(); n.focus(); }
+          else if (e.key === "Backspace" && atStart(c)) { e.preventDefault(); if (!c.value && !n.value) dropRow(k); else back(k); }
+        });
+        n.addEventListener("input", function () { r.name = n.value; store(); });
+        n.addEventListener("blur", function () {
+          // "5A陳大文" typed into the name column splits itself.
+          var m = !r.cls && /^(\d[A-Za-z]\d{0,2})\s*(\S.*)$/.exec(r.name);
+          if (m) { r.cls = ScriptGen.cls(m[1]); r.name = m[2]; store(); draw(); }
+        });
+        n.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" && !e.isComposing) {
+            e.preventDefault();
+            var m = !r.cls && /^(\d[A-Za-z]\d{0,2})\s*(\S.*)$/.exec(r.name);
+            if (m) { r.cls = ScriptGen.cls(m[1]); r.name = m[2]; }
+            rows.splice(k + 1, 0, { cls: r.cls, name: "" }); store(); draw(k + 1, "name");
+          }
+          else if (e.key === "Backspace" && !e.isComposing && atStart(n)) {
+            e.preventDefault();
+            if (!n.value && !c.value) dropRow(k); else caretAt(c, c.value.length);
+          }
+        });
+        n.addEventListener("paste", function (e) {
+          var t = (e.clipboardData || window.clipboardData).getData("text");
+          if (!/\n/.test(t.trim())) return;
+          e.preventDefault();
+          var add = t.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
+            var m = /^(\d[A-Za-z]\d{0,2})\s*(.*)$/.exec(l);
+            return m ? { cls: ScriptGen.cls(m[1]), name: m[2].trim() } : { cls: r.cls, name: l };
+          });
+          if (!r.cls && !r.name) rows.splice(k, 1, ...add); else rows.splice(k + 1, 0, ...add);
+          store(); draw(k + add.length - (r.cls || r.name ? 0 : 1), "name");
+        });
+        box.appendChild(el("div", { class: "aw" }, [c, n]));
+      });
+      markRepeats();
+      if (focusIndex != null) {
+        var line = box.children[focusIndex]; if (line) { var f = line.querySelectorAll("input")[field === "name" ? 1 : 0]; caretAt(f, f.value.length); }
+      }
+    }
+    // A class that repeats the row above is printed only once, so it is shown faint here.
+    function markRepeats() {
+      [].forEach.call(box.children, function (line, k) {
+        line.querySelector("input").classList.toggle("repeat", k > 0 && !!rows[k].cls && rows[k].cls === rows[k - 1].cls);
+      });
+    }
+    draw();
+    return box;
+  }
+  function makeRow(b, ta) {
+    if (b.type === "award") {
+      return el("div", { class: "row award" + (b.id === current ? " current" : ""), id: "r-" + b.id }, [el("span", { class: "who-slot" }), makeAwards(b)]);
+    }
+    ta = ta || el("textarea", { rows: 1 });
+    ta.id = "t-" + b.id; ta.placeholder = PH[b.type]; ta.setAttribute("aria-label", TYPE[b.type]);
+    if (!ta.value) ta.value = b.text || "";
+    var row = el("div", { class: "row " + b.type + (b.id === current ? " current" : ""), id: "r-" + b.id }, [el("span", { class: "who-slot" }), ta]);
+    return row;
+  }
+  $("rows").addEventListener("click", function (e) {
+    if (e.target.closest("textarea,input,select")) return;
+    var row = e.target.closest(".row"); if (!row) return;
+    var fs = row.querySelectorAll("textarea,.aw input"), f = fs[fs.length - 1];
+    if (f) caretAt(f, f.value.length);
+  });
+  function renderRows() {
+    var box = $("rows"); box.textContent = "";
+    state.blocks.forEach(function (b) { var r = makeRow(b); box.appendChild(r); var t = r.querySelector("textarea"); if (t) wireText(t, b); });
+    refreshRows();
+    requestAnimationFrame(function () { box.querySelectorAll("textarea").forEach(grow); });
+  }
+  // Update what depends on neighbouring rows (speaker labels, spacing, highlights) without rebuilding the text areas.
+  // Adding is only possible once an MC has a name.
+  function updateAdd() {
+    var off = !!entry && !ScriptGen.named(state).length;
+    $("insert").setAttribute("aria-disabled", String(off));
+    $("insert").title = off ? "先填司儀姓名" : entry ? "加" : "新講稿";
+    $("insert").setAttribute("aria-label", $("insert").title);
+    if (off) closeMenu();
+  }
+  function refreshRows() {
+    updateAdd();
+    var L = ScriptGen.layout(state), d = L.d;
+    $("doc").style.setProperty("--ind", "calc(" + d.indent / 20 + " * var(--pt))");
+    applyLanguage(d.en);
+    state.blocks.forEach(function (b, i) {
+      var row = $("r-" + b.id); if (!row) return;
+      row.className = "row " + b.type + (b.id === current ? " current" : "");
+      var slot = row.querySelector(".who-slot");
+      var fresh = whoControl(b, d.speakers[i], d.colon);
+      if (!(slot.contains(document.activeElement))) slot.replaceWith(fresh);
+      var gap = L.gaps[b.id];
+      row.style.marginBottom = "calc(" + (gap == null ? 240 : gap) / 20 + " * var(--pt) - 8px)";
+    });
+    markProblems();
+  }
+  function applyLanguage(en) {
+    var next = en ? WORDS.en : WORDS.yue;
+    $("doc-type").textContent = next.type;
+    document.querySelectorAll(".title .sep").forEach(function (s) { s.textContent = en ? " | " : "｜"; });
+    if (next === W) return;
+    W = next; PH.line = W.line; PH.cue = W.cue;
+    $("event").placeholder = W.event; fit($("event"));
+    document.querySelectorAll("#mcline input.upper").forEach(function (i) { i.placeholder = W.cls; fit(i); });
+    document.querySelectorAll("#mcline input:not(.upper)").forEach(function (i) { i.placeholder = W.mc; fit(i); });
+    document.querySelectorAll(".row.line textarea").forEach(function (t) { t.placeholder = W.line; });
+    document.querySelectorAll(".row.cue textarea").forEach(function (t) { t.placeholder = W.cue; });
+    document.querySelectorAll(".aw input.upper").forEach(function (i) { i.placeholder = W.cls; });
+    document.querySelectorAll(".aw input:not(.upper)").forEach(function (i) { i.placeholder = W.name; });
+  }
+  function setCurrent(id) {
+    if (current === id) return;
+    current = id;
+    document.querySelectorAll(".row.current").forEach(function (r) { r.classList.remove("current"); });
+    var r = $("r-" + id); if (r) r.classList.add("current");
+  }
+  function curIndex() { return state.blocks.findIndex(function (b) { return b.id === current; }); }
+  function focusBlock(id, atEnd) {
+    var t = $("t-" + id); if (!t) return;
+    if (!t.matches("textarea")) { var ins = t.querySelectorAll("input"); t = ins[atEnd ? ins.length - 1 : 1] || ins[0]; }
+    t.focus({ preventScroll: true }); t.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (atEnd) t.setSelectionRange(t.value.length, t.value.length);
+  }
+
+  /* On-screen keyboard: how much of the page it covers, so ＋ and toasts stay visible */
+  if (window.visualViewport) {
+    var vv = window.visualViewport;
+    var onViewport = function () {
+      var cover = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty("--kb", (cover > 80 ? cover : 0) + "px");
+      document.documentElement.style.setProperty("--vvtop", Math.max(0, vv.offsetTop) + "px");
+    };
+    vv.addEventListener("resize", onViewport); vv.addEventListener("scroll", onViewport);
+  }
+
+  /* Toolbar */
+  function keepFocus(btn) { btn.addEventListener("mousedown", function (e) { e.preventDefault(); }); }
+  function setType(t) {
+    var i = curIndex(); if (i < 0) return;
+    var b = state.blocks[i]; if (b.type === t) return;
+    snapshot();
+    if (t === "award") b.text = awardRowsOf({ text: b.text }).map(function (r) { return (r.cls + " " + r.name).trim(); }).join("\n");
+    b.type = t; if (t === "line" && !b.mc) b.mc = nextSpeaker(i);
+    renderRows(); save(); focusBlock(b.id, true);
+    toast("已轉做" + TYPE[t], false, { label: "復原", fn: undo });
+  }
+  keepFocus($("insert"));
+  function insertBlock(type) {
+    var i = curIndex(); var at = i < 0 ? state.blocks.length : i + 1;
+    var b = { id: uid(), type: type, mc: type === "line" ? nextSpeaker(at) : "", text: "" };
+    state.blocks.splice(at, 0, b); current = b.id; renderRows(); save(); focusBlock(b.id);
+  }
+  $("insert").onclick = function () {
+    if (!entry) { newScript(); return; }
+    if ($("insert").getAttribute("aria-disabled") === "true") {
+      toast("先填司儀姓名"); var f = document.querySelector("#mcline input:not(.upper)"); if (f) f.focus(); return;
+    }
+    openMenu($("insert"), "up", [
+      menuItem("line", "對白", function () { insertBlock("line"); }, { disabled: !ScriptGen.named(state).length }),
+      menuItem("cue", "台上動作", function () { insertBlock("cue"); }),
+      menuItem("award", "得獎名單", function () { insertBlock("award"); }),
+    ]);
+  };
+  function removeBlock(i, fromKeyboard) {
+    if (i < 0) return;
+    snapshot();
+    var gone = state.blocks.splice(i, 1)[0];
+    var next = state.blocks[Math.max(0, i - 1)];
+    current = next ? next.id : null; renderRows(); save();
+    if (next) focusBlock(next.id, true);
+    toast(fromKeyboard ? "已刪除空白一段" : "已刪除" + TYPE[gone.type], false, { label: "復原", fn: undo });
+  }
+  function moveBlock(d) {
+    var i = curIndex(), j = i + d; if (i < 0 || j < 0 || j >= state.blocks.length) return;
+    var t = state.blocks[i]; state.blocks[i] = state.blocks[j]; state.blocks[j] = t;
+    renderRows(); save(); focusBlock(t.id);
+  }
+
+  /* Menus (control layer) */
+  var menuEl = null, menuBtn = null;
+  function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; menuBtn.setAttribute("aria-expanded", "false"); menuBtn = null; } }
+  function menuItem(ic, label, fn, opts) {
+    opts = opts || {};
+    return el("button", { type: "button", role: "menuitem", class: opts.danger ? "danger" : "", disabled: !!opts.disabled,
+      onclick: function () { closeMenu(); fn(); } }, [icon(ic), label]);
+  }
+  function openMenu(btn, side, items) {
+    var again = menuBtn === btn; closeMenu(); if (again) return;
+    menuBtn = btn;
+    menuEl = el("div", { class: "menu glass", role: "menu" }, items);
+    document.body.appendChild(menuEl);
+    var r = btn.getBoundingClientRect();
+    if (side === "up") menuEl.style.bottom = (window.innerHeight - r.top + 10) + "px";
+    else menuEl.style.top = (r.bottom + 8) + "px";
+    menuEl.style.right = Math.max(16, window.innerWidth - r.right) + "px";
+    btn.setAttribute("aria-expanded", "true");
+  }
+  $("more").onclick = function () {
+    var i = curIndex(), b = state.blocks[i];
+    var items = [];
+    ["line", "cue", "award"].forEach(function (t) {
+      if (b && b.type !== t) items.push(menuItem(t, "呢段轉做" + TYPE[t], function () { setType(t); }));
+    });
+    items.push(
+      menuItem("up", "上移呢段", function () { moveBlock(-1); }, { disabled: i <= 0 }),
+      menuItem("down", "下移呢段", function () { moveBlock(1); }, { disabled: i < 0 || i >= state.blocks.length - 1 }),
+      menuItem("trash", "刪除呢段", function () { removeBlock(curIndex()); }, { danger: true, disabled: i < 0 }),
+      el("div", { class: "gap" }),
+      menuItem("trash", "刪除成份講稿", deleteScript, { danger: true })
+    );
+    openMenu($("more"), "right", items);
+  };
+  document.addEventListener("pointerdown", function (e) { if (menuEl && !menuEl.contains(e.target) && !(menuBtn && menuBtn.contains(e.target))) closeMenu(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+
+  /* Script list */
+  function showView(v) { document.body.setAttribute("data-view", v); closeMenu(); hideToast(); window.scrollTo(0, 0); }
+  function find(id) { return lib.scripts.filter(function (s) { return s.id === id; })[0]; }
+  function shown() { return lib.scripts.filter(function (s) { return !s.deleted; }); }
+  function openScript(id) {
+    entry = find(id); if (!entry || entry.deleted) return;
+    state = entry.state; current = null; showProblems = false; undoSnap = null; savedJson[entry.id] = JSON.stringify(state);
+    lib.open = id; persistLib(); showView("doc"); renderAll();
+  }
+  function newScript() {
+    var s = { id: uid(), updated: Date.now(), state: blankState() };
+    lib.scripts.unshift(s); openScript(s.id); $("event").focus();
+  }
+  // A script others may have is marked deleted, so the deletion reaches them; one only here is removed.
+  function markDeleted(s, yes) {
+    if (s.rev) { s.deleted = yes; s.dirty = true; s.edit = (s.edit || 0) + 1; schedulePush(); }
+    else if (yes) lib.scripts = lib.scripts.filter(function (x) { return x !== s; });
+    else lib.scripts.push(s);
+  }
+  function backToList() {
+    if (entry && isBlank(state)) markDeleted(entry, true);
+    entry = null; lib.open = null; persistLib(); showView("list"); renderList(); updateAdd();
+    pull();
+  }
+  function deleteScript() {
+    var gone = entry;
+    markDeleted(gone, true); entry = null; lib.open = null; persistLib(); showView("list"); renderList(); updateAdd();
+    toast("已刪除講稿", false, { label: "復原", fn: function () { markDeleted(gone, false); persistLib(); renderList(); } });
+  }
+  function when(t) {
+    var d = new Date(t), now = new Date(), pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    var day = pad(d.getFullYear() % 100) + "/" + pad(d.getMonth() + 1) + "/" + pad(d.getDate());
+    var today = d.toDateString() === now.toDateString();
+    return (today ? "今日" : day) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+  function renderList() {
+    var ul = $("liblist"); ul.textContent = "";
+    renderStatus();
+    shown().sort(function (a, b) { return b.updated - a.updated; }).forEach(function (s) {
+      var st = s.state, en = ScriptGen.isEnglish(st), date = ScriptGen.yymmdd(st.date, "/");
+      var name = st.event.trim(), title = [date, name].filter(Boolean).join(en ? " | " : "｜");
+      var mcs = ScriptGen.named(st).map(function (m) { return m.name.trim(); }).join("．");
+      ul.appendChild(el("li", {}, [el("button", { type: "button", onclick: function () { openScript(s.id); } }, [
+        el("span", { class: "t" + (title ? "" : " untitled"), text: title || "未命名講稿" }),
+        el("span", { class: "s", text: [mcs, "改於 " + when(s.updated)].filter(Boolean).join("　") })
+      ])]));
+    });
+  }
+  // Under the heading: how many scripts, and any not yet uploaded while offline.
+  function renderStatus() {
+    var n = shown().length, waiting = cloud ? lib.scripts.filter(pending).length : 0;
+    var parts = [];
+    if (n) parts.push(n + " 份講稿");
+    if (waiting && sync.state !== "ok") parts.push(waiting + " 份未上載");
+    $("libcount").textContent = parts.join("．"); $("libcount").hidden = !parts.length;
+    $("libempty").hidden = n > 0 || (!!cloud && !sync.loaded);
+  }
+  $("back").onclick = backToList;
+
+  /* Shared scripts. In the published site every member's scripts sit in one database behind the
+     page's own server, reached with the CA passcode; each iPad keeps its own copy, so writing works
+     offline and uploads later. A write names the version it started from; if someone else saved in
+     between, the shared copy stays as they left it and this iPad's version is kept as a separate script. */
+  var SPACE_KEY = "mc-scripts-space";
+  var cloud = null, sync = { state: "ok", loaded: false, pulling: false, pushing: {}, timer: null };
+  function pending(s) { return s.dirty && !(isBlank(s.state) && !s.rev && !s.deleted); }
+  function api(path, method, body, code) {
+    return fetch(CLOUD.api + path, {
+      method: method || "GET", cache: "no-store",
+      headers: { "Content-Type": "application/json", "X-Passcode": code || cloud.space },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j || {} }; });
+    });
+  }
+  function setSync(s) { sync.state = s; if (document.body.getAttribute("data-view") === "list") renderStatus(); }
+  function schedulePush() {
+    if (!cloud) return;
+    clearTimeout(sync.timer); sync.timer = setTimeout(pushAll, 1500);
+  }
+  function pushAll() { lib.scripts.filter(function (s) { return s.dirty; }).forEach(push); }
+  async function push(s) {
+    if (!cloud || sync.pushing[s.id]) return;
+    if (!pending(s)) { if (s.dirty && !s.rev) s.dirty = false; return; }
+    sync.pushing[s.id] = true; var sent = s.edit;
+    try {
+      var r = await api("/scripts/" + s.id, "PUT", {
+        data: s.deleted ? "" : JSON.stringify(s.state), updated: s.updated, deleted: !!s.deleted,
+        rev: typeof s.rev === "number" ? s.rev : 0
+      });
+      if (r.status === 200) {
+        s.rev = r.body.rev;
+        if (s.edit === sent) s.dirty = false;
+        if (s.deleted && !s.dirty) lib.scripts = lib.scripts.filter(function (x) { return x !== s; });
+        setSync("ok");
+      } else if (r.status === 404) { s.rev = null; }
+      else if (r.status === 409) await conflict(s);
+      else if (r.status === 403) await checkSpace();
+      else setSync("error");
+    } catch (e) { setSync("offline"); }
+    delete sync.pushing[s.id]; persistLib();
+    if (s.dirty && s.edit !== sent) schedulePush();
+  }
+  async function conflict(s) {
+    var mine = s.deleted ? null : { id: uid(), updated: Date.now(), state: JSON.parse(JSON.stringify(s.state)), dirty: true, edit: 1 };
+    s.dirty = false; s.deleted = false; s.rev = "stale";
+    if (mine) {
+      lib.scripts.push(mine);
+      if (entry === s) { entry = mine; state = mine.state; lib.open = mine.id; savedJson[mine.id] = JSON.stringify(state); renderAll(); }
+      toast("有人同時改咗，你嘅版本已另存一份");
+    }
+    await pull(true); if (mine) push(mine);
+  }
+  // Fetches what changed since the last look (everything, the first time).
+  async function pull(full) {
+    if (!cloud || sync.pulling || !navigator.onLine && sync.loaded) return;
+    sync.pulling = true;
+    try {
+      var r = await api("/scripts?since=" + (full ? 0 : lib.seen || 0));
+      if (r.status === 403) { await checkSpace(); return; }
+      if (r.status !== 200) throw new Error(r.status);
+      (r.body.rows || []).forEach(merge);
+      persistLib(); setSync("ok");
+    } catch (e) { setSync("offline"); }
+    finally {
+      sync.pulling = false; sync.loaded = true;
+      if (document.body.getAttribute("data-view") === "list") renderList();
+      pushAll();
+    }
+  }
+  function merge(d) {
+    if (d.rev > (lib.seen || 0)) lib.seen = d.rev;
+    var st = null; try { st = JSON.parse(d.data || "null"); } catch (e) {}
+    var s = find(d.id), updated = Number(d.updated) || Date.now();
+    if (!s) { if (!d.deleted && validState(st)) lib.scripts.push({ id: d.id, updated: updated, state: st, rev: d.rev }); return; }
+    if (s.rev === d.rev || s.dirty) return;
+    if (d.deleted) {
+      lib.scripts = lib.scripts.filter(function (x) { return x !== s; });
+      if (entry === s) { entry = null; backToList(); toast("呢份講稿已被刪除"); }
+      return;
+    }
+    if (!validState(st)) return;
+    // Never swap the text while someone is typing in it; the next look picks it up.
+    if (entry === s && $("doc").contains(document.activeElement)) return;
+    s.state = st; s.updated = updated; s.rev = d.rev;
+    if (entry === s) { state = st; savedJson[s.id] = JSON.stringify(st); renderAll(); }
+  }
+  async function checkSpace() {
+    try {
+      var r = await api("/join", "POST");
+      if (r.status === 403) { try { localStorage.removeItem(SPACE_KEY); } catch (e) {} cloud = null; askSpace("密碼已經改咗，請再輸入"); }
+      else setSync("error");
+    } catch (e) { setSync("offline"); }
+  }
+  function askSpace(msg) { entry = null; showView("join"); $("joinerr").textContent = msg || ""; }
+  async function join(raw) {
+    var code = String(raw || "").trim().toLowerCase().replace(/\s+/g, "");
+    if (!/^[a-z0-9_-]{4,64}$/.test(code)) { $("joinerr").textContent = "密碼唔啱"; return; }
+    $("joinerr").textContent = "";
+    try {
+      var r = await api("/join", "POST", null, code);
+      if (r.status !== 200) { $("joinerr").textContent = r.status === 403 ? "密碼唔啱" : "連唔到，請再試"; return; }
+    } catch (e) { $("joinerr").textContent = "連唔到，請再試"; return; }
+    try { localStorage.setItem(SPACE_KEY, code); } catch (e) {}
+    startCloud(code); showView("list"); renderList(); updateAdd();
+  }
+  function startCloud(code) {
+    cloud = { space: code }; sync.loaded = false; pull();
+  }
+  $("joinform").addEventListener("submit", function (e) { e.preventDefault(); join($("code").value); });
+  if (CLOUD) {
+    setInterval(function () { if (document.visibilityState === "visible") pull(); }, 30000);
+    document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") pull(); });
+    window.addEventListener("online", function () { pull(); });
+  }
+
+  /* Problems: shown after a download attempt */
+  function problemNode(target) {
+    if (target === "event") return $("event");
+    if (target === "date") return $("date-wrap");
+    if (target === "mc") return document.querySelector("#mcline input:not(.upper)");
+    if (target === "blocks") return $("insert");
+    if (target.indexOf("block:") === 0) return $("r-" + target.slice(6));
+    return null;
+  }
+  function markProblems() {
+    document.querySelectorAll(".needs").forEach(function (n) { n.classList.remove("needs"); });
+    if (!showProblems) return;
+    var probs = ScriptGen.describe(state).problems;
+    if (!probs.length) { showProblems = false; return; }
+    probs.forEach(function (p) { var n = problemNode(p.target); if (n) n.classList.add("needs"); });
+  }
+  function goToProblem() {
+    var p = ScriptGen.describe(state).problems[0]; if (!p) return;
+    var n = problemNode(p.target); if (!n) return;
+    n.scrollIntoView({ block: "center", behavior: "smooth" });
+    var f = n.matches("textarea,input") ? n : n.querySelector("textarea,input");
+    if (f) f.focus({ preventScroll: true });
+  }
+
+  /* Toast */
+  var toastEl = null, toastTimer = null;
+  function toast(msg, bad, action, onMsg) {
+    if (toastEl) toastEl.remove();
+    toastEl = el("div", { class: "toast glass" + (bad ? " bad" : "") + (action ? "" : " plain"), role: "status" }, [
+      el("span", { class: "msg" + (onMsg ? " link" : ""), text: msg, onclick: onMsg || null }),
+      action ? el("button", { type: "button", class: "tb", text: action.label, onclick: function () { hideToast(); action.fn(); } }) : null
+    ]);
+    document.body.appendChild(toastEl);
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, action ? 8000 : 4000);
+  }
+  function hideToast() { if (toastEl) { toastEl.remove(); toastEl = null; } }
+
+  /* Share the Word file.
+     The file is built ahead of time, so the share sheet opens straight from the tap (iPad Safari
+     only allows it then). Inside claude.ai the page cannot open the share sheet, so it saves instead. */
+  var MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  var downloads = null, ready = null, buildTimer = null, buildNo = 0;
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("downloads").then(function (ns) { downloads = ns; }).catch(function () { downloads = null; });
+  }
+  function prebuild() {
+    ready = null; clearTimeout(buildTimer);
+    buildTimer = setTimeout(function () {
+      var d = ScriptGen.describe(state); if (d.problems.length) return;
+      var no = ++buildNo;
+      ScriptGen.buildDocx(JSZip, TEMPLATE_B64, state).then(function (bytes) {
+        if (no === buildNo) ready = { file: new File([bytes], d.filename, { type: MIME }), bytes: bytes, name: d.filename };
+      });
+    }, 500);
+  }
+  function saveFile(f) {
+    var url = URL.createObjectURL(f.file);
+    var a = el("a", { href: url, download: f.name }); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    toast("已下載 " + f.name);
+  }
+  $("share").onclick = async function () {
+    var d = ScriptGen.describe(state);
+    if (d.problems.length) {
+      showProblems = true; markProblems();
+      toast(d.problems[0].msg + (d.problems.length > 1 ? "，另外 " + (d.problems.length - 1) + " 項" : ""), true, null, goToProblem);
+      goToProblem(); return;
+    }
+    var f = ready;
+    if (f && !downloads && navigator.canShare && navigator.canShare({ files: [f.file] })) {
+      try { await navigator.share({ files: [f.file] }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    try {
+      if (!f) { var bytes = await ScriptGen.buildDocx(JSZip, TEMPLATE_B64, state); f = { file: new File([bytes], d.filename, { type: MIME }), bytes: bytes, name: d.filename }; }
+      if (downloads) { await downloads.save({ filename: f.name, data: f.bytes.slice(0) }); toast("已儲存 " + f.name); }
+      else saveFile(f);
+    } catch (e) {
+      var code = e && e.code;
+      if (code === "declined") toast("已取消");
+      else if (code === "rate_limited") toast("儲存視窗仲開緊", true);
+      else toast("分享唔到（" + (code || (e && e.message) || "未知原因") + "）", true);
+    }
+  };
+
+  function renderAll() {
+    W = WORDS.yue; PH.line = W.line; PH.cue = W.cue; $("event").placeholder = W.event;
+    $("event").value = state.event || ""; fit($("event"));
+    $("date").value = state.date || "";
+    renderDate(); renderMcs(); renderRows();
+  }
+  // A link ending in #k=passcode joins in one tap; the passcode is then removed from the address bar.
+  var linkCode = /[#&]k=([^&]+)/.exec(location.hash);
+  if (linkCode) history.replaceState(null, "", location.pathname + location.search);
+  var space = null; try { space = localStorage.getItem(SPACE_KEY); } catch (e) {}
+  var last = lib.open && find(lib.open);
+  if (CLOUD && !space) { askSpace(); if (linkCode) { $("code").value = decodeURIComponent(linkCode[1]); join($("code").value); } }
+  else {
+    if (CLOUD) startCloud(space);
+    if (last && !last.deleted) openScript(last.id); else { showView("list"); renderList(); updateAdd(); }
+  }
+})();
+</script>
