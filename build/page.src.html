@@ -67,29 +67,30 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 body[data-view="list"] .doc,body[data-view="list"] .edge,body[data-view="list"] .lead{display:none}
 body[data-view="doc"] .lib{display:none}
 .lib{max-width:860px;margin:0 auto;padding-top:72px}
-/* Four text levels: 1 page title; 2 count and section titles; 3 event; 4 date and MCs */
-.lib h1{font-size:34px;font-weight:700;line-height:1.2;margin:0}
-.lib .count,.lib .sh{font-size:20px;font-weight:600;line-height:1.3;color:var(--text)}
-.lib .count{margin:6px 0 0}
+/* Two text styles only: the page title, and one body size for everything in the list.
+   Hierarchy comes from order, position, space and colour, not from more sizes and weights. */
+.lib h1{font-size:34px;font-weight:700;line-height:1.2;margin:0 0 12px}
+.lib .count{margin:0;font-size:17px;color:var(--secondary)}
 /* The list: plain rows grouped by when the event is, no cards (easier to scan than a pile of boxes) */
-.lib .section{margin:32px 0 0}
-.lib .sh{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:0}
-button.sh{min-height:44px;cursor:pointer;text-align:left}
-button.sh svg.i{width:18px;height:18px;color:var(--secondary);transition:transform .2s ease}
-button.sh[aria-expanded="false"] svg.i{transform:rotate(-90deg)}
-.lib ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.lib .section+.section{margin-top:24px}
+.lib .sh{display:flex;align-items:center;gap:4px;min-height:44px;padding:0;font-size:17px;color:var(--secondary);cursor:pointer;text-align:left}
+.lib .sh svg.i{width:16px;height:16px;transition:transform .2s ease}
+.lib .sh[aria-expanded="false"] svg.i{transform:rotate(-90deg)}
+.lib ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .lib li{display:flex;align-items:center;margin:0 -12px;border-radius:12px}
 .lib li:hover,.lib li:focus-within,.lib li.held{background:var(--current)}
-.lib .item{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;outline:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.lib .item{flex:1;min-width:0;display:flex;align-items:baseline;gap:16px;min-height:48px;padding:12px;text-align:left;font-size:17px;line-height:1.4;border-radius:12px;outline:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.lib .when{flex:none;width:5.2em;color:var(--secondary);font-variant-numeric:tabular-nums}
+.lib .t{flex:none;max-width:60%;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib .mcs{flex:1;min-width:0;color:var(--secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:640px){.lib .mcs{display:none}}
 .lib .rowmore{flex:none;width:44px;height:44px;margin-right:4px;display:grid;place-items:center;border-radius:999px;color:var(--secondary)}
 .lib .rowmore:hover,.lib .rowmore:focus-visible,.lib .rowmore[aria-expanded="true"]{background:var(--field);color:var(--text);outline:none}
 .lib .emptystate{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
 .lib .emptystate svg.i{width:52px;height:52px;stroke-width:1.4;color:var(--caption);margin-bottom:8px} /* stroke-ok: line icons */
 .lib .emptystate h2{margin:0;font-size:20px;font-weight:600}
 .lib .emptystate p{margin:0;font-size:15px;color:var(--secondary)}
-.lib .t{max-width:100%;font-size:17px;font-weight:600;line-height:1.35;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lib .t.untitled{color:var(--caption)}
-.lib .s{max-width:100%;font-size:15px;font-weight:400;line-height:1.4;color:var(--secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Search: a glass field in the control layer, bottom leading, level with the add button */
 .search{position:fixed;z-index:20;left:calc(var(--side) + env(safe-area-inset-left,0px));right:calc(var(--side) + 56px + 12px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));height:56px;display:flex;align-items:center;gap:10px;padding:0 20px;cursor:text}
@@ -769,15 +770,14 @@ var CLOUD = %%CLOUD%%;
     groups.soon.sort(function (a, b) { return a.state.date < b.state.date ? -1 : a.state.date > b.state.date ? 1 : b.updated - a.updated; });
     groups.none.sort(function (a, b) { return b.updated - a.updated; });
     groups.past.sort(function (a, b) { return a.state.date > b.state.date ? -1 : a.state.date < b.state.date ? 1 : b.updated - a.updated; });
-    [["soon", "即將舉行"], ["none", "未有日期"], ["past", "已舉行"]].forEach(function (g) {
-      var list = groups[g[0]]; if (!list.length) return;
-      var folds = g[0] === "past", open = !folds || !!q || !!lib.showPast;
-      var head = folds
-        ? el("button", { type: "button", class: "sh", "aria-expanded": open, onclick: function () { lib.showPast = !lib.showPast; persistLib(); renderList(); } }, [g[1] + "（" + list.length + "）", icon("chevron")])
-        : el("h2", { class: "sh", text: g[1] });
-      var ul = el("ul", { hidden: !open });
+    ["soon", "none", "past"].forEach(function (g) {
+      var list = groups[g]; if (!list.length) return;
+      var folds = g === "past", open = !folds || !!q || !!lib.showPast;
+      var ul = el("ul", { hidden: !open, "aria-label": { soon: "即將舉行", none: "未有日期", past: "已舉行" }[g] });
       list.forEach(function (s) { ul.appendChild(row(s, today, tomorrow)); });
-      box.appendChild(el("section", { class: "section" }, [head, ul]));
+      box.appendChild(el("section", { class: "section" }, [
+        folds ? el("button", { type: "button", class: "sh", "aria-expanded": open, onclick: function () { lib.showPast = !lib.showPast; persistLib(); renderList(); } }, ["已舉行 " + list.length + " 份", icon("chevron")]) : null,
+        ul]));
     });
     $("nomatch").hidden = !q || hits > 0;
   }
@@ -787,8 +787,9 @@ var CLOUD = %%CLOUD%%;
     var mcs = ScriptGen.named(st).map(function (m) { return m.name.trim(); }).join("、");
     var li = el("li");
     var open = el("button", { type: "button", class: "item" }, [
+      el("span", { class: "when", text: when || "未定" }),
       el("span", { class: "t" + (name ? "" : " untitled"), text: name || "未命名講稿" }),
-      el("span", { class: "s", text: [when, mcs].filter(Boolean).join("．") || "未開始" })
+      el("span", { class: "mcs", text: mcs })
     ]);
     var more = el("button", { type: "button", class: "rowmore", "aria-label": "更多：" + (name || "未命名講稿"), title: "更多", "aria-haspopup": "menu", "aria-expanded": "false" }, [icon("more")]);
     var held = false, timer = null;
@@ -844,7 +845,6 @@ var CLOUD = %%CLOUD%%;
   function renderStatus() {
     var n = shown().length, waiting = cloud ? lib.scripts.filter(pending).length : 0;
     var parts = [];
-    if (n) parts.push(n + " 份講稿");
     if (waiting && sync.state !== "ok") parts.push(waiting + " 份未上載");
     $("libcount").textContent = parts.join("．"); $("libcount").hidden = !parts.length;
     $("libempty").hidden = n > 0 || (!!cloud && !sync.loaded);

@@ -8,8 +8,9 @@ const seed=()=>{const iso=o=>{const d=new Date(Date.now()+o*864e5);return d.getF
 for (const [w,h,scheme] of [[1440,900,'dark'],[820,1180,'light']]){
  const p=await b.newPage({viewport:{width:w,height:h},colorScheme:scheme});
  await p.goto('file://'+process.cwd()+'/build/MC Scripts.html');await p.evaluate(seed);await p.reload();await p.waitForTimeout(300);
- const heads=await p.$$eval('.sh',x=>x.map(e=>e.textContent));console.log(w,JSON.stringify(heads));
- ok(heads[0]==='即將舉行'&&heads[1]==='未有日期'&&/^已舉行（5）/.test(heads[2]),'three sections in order, past counted');
+ const heads=await p.$$eval('.section ul',x=>x.map(e=>e.getAttribute('aria-label')));console.log(w,JSON.stringify(heads));
+ ok(JSON.stringify(heads)==='["即將舉行","未有日期","已舉行"]','coming up, then no date, then held');
+ ok((await p.textContent('button.sh')).trim()==='已舉行 5 份','held events folded behind one line');
  ok(await p.$eval('.section ul',u=>u.children[0].textContent.includes('早會頒獎')&&u.children[0].textContent.includes('今日')),'nearest event first, labelled 今日');
  ok(!(await p.isVisible('text=畢業禮')),'held events folded away');
  await p.screenshot({path:`${out}/list-${w}.png`});
@@ -25,13 +26,13 @@ for (const [w,h,scheme] of [[1440,900,'dark'],[820,1180,'light']]){
  await p.click('li >> nth=1 >> .rowmore');await p.click('.menu >> text=刪除');
  ok((await p.$$('.item')).length===9,'row ⋯ delete removes one');
  await p.click('.toast >> text=復原');ok((await p.$$('.item')).length===10,'undo restores');
- const lv=await p.evaluate(()=>{const f=s=>{const c=getComputedStyle(document.querySelector(s));return c.fontSize+'/'+c.fontWeight};return [f('.lib h1'),f('#libcount'),f('.sh'),f('.item .t'),f('.item .s')]});
- console.log(w,'text levels',JSON.stringify(lv));
+ const sizes=await p.evaluate(()=>[...new Set([...document.querySelectorAll('.lib *')].filter(e=>e.offsetParent&&e.childNodes.length&&[...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())&&e.tagName!=='H1').map(e=>getComputedStyle(e).fontSize))]);
+ ok(sizes.length===1,'one text size below the title: '+sizes.join(','));
  // right click row
  await p.click('.item >> nth=0',{button:'right'});ok(await p.isVisible('.menu >> text=複製成新講稿'),'right-click shows row actions');
  await p.click('.menu >> text=複製成新講稿');ok(await p.evaluate(()=>document.body.dataset.view==='doc'&&document.getElementById('date-text').textContent==='YY/MM/DD'),'copy opens without a date');
  await p.click('#more');ok(await p.isVisible('.menu >> text=複製成新講稿'),'doc menu has copy');await p.keyboard.press('Escape');
- await p.click('#back');ok(await p.$eval('#liblist',x=>x.textContent.includes('未有日期')),'copy listed under 未有日期');
+ await p.click('#back');ok(await p.$eval('ul[aria-label="未有日期"]',x=>x.children.length===3&&x.textContent.includes('未定')),'copy listed with the undated scripts');
  const t=await p.evaluate(()=>{const h=document.querySelector('.lib h1').getBoundingClientRect(),e=document.querySelector('.edge .glass').getBoundingClientRect();return [Math.round(h.top),Math.round(e.bottom)]});console.log(w,'h1 top vs toolbar bottom',t);
 }
 await b.close();})();
