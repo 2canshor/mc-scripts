@@ -14,8 +14,8 @@
 <style>
 :root{
   --canvas:#FBFAF7; /* tell-ok: CA Design System token */
-  /* CA Design System: neutrals carry the page; Slate Dark is the one action colour; Text Yellow marks what still needs filling */
-  --current:#F1EFE8; --field:#EDEBE3; --fill:#6E5916;
+  /* CA Design System: neutrals carry the page; Strong Yellow, the CA accent, is the primary action colour; Text Yellow marks what still needs filling */
+  --current:#F1EFE8; --field:#EDEBE3; --fill:#6E5916; --primary:#BAA877; --on-primary:#1A1A18;
   --text:#1A1A18; /* tell-ok: CA Design System token */
   --secondary:#6B6A64; --caption:#85837C; --faint:#85837C;
   --danger:#9A3B2E; --btn:#1A1A18; --btn-text:#FBFAF7; /* tell-ok: CA Design System token */
@@ -25,6 +25,8 @@
   --pt:1.5455px;
   /* Where the content column starts; floating controls line up with it on wide screens */
   --side:max(16px, calc((100vw - 860px) / 2));
+  /* Where both pages' titles start: 32px below the floating controls (16 + 48) */
+  --top:96px;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -75,7 +77,7 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 /* Views: the script list, or one script */
 body[data-view="list"] .doc,body[data-view="list"] .edge,body[data-view="list"] .lead{display:none}
 body[data-view="doc"] .lib{display:none}
-.lib{max-width:860px;margin:0 auto;padding-top:72px}
+.lib{max-width:860px;margin:0 auto;padding-top:var(--top)}
 /* Two text styles only: the page title, and one body size for everything in the list.
    Hierarchy comes from order, position, space and colour, not from more sizes and weights. */
 .lib h1{font-size:34px;font-weight:700;line-height:1.2;margin:0 0 12px}
@@ -112,12 +114,12 @@ body:not([data-view="list"]) .search,body.noscripts .search{display:none}
 /* Add button: floats at the bottom trailing corner */
 .fab{position:fixed;z-index:20;right:calc(var(--side) + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;color:var(--text)}
 .fab svg.i{width:24px;height:24px}
-.fab:not([aria-disabled="true"]){background:var(--btn);color:var(--btn-text)}
+.fab:not([aria-disabled="true"]){background:var(--primary);color:var(--on-primary)}
 .fab[aria-disabled="true"]{opacity:.3}
 .fab:hover:not([aria-disabled="true"]){filter:brightness(1.08)}
 .fab:focus-visible{outline:none;filter:brightness(1.15)}
 .fab svg.i{transition:transform .2s ease}
-.fab[aria-expanded="true"],.tb[aria-expanded="true"]{background:var(--btn);color:var(--btn-text)}
+.fab[aria-expanded="true"],.tb[aria-expanded="true"]{background:var(--primary);color:var(--on-primary)}
 .fab[aria-expanded="true"] svg.i{transform:rotate(45deg)}
 
 /* Menus and toast: also control layer */
@@ -145,7 +147,7 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 .join input{font:inherit;font-size:18px;height:50px;border:0;border-radius:14px;background:var(--field);color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none}
 .join input::placeholder{color:var(--caption)}
 .join input:focus{background:var(--current)}
-.join button{height:50px;border-radius:14px;background:var(--btn);color:var(--btn-text);font-weight:600}
+.join button{height:50px;border-radius:14px;background:var(--primary);color:var(--on-primary);font-weight:600}
 .join .err{min-height:1.6em;margin:0;font-size:15px;color:var(--danger)}
 
 /* Content layer: the script itself, laid out as it will print */
@@ -154,10 +156,11 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 .fld{font:inherit;font-weight:inherit;color:inherit;background:transparent;border:0;outline:none;margin:0;padding:0 .05em;box-sizing:content-box;border-radius:8px;max-width:100%;min-width:2em;vertical-align:baseline;-webkit-appearance:none;appearance:none}
 .fld::placeholder{color:var(--caption)}
 .fld:placeholder-shown,.date.empty{background:var(--field);padding:0 .35em;border-radius:8px}
+.title .date.empty,.mcline .mc:first-child .hit:first-child .fld:placeholder-shown{margin-left:-.35em}
 .fld:focus{background:var(--current)}
 .title .fld,.mcline .fld{font-weight:600}
 .hit{display:inline-block;padding:9px 0;margin:-9px 0;cursor:text}
-.title{font-size:calc(20 * var(--pt));font-weight:600;line-height:1.3;margin:0 0 calc(6 * var(--pt));padding:72px 0 0;text-wrap:balance}
+.title{font-size:calc(20 * var(--pt));font-weight:600;line-height:1.3;margin:0 0 16px;padding:var(--top) 0 0;text-wrap:balance}
 .title .sep{color:var(--secondary);margin:0 .15em}
 .date{position:relative;display:inline-block;border-radius:6px}
 .date input{position:absolute;left:0;top:-9px;width:100%;height:calc(100% + 18px);opacity:0;font-size:16px;-webkit-appearance:none;appearance:none;cursor:pointer}
@@ -596,7 +599,7 @@ var CLOUD = {"api":"/api"};
         return m;
       }
       oneLine(c, function (v) { real().cls = v; changed(); });
-      oneLine(n, function (v) { real().name = v; changed(); if (v.trim()) addGhostIfNeeded(); });
+      oneLine(n, function (v) { real().name = v; changed(); updateAdd(); if (v.trim()) addGhostIfNeeded(); });
       c.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); n.focus(); } });
       [c, n].forEach(function (f) {
         f.addEventListener("blur", function () {
