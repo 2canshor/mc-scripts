@@ -64,21 +64,39 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .lead svg.i{width:22px;height:22px}
 
 /* Views: the script list, or one script */
-body[data-view="list"] .doc,body[data-view="list"] .edge,body[data-view="list"] .lead{display:none}
+body[data-view="list"] .doc,body[data-view="list"] .lead,body[data-view="list"] .doc-only,body[data-view="doc"] .list-only{display:none}
+body:not(.selecting) .select-only,body.selecting .browse-only{display:none}
 body[data-view="doc"] .lib{display:none}
-.lib{max-width:860px;margin:0 auto;padding-top:20px}
+.lib{max-width:860px;margin:0 auto;padding-top:72px}
 .lib h1{font-size:34px;font-weight:600;line-height:1.2;margin:0}
 .lib .count{margin:2px 0 24px;font-size:15px;color:var(--secondary)}
-.lib ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
-.lib li button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;text-align:left;padding:16px 18px;border-radius:18px;background:var(--current)}
-.lib li button:hover,.lib li button:focus-visible{background:var(--field);outline:none}
+/* The list: plain rows grouped by when the event is, no cards (easier to scan than a pile of boxes) */
+.lib .section{margin:0 0 20px}
+.lib .sh{display:flex;align-items:center;gap:4px;margin:0 0 4px;padding:6px 0;font-size:15px;font-weight:600;color:var(--secondary)}
+button.sh{min-height:44px;cursor:pointer}
+button.sh svg.i{width:16px;height:16px;transition:transform .2s ease}
+button.sh[aria-expanded="false"] svg.i{transform:rotate(-90deg)}
+.lib ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.lib .item{display:flex;align-items:center;gap:12px;width:calc(100% + 24px);margin:0 -12px;text-align:left;padding:10px 12px;border-radius:12px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.lib .item:hover,.lib .item:focus-visible,.lib .item.held{background:var(--current);outline:none}
+.lib .item[aria-checked="true"]{background:var(--current)}
+.lib .txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lib .check{display:none;flex:none;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--caption);align-items:center;justify-content:center;color:#fff} /* stroke-ok: selection ring */
+body.selecting .lib .check{display:flex}
+.lib .item[aria-checked="true"] .check{background:var(--blue);box-shadow:none}
+.lib .check svg.i{width:16px;height:16px;stroke-width:2.6}
+.lib .item[aria-checked="false"] .check svg.i{display:none}
+.selbar{position:fixed;z-index:20;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:4px}
+.selbar .tb{height:48px;padding:0 20px;font-size:16px}
+.selbar .danger{color:var(--danger)}
+body:not(.selecting) .selbar,body.selecting .fab,body.selecting .search{display:none}
 .lib .emptystate{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
 .lib .emptystate svg.i{width:52px;height:52px;stroke-width:1.4;color:var(--caption);margin-bottom:8px} /* stroke-ok: line icons */
 .lib .emptystate h2{margin:0;font-size:20px;font-weight:600}
 .lib .emptystate p{margin:0;font-size:15px;color:var(--secondary)}
-.lib .t{font-size:18px;font-weight:600;line-height:1.35}
+.lib .t{font-size:17px;font-weight:600;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lib .t.untitled{color:var(--caption)}
-.lib .s{font-size:14px;color:var(--secondary)}
+.lib .s{font-size:14px;color:var(--secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Search: a glass field in the control layer, bottom leading, level with the add button */
 .search{position:fixed;z-index:20;left:calc(var(--side) + env(safe-area-inset-left,0px));right:calc(var(--side) + 56px + 12px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));height:56px;display:flex;align-items:center;gap:10px;padding:0 20px;cursor:text}
@@ -177,8 +195,10 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 <div class="edge">
   <div class="toolbar" role="toolbar" aria-label="講稿工具">
     <div class="glass group">
-      <button type="button" class="tb" id="share" aria-label="分享講稿" title="分享講稿"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg></button>
-      <button type="button" class="tb" id="more" aria-label="更多" title="更多" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more"/></svg></button>
+      <button type="button" class="tb doc-only" id="share" aria-label="分享講稿" title="分享講稿"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg></button>
+      <button type="button" class="tb doc-only" id="more" aria-label="更多" title="更多" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more"/></svg></button>
+      <button type="button" class="tb list-only browse-only" id="listmore" aria-label="更多" title="更多" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more"/></svg></button>
+      <button type="button" class="tb list-only select-only" id="seldone">完成</button>
     </div>
   </div>
 </div>
@@ -186,7 +206,7 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 <section class="lib" aria-label="講稿列表">
   <h1>講稿</h1>
   <p class="count" id="libcount"></p>
-  <ul id="liblist"></ul>
+  <div id="liblist"></div>
   <p class="nomatch" id="nomatch" hidden>冇相符嘅講稿</p>
   <div class="emptystate" id="libempty" hidden>
     <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg>
@@ -214,11 +234,20 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
   <p class="end">{End of Script}</p>
 </main>
 
+<div class="selbar glass" role="toolbar" aria-label="已選取嘅講稿">
+  <button type="button" class="tb" id="seldup" disabled>複製</button>
+  <button type="button" class="tb danger" id="seldel" disabled>刪除</button>
+</div>
+
 <label class="search glass" id="searchbar"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg><input id="q" type="search" placeholder="搜尋" aria-label="搜尋講稿" autocomplete="off" enterkeyhint="search"></label>
 
 <button type="button" class="fab glass" id="insert" aria-label="加" title="加" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg></button>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-select" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.34-4.34"/></symbol>
   <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
@@ -301,7 +330,7 @@ var CLOUD = %%CLOUD%%;
     if (attrs) Object.keys(attrs).forEach(function (k) {
       if (k === "text") n.textContent = attrs[k];
       else if (k.slice(0, 2) === "on") { if (attrs[k]) n.addEventListener(k.slice(2), attrs[k]); }
-      else if (k.slice(0, 5) === "aria-") n.setAttribute(k, String(attrs[k]));
+      else if (k.slice(0, 5) === "aria-") { if (attrs[k] != null) n.setAttribute(k, String(attrs[k])); }
       else if (attrs[k] !== false && attrs[k] != null) n.setAttribute(k, attrs[k] === true ? "" : attrs[k]);
     });
     (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
@@ -666,7 +695,7 @@ var CLOUD = %%CLOUD%%;
 
   /* Menus (control layer) */
   var menuEl = null, menuBtn = null;
-  function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; menuBtn.setAttribute("aria-expanded", "false"); menuBtn = null; } }
+  function closeMenu() { document.querySelectorAll(".item.held").forEach(function (x) { x.classList.remove("held"); }); if (menuEl) { menuEl.remove(); menuEl = null; menuBtn.setAttribute("aria-expanded", "false"); menuBtn = null; } }
   function menuItem(ic, label, fn, opts) {
     opts = opts || {};
     return el("button", { type: "button", role: "menuitem", class: opts.danger ? "danger" : "", disabled: !!opts.disabled,
@@ -678,6 +707,7 @@ var CLOUD = %%CLOUD%%;
     menuEl = el("div", { class: "menu glass", role: "menu" }, items);
     document.body.appendChild(menuEl);
     var r = btn.getBoundingClientRect();
+    if (side === "at") { menuEl.style.top = Math.min(r.bottom + 4, window.innerHeight - menuEl.offsetHeight - 16) + "px"; menuEl.style.left = Math.min(Math.max(16, r.left), window.innerWidth - menuEl.offsetWidth - 16) + "px"; btn.setAttribute("aria-expanded", "true"); return; }
     if (side === "up") menuEl.style.bottom = (window.innerHeight - r.top + 10) + "px";
     else menuEl.style.top = (r.bottom + 8) + "px";
     menuEl.style.right = Math.max(16, window.innerWidth - r.right) + "px";
@@ -694,6 +724,7 @@ var CLOUD = %%CLOUD%%;
       menuItem("down", "下移呢段", function () { moveBlock(1); }, { disabled: i < 0 || i >= state.blocks.length - 1 }),
       menuItem("trash", "刪除呢段", function () { removeBlock(curIndex()); }, { danger: true, disabled: i < 0 }),
       el("div", { class: "gap" }),
+      menuItem("copy", "複製成新講稿", function () { duplicate(entry, true); }),
       menuItem("trash", "刪除成份講稿", deleteScript, { danger: true })
     );
     openMenu($("more"), "right", items);
@@ -702,7 +733,7 @@ var CLOUD = %%CLOUD%%;
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
 
   /* Script list */
-  function showView(v) { document.body.setAttribute("data-view", v); closeMenu(); hideToast(); window.scrollTo(0, 0); }
+  function showView(v) { if (v !== "list") document.body.classList.remove("selecting"); document.body.setAttribute("data-view", v); closeMenu(); hideToast(); window.scrollTo(0, 0); }
   function find(id) { return lib.scripts.filter(function (s) { return s.id === id; })[0]; }
   function shown() { return lib.scripts.filter(function (s) { return !s.deleted; }); }
   function openScript(id) {
@@ -736,23 +767,103 @@ var CLOUD = %%CLOUD%%;
     var today = d.toDateString() === now.toDateString();
     return (today ? "今日" : day) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
   }
+  // Sections by when the event is: coming up (nearest first), no date yet, and held (latest first, folded away).
+  var selected = {};
+  function isoToday(offset) { var d = new Date(Date.now() + (offset || 0) * 864e5); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
   function renderList() {
-    var ul = $("liblist"); ul.textContent = "";
+    var box = $("liblist"); box.textContent = "";
     renderStatus();
-    var q = $("q").value.replace(/\s+/g, "").toLowerCase(), hits = 0;
+    var q = $("q").value.replace(/\s+/g, "").toLowerCase(), hits = 0, today = isoToday(0), tomorrow = isoToday(1);
     document.body.classList.toggle("noscripts", !shown().length);
-    shown().sort(function (a, b) { return b.updated - a.updated; }).forEach(function (s) {
+    var groups = { soon: [], none: [], past: [] };
+    shown().forEach(function (s) {
       if (q && searchText(s.state).indexOf(q) < 0) return;
       hits++;
-      var st = s.state, en = ScriptGen.isEnglish(st), date = ScriptGen.yymmdd(st.date, "/");
-      var name = st.event.trim(), title = [date, name].filter(Boolean).join(en ? " | " : "｜");
-      var mcs = ScriptGen.named(st).map(function (m) { return m.name.trim(); }).join("．");
-      ul.appendChild(el("li", {}, [el("button", { type: "button", onclick: function () { openScript(s.id); } }, [
-        el("span", { class: "t" + (title ? "" : " untitled"), text: title || "未命名講稿" }),
-        el("span", { class: "s", text: [mcs, "改於 " + when(s.updated)].filter(Boolean).join("　") })
-      ])]));
+      var d = s.state.date;
+      (d ? (d >= today ? groups.soon : groups.past) : groups.none).push(s);
+    });
+    groups.soon.sort(function (a, b) { return a.state.date < b.state.date ? -1 : a.state.date > b.state.date ? 1 : b.updated - a.updated; });
+    groups.none.sort(function (a, b) { return b.updated - a.updated; });
+    groups.past.sort(function (a, b) { return a.state.date > b.state.date ? -1 : a.state.date < b.state.date ? 1 : b.updated - a.updated; });
+    [["soon", "即將舉行"], ["none", "未有日期"], ["past", "已舉行"]].forEach(function (g) {
+      var list = groups[g[0]]; if (!list.length) return;
+      var folds = g[0] === "past", open = !folds || !!q || !!lib.showPast;
+      var head = folds
+        ? el("button", { type: "button", class: "sh", "aria-expanded": open, onclick: function () { lib.showPast = !lib.showPast; persistLib(); renderList(); } }, [g[1] + "（" + list.length + "）", icon("chevron")])
+        : el("h2", { class: "sh", text: g[1] });
+      var ul = el("ul", { hidden: !open });
+      list.forEach(function (s) { ul.appendChild(el("li", {}, [row(s, today, tomorrow)])); });
+      box.appendChild(el("section", { class: "section" }, [head, ul]));
     });
     $("nomatch").hidden = !q || hits > 0;
+    updateSelection();
+  }
+  function row(s, today, tomorrow) {
+    var st = s.state, d = st.date, name = st.event.trim();
+    var when = !d ? "" : d === today ? "今日" : d === tomorrow ? "明日" : ScriptGen.yymmdd(d, "/");
+    var mcs = ScriptGen.named(st).map(function (m) { return m.name.trim(); }).join("、");
+    var btn = el("button", { type: "button", class: "item", "aria-checked": document.body.classList.contains("selecting") ? !!selected[s.id] : null }, [
+      el("span", { class: "check", "aria-hidden": "true" }, [icon("check")]),
+      el("span", { class: "txt" }, [
+        el("span", { class: "t" + (name ? "" : " untitled"), text: name || "未命名講稿" }),
+        el("span", { class: "s", text: [when, mcs].filter(Boolean).join("．") || "未開始" })
+      ])
+    ]);
+    if (document.body.classList.contains("selecting")) btn.setAttribute("role", "checkbox");
+    var held = false, timer = null;
+    btn.addEventListener("click", function () {
+      if (held) { held = false; return; }
+      if (document.body.classList.contains("selecting")) { selected[s.id] = !selected[s.id]; btn.setAttribute("aria-checked", String(!!selected[s.id])); updateSelection(); return; }
+      openScript(s.id);
+    });
+    // Hold (touch) or right-click: actions for this one script.
+    function actions() {
+      if (document.body.classList.contains("selecting")) return;
+      btn.classList.add("held");
+      openMenu(btn, "at", [
+        menuItem("copy", "複製成新講稿", function () { duplicate(s, true); }),
+        menuItem("trash", "刪除", function () { deleteMany([s]); }, { danger: true })
+      ]);
+    }
+    btn.addEventListener("contextmenu", function (e) { e.preventDefault(); actions(); });
+    btn.addEventListener("pointerdown", function (e) { if (e.pointerType === "mouse") return; timer = setTimeout(function () { held = true; actions(); }, 500); });
+    ["pointerup", "pointercancel", "pointerleave", "pointermove"].forEach(function (t) {
+      btn.addEventListener(t, function (e) { if (t === "pointermove" && Math.abs(e.movementY) < 4) return; clearTimeout(timer); });
+    });
+    return btn;
+  }
+  /* Selecting several scripts to copy or delete */
+  function setSelecting(on) {
+    selected = {}; document.body.classList.toggle("selecting", on); closeMenu(); renderList();
+  }
+  function pickedScripts() { return shown().filter(function (s) { return selected[s.id]; }); }
+  function updateSelection() {
+    var n = pickedScripts().length;
+    $("seldup").disabled = $("seldel").disabled = !n;
+    if (document.body.classList.contains("selecting")) { $("libcount").hidden = false; $("libcount").textContent = n ? "已選取 " + n + " 份" : "揀要處理嘅講稿"; }
+  }
+  $("listmore").onclick = function () {
+    openMenu($("listmore"), "right", [
+      menuItem("select", "選取講稿", function () { setSelecting(true); }, { disabled: !shown().length })
+    ]);
+  };
+  $("seldone").onclick = function () { setSelecting(false); };
+  $("seldup").onclick = function () { var list = pickedScripts(); setSelecting(false); list.forEach(function (s) { duplicate(s, false); }); renderList(); toast("已複製 " + list.length + " 份講稿"); };
+  $("seldel").onclick = function () { var list = pickedScripts(); setSelecting(false); deleteMany(list); };
+  // A copy starts without a date: it is for a new event.
+  function duplicate(s, open) {
+    var st = JSON.parse(JSON.stringify(s.state)); st.date = "";
+    var copy = { id: uid(), updated: Date.now(), state: st, dirty: true, edit: 1 };
+    lib.scripts.push(copy); persistLib(); schedulePush();
+    if (open) { openScript(copy.id); toast("已複製，記得揀新日期"); }
+    return copy;
+  }
+  function deleteMany(list) {
+    list.forEach(function (s) { markDeleted(s, true); });
+    persistLib(); renderList();
+    toast(list.length > 1 ? "已刪除 " + list.length + " 份講稿" : "已刪除講稿", false, { label: "復原", fn: function () {
+      list.forEach(function (s) { markDeleted(s, false); }); persistLib(); renderList();
+    } });
   }
   // Everything a search can match: date, event, MCs and the script's own words.
   function searchText(st) {
