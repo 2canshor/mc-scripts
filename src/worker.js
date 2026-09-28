@@ -1,0 +1,63 @@
+// MC Scripts: serves the page and keeps every member's scripts in one D1 database.
+// The page sends the CA passcode with each request; only its SHA-256 is kept here.
+import PAGE from "./index.html";
+
+const PASSCODE_SHA256 = "fc70d92d8fe9217aff1c132c0dc1111a9a0c3a2ef636b7c24fa0e7dd96398f47";
+const MAX_SCRIPT = 500000;
+
+let tablesReady = null;
+function ensureTables(db) {
+  if (!tablesReady) tablesReady = db.batch([
+    db.prepare("CREATE TABLE IF NOT EXISTS scripts (id TEXT PRIMARY KEY, data TEXT NOT NULL, updated INTEGER NOT NULL, deleted INTEGER NOT NULL DEFAULT 0, seq INTEGER NOT NULL)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS scripts_seq ON scripts (seq)")
+  ]).catch((e) => { tablesReady = null; throw e; });
+  return tablesReady;
+}
+async function sha256(text) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (!url.pathname.startsWith("/api/")) {
+      if (url.pathname !== "/") return Response.redirect(url.origin + "/" + url.hash, 302);
+      return new Response(PAGE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-robots-tag": "noindex" } });
+    }
+    if (await sha256(request.headers.get("x-passcode") || "") !== PASSCODE_SHA256) return json({ error: "passcode" }, 403);
+    await ensureTables(env.DB);
+    const path = url.pathname.slice("/api/".length);
+
+    if (path === "join" && request.method === "POST") return json({ ok: true });
+
+    // Everything changed after version "since", oldest first.
+    if (path === "scripts" && request.method === "GET") {
+      const since = Math.max(0, Number(url.searchParams.get("since")) || 0);
+      const { results } = await env.DB.prepare("SELECT id, data, updated, deleted, seq FROM scripts WHERE seq > ? ORDER BY seq").bind(since).all();
+      return json({ rows: results.map((r) => ({ id: r.id, data: r.data, updated: r.updated, deleted: !!r.deleted, rev: r.seq })) });
+    }
+
+    // Save one script. "rev" is the version the writer started from (0 for a new script);
+    // if someone else saved in between, nothing is written and the answer is 409.
+    const match = /^scripts\/([A-Za-z0-9_-]{1,40})$/.exec(path);
+    if (match && request.method === "PUT") {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+      if (typeof body.data !== "string" || body.data.length > MAX_SCRIPT || !Number.isFinite(body.updated)) return json({ error: "bad request" }, 400);
+      const id = match[1], deleted = body.deleted ? 1 : 0, rev = Number(body.rev) || 0;
+      const next = "(SELECT COALESCE(MAX(seq), 0) + 1 FROM scripts)";
+      const saved = rev
+        ? await env.DB.prepare("UPDATE scripts SET data = ?1, updated = ?2, deleted = ?3, seq = " + next + " WHERE id = ?4 AND seq = ?5 RETURNING seq").bind(body.data, body.updated, deleted, id, rev).first()
+        : await env.DB.prepare("INSERT INTO scripts (id, data, updated, deleted, seq) VALUES (?1, ?2, ?3, ?4, " + next + ") ON CONFLICT (id) DO NOTHING RETURNING seq").bind(id, body.data, body.updated, deleted).first();
+      if (saved) return json({ rev: saved.seq });
+      if (!rev) return json({ error: "conflict" }, 409);
+      const exists = await env.DB.prepare("SELECT 1 FROM scripts WHERE id = ?").bind(id).first();
+      return json({ error: exists ? "conflict" : "missing" }, exists ? 409 : 404);
+    }
+    return json({ error: "not found" }, 404);
+  }
+};
