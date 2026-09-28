@@ -6,4 +6,4 @@ workers_dev = true
 [[d1_databases]]
 binding = "DB"
 database_name = "mc-scripts"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "5fee58f6-18e0-4a78-ae54-a996d8be2f36"
