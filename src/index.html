@@ -14,7 +14,8 @@
 <style>
 :root{
   --canvas:#FBFAF7; /* tell-ok: CA Design System token */
-  --current:#F1EFE8; --needs:#F3E3DE; --field:#EDEBE3; --blue:#007AFF;
+  /* CA Design System: neutrals carry the page; Slate Dark is the one action colour; Text Yellow marks what still needs filling */
+  --current:#F1EFE8; --field:#EDEBE3; --fill:#6E5916;
   --text:#1A1A18; /* tell-ok: CA Design System token */
   --secondary:#6B6A64; --caption:#85837C; --faint:#85837C;
   --danger:#9A3B2E; --btn:#1A1A18; --btn-text:#FBFAF7; /* tell-ok: CA Design System token */
@@ -28,7 +29,7 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
-    --canvas:#1C1C1A; --current:#262623; --needs:#43302B; --field:#2E2D2A; --blue:#0A84FF;
+    --canvas:#1C1C1A; --current:#262623; --field:#2E2D2A; --fill:#BAA877;
     --text:#F2F0EA; /* tell-ok: CA Design System token (dark) */
     --secondary:#B0AEA5; --caption:#8E8D87; --faint:#8E8D87;
     --danger:#E59A8C; --btn:#F2F0EA; --btn-text:#1A1A18; /* tell-ok: CA Design System token (dark) */
@@ -38,7 +39,7 @@
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --canvas:#1C1C1A; --current:#262623; --needs:#43302B; --field:#2E2D2A; --blue:#0A84FF;
+  --canvas:#1C1C1A; --current:#262623; --field:#2E2D2A; --fill:#BAA877;
   --text:#F2F0EA; /* tell-ok: CA Design System token (dark) */
   --secondary:#B0AEA5; --caption:#8E8D87; --faint:#8E8D87;
   --danger:#E59A8C; --btn:#F2F0EA; --btn-text:#1A1A18; /* tell-ok: CA Design System token (dark) */
@@ -111,12 +112,12 @@ body:not([data-view="list"]) .search,body.noscripts .search{display:none}
 /* Add button: floats at the bottom trailing corner */
 .fab{position:fixed;z-index:20;right:calc(var(--side) + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;color:var(--text)}
 .fab svg.i{width:24px;height:24px}
-.fab:not([aria-disabled="true"]){background:var(--blue);color:#fff}
+.fab:not([aria-disabled="true"]){background:var(--btn);color:var(--btn-text)}
 .fab[aria-disabled="true"]{opacity:.3}
 .fab:hover:not([aria-disabled="true"]){filter:brightness(1.08)}
 .fab:focus-visible{outline:none;filter:brightness(1.15)}
 .fab svg.i{transition:transform .2s ease}
-.fab[aria-expanded="true"],.tb[aria-expanded="true"]{background:var(--blue);color:#fff}
+.fab[aria-expanded="true"],.tb[aria-expanded="true"]{background:var(--btn);color:var(--btn-text)}
 .fab[aria-expanded="true"] svg.i{transform:rotate(45deg)}
 
 /* Menus and toast: also control layer */
@@ -144,7 +145,7 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 .join input{font:inherit;font-size:18px;height:50px;border:0;border-radius:14px;background:var(--field);color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none}
 .join input::placeholder{color:var(--caption)}
 .join input:focus{background:var(--current)}
-.join button{height:50px;border-radius:14px;background:var(--blue);color:#fff;font-weight:600}
+.join button{height:50px;border-radius:14px;background:var(--btn);color:var(--btn-text);font-weight:600}
 .join .err{min-height:1.6em;margin:0;font-size:15px;color:var(--danger)}
 
 /* Content layer: the script itself, laid out as it will print */
@@ -167,8 +168,14 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 .mcline .dot{color:var(--secondary);margin:0 .3em}
 .upper{text-transform:uppercase} /* tell-ok: class codes are capitals, e.g. 3C12 */
 .upper::placeholder{text-transform:none}
-.needs{background:var(--needs)!important}
-.row{cursor:text;display:grid;grid-template-columns:var(--ind) minmax(0,1fr);margin-inline:-10px;padding:4px 10px;border-radius:10px}
+/* Something still to fill: its prompt turns Text Yellow, like the 填寫 lines in CA files */
+.needs{background:var(--field)!important}
+.needs,.needs::placeholder,.needs .ph,.needs textarea::placeholder,.needs input::placeholder,.needs .who{color:var(--fill)!important}
+.row{cursor:text;display:grid;grid-template-columns:var(--ind) minmax(0,1fr) 40px;margin-inline:-10px;padding:4px 10px;border-radius:10px}
+/* Each paragraph's own ⋯, at its end: shown on the paragraph being edited (and on hover), space kept so text never shifts */
+.bmore{grid-column:3;grid-row:1;align-self:start;justify-self:end;width:44px;height:44px;margin:-10px -6px -10px 0;display:grid;place-items:center;border-radius:999px;color:var(--secondary);opacity:0;pointer-events:none}
+.row.current .bmore,.row:hover .bmore,.bmore:focus-visible,.bmore[aria-expanded="true"]{opacity:1;pointer-events:auto}
+.bmore:hover,.bmore:focus-visible,.bmore[aria-expanded="true"]{background:var(--field);color:var(--text);outline:none}
 .row.current{background:var(--current)}
 .row textarea{grid-column:2;font:inherit;color:inherit;background:transparent;border:0;outline:none;resize:none;overflow:hidden;padding:0;margin:0;width:100%;min-height:1.6em;line-height:1.6;display:block}
 .row textarea::placeholder{color:var(--caption)}
@@ -747,16 +754,37 @@ var CLOUD = {"api":"/api"};
   }
   function makeRow(b, ta) {
     if (b.type === "award") {
-      return el("div", { class: "row award" + (b.id === current ? " current" : ""), id: "r-" + b.id }, [el("span", { class: "who-slot" }), makeAwards(b)]);
+      return el("div", { class: "row award" + (b.id === current ? " current" : ""), id: "r-" + b.id }, [el("span", { class: "who-slot" }), makeAwards(b), blockMore(b)]);
     }
     ta = ta || el("textarea", { rows: 1 });
     ta.id = "t-" + b.id; ta.placeholder = PH[b.type]; ta.setAttribute("aria-label", TYPE[b.type]);
     if (!ta.value) ta.value = b.text || "";
-    var row = el("div", { class: "row " + b.type + (b.id === current ? " current" : ""), id: "r-" + b.id }, [el("span", { class: "who-slot" }), ta]);
+    var row = el("div", { class: "row " + b.type + (b.id === current ? " current" : ""), id: "r-" + b.id }, [el("span", { class: "who-slot" }), ta, blockMore(b)]);
     return row;
   }
+  // Actions on one paragraph live with that paragraph; the toolbar ⋯ is for the whole script.
+  function blockMore(b) {
+    var btn = el("button", { type: "button", class: "bmore", "aria-label": "呢段嘅更多操作", title: "呢段", "aria-haspopup": "menu", "aria-expanded": "false" }, [icon("more")]);
+    keepFocus(btn);
+    btn.addEventListener("click", function () {
+      setCurrent(b.id);
+      var i = state.blocks.indexOf(b), items = [];
+      ["line", "cue", "award"].forEach(function (t) {
+        if (b.type !== t) items.push(menuItem(t, "轉做" + TYPE[t], function () { setType(t); }));
+      });
+      items.push(
+        el("div", { class: "gap" }),
+        menuItem("up", "上移", function () { moveBlock(-1); }, { disabled: i <= 0 }),
+        menuItem("down", "下移", function () { moveBlock(1); }, { disabled: i >= state.blocks.length - 1 }),
+        el("div", { class: "gap" }),
+        menuItem("trash", "刪除呢段", function () { removeBlock(state.blocks.indexOf(b)); }, { danger: true })
+      );
+      openMenu(btn, "right", items);
+    });
+    return btn;
+  }
   $("rows").addEventListener("click", function (e) {
-    if (e.target.closest("textarea,input,select")) return;
+    if (e.target.closest("textarea,input,select,button")) return;
     var row = e.target.closest(".row"); if (!row) return;
     var fs = row.querySelectorAll("textarea,.aw input"), f = fs[fs.length - 1];
     if (f) caretAt(f, f.value.length);
@@ -895,20 +923,10 @@ var CLOUD = {"api":"/api"};
     btn.setAttribute("aria-expanded", "true");
   }
   $("more").onclick = function () {
-    var i = curIndex(), b = state.blocks[i];
-    var items = [];
-    ["line", "cue", "award"].forEach(function (t) {
-      if (b && b.type !== t) items.push(menuItem(t, "呢段轉做" + TYPE[t], function () { setType(t); }));
-    });
-    items.push(
-      menuItem("up", "上移呢段", function () { moveBlock(-1); }, { disabled: i <= 0 }),
-      menuItem("down", "下移呢段", function () { moveBlock(1); }, { disabled: i < 0 || i >= state.blocks.length - 1 }),
-      menuItem("trash", "刪除呢段", function () { removeBlock(curIndex()); }, { danger: true, disabled: i < 0 }),
-      el("div", { class: "gap" }),
+    openMenu($("more"), "right", [
       menuItem("copy", "複製成新講稿", function () { duplicate(entry, true); }),
       menuItem("trash", "刪除成份講稿", deleteScript, { danger: true })
-    );
-    openMenu($("more"), "right", items);
+    ]);
   };
   document.addEventListener("pointerdown", function (e) { if (menuEl && !menuEl.contains(e.target) && !(menuBtn && menuBtn.contains(e.target))) closeMenu(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
@@ -1179,7 +1197,7 @@ var CLOUD = {"api":"/api"};
     if (!showProblems) return;
     var probs = ScriptGen.describe(state).problems;
     if (!probs.length) { showProblems = false; return; }
-    probs.forEach(function (p) { var n = problemNode(p.target); if (n) n.classList.add("needs"); });
+    probs.forEach(function (p) { var n = p.target !== "blocks" && problemNode(p.target); if (n) n.classList.add("needs"); });
   }
   function goToProblem() {
     var p = ScriptGen.describe(state).problems[0]; if (!p) return;
