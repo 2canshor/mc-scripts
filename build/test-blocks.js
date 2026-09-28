@@ -16,15 +16,15 @@ for (const [w,h,scheme] of [[820,1180,'light'],[1440,900,'dark']]){
  await p.focus('.row.line .who select');await p.evaluate(()=>{const s=document.querySelector('.row.line .who select');s.value=s.options[1].value;s.dispatchEvent(new Event('change',{bubbles:true}))});await p.waitForTimeout(300);
  ok((await p.evaluate(()=>document.querySelector('.row.line .who').firstChild.textContent))==='乙同學：','switching the speaker updates the label');
  await p.click('#more');
- ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["複製成新講稿","刪除成份講稿"]','toolbar ⋯ has whole-script actions only');
+ ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["複製","刪除"]','toolbar ⋯ has whole-script actions only');
  await p.keyboard.press('Escape');
  await p.click('.row.cue textarea');await p.click('.row.cue .bmore');
- ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["司儀對白","流程提示","得獎名單","刪除此段"]','paragraph menu: type choice and delete');
+ ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["司儀對白","流程提示","得獎名單","刪除"]','paragraph menu: type choice and delete');
  ok(await p.$eval('.menu [aria-checked="true"]',e=>e.textContent)==='流程提示','current type is ticked');
  await p.screenshot({path:`${out}/blocks-${w}.png`});
  await p.click('.menu >> text=司儀對白');
  ok(await p.$$eval('#rows .row',x=>x.map(r=>r.className.split(' ')[1]).join())==='line,line','type change from the paragraph menu');
- await p.hover('.row.line');await p.click('.row.line .bmore');await p.click('.menu >> text=刪除此段');
+ await p.hover('.row.line');await p.click('.row.line .bmore');await p.click('.menu >> text=刪除');
  ok((await p.$$('#rows .row')).length===1,'delete from the paragraph ⋯');
 }
 await b.close();})();

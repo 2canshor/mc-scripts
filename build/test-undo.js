@@ -1,0 +1,21 @@
+// Undo / redo group beside the back button.
+const {chromium}=require('/opt/node22/lib/node_modules/playwright');
+const ok=(c,m)=>{console.log(c?'ok':'FAIL',m);if(!c)process.exitCode=1};
+(async()=>{const b=await chromium.launch();const out=process.argv[2]||require('os').tmpdir();
+const p=await b.newPage({viewport:{width:820,height:600},colorScheme:'dark'});
+await p.goto('file://'+__dirname+'/MC Scripts.html');await p.click('#insert');
+ok(await p.$eval('#undo',x=>x.disabled)&&await p.$eval('#redo',x=>x.disabled),'both off on a fresh script');
+await p.click('#event');await p.keyboard.type('早會');await p.waitForTimeout(900);
+const f=await p.$$('#mcline input');await f[1].click();await p.keyboard.type('甲同學');await p.waitForTimeout(900);
+await p.click('#insert');await p.click('.menu >> text=司儀對白');await p.keyboard.type('各位早晨');await p.waitForTimeout(900);
+const rows=()=>p.$$eval('#rows .row',x=>x.length);
+ok(!(await p.$eval('#undo',x=>x.disabled)),'undo on after edits');
+await p.click('#undo');ok((await rows())===1&&(await p.$eval('#rows textarea',t=>t.value))==='','undo removes the typed line text');
+await p.click('#undo');ok((await rows())===0,'undo removes the added paragraph');
+await p.click('#undo');ok((await p.$eval('#mcline input:not(.upper)',i=>i.value))==='','undo clears the MC name');
+await p.click('#redo');await p.click('#redo');ok((await rows())===1,'redo brings the paragraph back');
+await p.click('#redo');ok((await p.$eval('#rows textarea',t=>t.value))==='各位早晨'&&await p.$eval('#redo',x=>x.disabled),'redo restores the text; redo then off');
+const r=await p.evaluate(()=>{const a=document.getElementById('back').getBoundingClientRect(),g=document.querySelector('.lead .group').getBoundingClientRect(),e=document.querySelector('.edge .group').getBoundingClientRect();return [Math.round(a.height),Math.round(g.height),Math.round(e.height),Math.round(a.top),Math.round(g.top),Math.round(e.top)]});
+ok(r[0]===r[1]&&r[1]===r[2]&&r[3]===r[4]&&r[4]===r[5],'back, undo group and right group share height and top: '+r.join(','));
+await p.screenshot({path:out+'/undo.png',clip:{x:0,y:0,width:820,height:120}});
+await b.close();})();

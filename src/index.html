@@ -70,9 +70,9 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 @media (max-width:640px){.t-label{display:none}}
 
 /* Back to the script list: leading edge */
-.lead{position:fixed;top:0;left:0;z-index:20;padding:calc(16px + env(safe-area-inset-top,0px)) 0 0 calc(var(--side) + env(safe-area-inset-left,0px));pointer-events:none}
-.lead .tb{width:48px;height:48px;padding:0}
-.lead svg.i{width:22px;height:22px}
+.lead{position:fixed;top:0;left:0;z-index:20;display:flex;align-items:center;gap:8px;padding:calc(16px + env(safe-area-inset-top,0px)) 0 0 calc(var(--side) + env(safe-area-inset-left,0px));pointer-events:none}
+.lead #back{width:52px;height:52px;padding:0}
+.lead #back svg.i{width:22px;height:22px}
 
 /* Views: the script list, or one script */
 body[data-view="list"] .doc,body[data-view="list"] .edge,body[data-view="list"] .lead{display:none}
@@ -209,6 +209,10 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 
 <div class="lead">
   <button type="button" class="tb glass" id="back" aria-label="講稿列表" title="講稿列表"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg></button>
+  <div class="glass group" role="group" aria-label="還原及重做">
+    <button type="button" class="tb" id="undo" aria-label="還原" title="還原" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo"/></svg></button>
+    <button type="button" class="tb" id="redo" aria-label="重做" title="重做" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-redo"/></svg></button>
+  </div>
 </div>
 
 <div class="edge">
@@ -262,6 +266,8 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.34-4.34"/></symbol>
   <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
   <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 2v13"/><path d="m16 6-4-4-4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/></symbol>
   <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
@@ -508,6 +514,7 @@ var CLOUD = {"api":"/api"};
     if (entry) {
       var json = JSON.stringify(state);
       if (json !== savedJson[entry.id]) {
+        recordHist(savedJson[entry.id]);
         savedJson[entry.id] = json;
         entry.state = state; entry.updated = Date.now(); entry.dirty = true; entry.edit = (entry.edit || 0) + 1;
         schedulePush();
@@ -558,14 +565,42 @@ var CLOUD = {"api":"/api"};
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { document.querySelectorAll(".fld").forEach(fit); });
 
-  /* Undo */
-  var undoSnap = null;
-  function snapshot() { undoSnap = JSON.stringify({ state: state, current: current }); }
-  function undo() {
-    if (!undoSnap || !entry) return;
-    var s = JSON.parse(undoSnap); undoSnap = null; state = s.state; current = s.current; entry.state = state;
-    renderAll(); save(); toast("已復原");
+  /* Undo and redo for the whole script. Typing within a short pause counts as one step;
+     changing a paragraph's type or deleting it is always a step of its own. */
+  var hist = { past: [], future: [], open: false, applying: false, timer: null };
+  function resetHist() { clearTimeout(hist.timer); hist = { past: [], future: [], open: false, applying: false, timer: null }; updateHist(); }
+  function recordHist(before) {
+    if (hist.applying || before == null) return;
+    if (!hist.open) { hist.past.push(before); if (hist.past.length > 200) hist.past.shift(); hist.future = []; hist.open = true; }
+    clearTimeout(hist.timer); hist.timer = setTimeout(histBreak, 800);
+    updateHist();
   }
+  function histBreak() { clearTimeout(hist.timer); hist.open = false; }
+  function applyHist(json) {
+    hist.applying = true;
+    state = JSON.parse(json); entry.state = state;
+    if (current && !state.blocks.some(function (b) { return b.id === current; })) current = null;
+    renderAll(); save();
+    hist.applying = false; updateHist();
+  }
+  function undo() {
+    if (!entry || !hist.past.length) return;
+    histBreak(); hist.future.push(JSON.stringify(state)); applyHist(hist.past.pop());
+  }
+  function redo() {
+    if (!entry || !hist.future.length) return;
+    histBreak(); hist.past.push(JSON.stringify(state)); applyHist(hist.future.pop());
+  }
+  function updateHist() { $("undo").disabled = !hist.past.length; $("redo").disabled = !hist.future.length; }
+  $("undo").onclick = undo; $("redo").onclick = redo;
+  // ⌘Z / ⇧⌘Z outside a text field (inside one, the field's own undo applies).
+  document.addEventListener("keydown", function (e) {
+    if (!(e.metaKey || e.ctrlKey) || document.body.getAttribute("data-view") !== "doc") return;
+    if (document.activeElement && document.activeElement.matches("input,textarea")) return;
+    var k = e.key.toLowerCase();
+    if (k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+    else if (k === "y") { e.preventDefault(); redo(); }
+  });
 
   /* Title */
   oneLine($("event"), function (v) { state.event = v; applyLanguage(ScriptGen.isEnglish(state)); changed(); });
@@ -782,7 +817,7 @@ var CLOUD = {"api":"/api"};
       ["line", "cue", "award"].forEach(function (t) {
         items.push(menuItem(t, TYPE[t], function () { if (b.type !== t) setType(t); }, { checked: b.type === t, disabled: t === "line" && !ScriptGen.named(state).length }));
       });
-      items.push(el("div", { class: "gap" }), menuItem("trash", "刪除此段", function () { removeBlock(state.blocks.indexOf(b)); }, { danger: true }));
+      items.push(el("div", { class: "gap" }), menuItem("trash", "刪除", function () { removeBlock(state.blocks.indexOf(b)); }, { danger: true }));
       openMenu(btn, "right", items);
     });
     return btn;
@@ -868,17 +903,17 @@ var CLOUD = {"api":"/api"};
   function setType(t) {
     var i = curIndex(); if (i < 0) return;
     var b = state.blocks[i]; if (b.type === t) return;
-    snapshot();
+    histBreak();
     if (t === "award") b.text = awardRowsOf({ text: b.text }).map(function (r) { return (r.cls + " " + r.name).trim(); }).join("\n");
     b.type = t; if (t === "line" && !b.mc) b.mc = nextSpeaker(i);
-    renderRows(); save(); focusBlock(b.id, true);
+    renderRows(); save(); histBreak(); focusBlock(b.id, true);
     toast("已改為" + TYPE[t], false, { label: "復原", fn: undo });
   }
   keepFocus($("insert"));
   function insertBlock(type) {
     var i = curIndex(); var at = i < 0 ? state.blocks.length : i + 1;
     var b = { id: uid(), type: type, mc: type === "line" ? nextSpeaker(at) : "", text: "" };
-    state.blocks.splice(at, 0, b); current = b.id; renderRows(); save(); focusBlock(b.id);
+    histBreak(); state.blocks.splice(at, 0, b); current = b.id; renderRows(); save(); histBreak(); focusBlock(b.id);
   }
   $("insert").onclick = function () {
     if (!entry) { newScript(); return; }
@@ -893,10 +928,10 @@ var CLOUD = {"api":"/api"};
   };
   function removeBlock(i, fromKeyboard) {
     if (i < 0) return;
-    snapshot();
+    histBreak();
     var gone = state.blocks.splice(i, 1)[0];
     var next = state.blocks[Math.max(0, i - 1)];
-    current = next ? next.id : null; renderRows(); save();
+    current = next ? next.id : null; renderRows(); save(); histBreak();
     if (next) focusBlock(next.id, true);
     toast(fromKeyboard ? "已刪除空白段落" : "已刪除" + TYPE[gone.type], false, { label: "復原", fn: undo });
   }
@@ -924,8 +959,8 @@ var CLOUD = {"api":"/api"};
   }
   $("more").onclick = function () {
     openMenu($("more"), "right", [
-      menuItem("copy", "複製成新講稿", function () { duplicate(entry, true); }),
-      menuItem("trash", "刪除成份講稿", deleteScript, { danger: true })
+      menuItem("copy", "複製", function () { duplicate(entry, true); }),
+      menuItem("trash", "刪除", deleteScript, { danger: true })
     ]);
   };
   document.addEventListener("pointerdown", function (e) { if (menuEl && !menuEl.contains(e.target) && !(menuBtn && menuBtn.contains(e.target))) closeMenu(); });
@@ -937,7 +972,7 @@ var CLOUD = {"api":"/api"};
   function shown() { return lib.scripts.filter(function (s) { return !s.deleted; }); }
   function openScript(id) {
     entry = find(id); if (!entry || entry.deleted) return;
-    state = entry.state; current = null; showProblems = false; undoSnap = null; savedJson[entry.id] = JSON.stringify(state);
+    state = entry.state; current = null; showProblems = false; savedJson[entry.id] = JSON.stringify(state); resetHist();
     lib.open = id; persistLib(); showView("doc"); renderAll();
   }
   function newScript() {
@@ -1014,7 +1049,7 @@ var CLOUD = {"api":"/api"};
       li.classList.add("held");
       openMenu(anchor, side, [
         menuItem("share", "分享", function () { shareRow(s); }),
-        menuItem("copy", "複製成新講稿", function () { duplicate(s, true); }),
+        menuItem("copy", "複製", function () { duplicate(s, true); }),
         el("div", { class: "gap" }),
         menuItem("trash", "刪除", function () { deleteMany([s]); }, { danger: true })
       ]);
@@ -1151,7 +1186,7 @@ var CLOUD = {"api":"/api"};
     // Never swap the text while someone is typing in it; the next look picks it up.
     if (entry === s && $("doc").contains(document.activeElement)) return;
     s.state = st; s.updated = updated; s.rev = d.rev;
-    if (entry === s) { state = st; savedJson[s.id] = JSON.stringify(st); renderAll(); }
+    if (entry === s) { state = st; savedJson[s.id] = JSON.stringify(st); resetHist(); renderAll(); }
   }
   async function checkSpace() {
     try {

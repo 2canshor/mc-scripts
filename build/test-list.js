@@ -19,7 +19,7 @@ for (const [w,h,scheme] of [[1440,900,'dark'],[820,1180,'light']]){
  ok(!(await p.isVisible('.edge')),'no page-wide ⋯ on the list');
  ok((await p.$$('li .rowmore')).length===10,'every row has a ⋯');
  await p.click('li >> nth=0 >> .rowmore');
- ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["分享","複製成新講稿","刪除"]','row ⋯ offers share, copy, delete');
+ ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["分享","複製","刪除"]','row ⋯ offers share, copy, delete');
  await p.waitForTimeout(400);
  const [dl]=await Promise.all([p.waitForEvent('download',{timeout:5000}).catch(()=>null),p.click('.menu >> text=分享')]);
  ok(!!dl,'share from the list hands over the Word file');
@@ -29,9 +29,9 @@ for (const [w,h,scheme] of [[1440,900,'dark'],[820,1180,'light']]){
  const sizes=await p.evaluate(()=>[...new Set([...document.querySelectorAll('.lib *')].filter(e=>e.offsetParent&&e.childNodes.length&&[...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())&&e.tagName!=='H1').map(e=>getComputedStyle(e).fontSize))]);
  ok(sizes.length===1,'one text size below the title: '+sizes.join(','));
  // right click row
- await p.click('.item >> nth=0',{button:'right'});ok(await p.isVisible('.menu >> text=複製成新講稿'),'right-click shows row actions');
- await p.click('.menu >> text=複製成新講稿');ok(await p.evaluate(()=>document.body.dataset.view==='doc'&&document.getElementById('date-text').textContent==='YY/MM/DD'),'copy opens without a date');
- await p.click('#more');ok(await p.isVisible('.menu >> text=複製成新講稿'),'doc menu has copy');await p.keyboard.press('Escape');
+ await p.click('.item >> nth=0',{button:'right'});ok(await p.isVisible('.menu >> text=複製'),'right-click shows row actions');
+ await p.click('.menu >> text=複製');ok(await p.evaluate(()=>document.body.dataset.view==='doc'&&document.getElementById('date-text').textContent==='YY/MM/DD'),'copy opens without a date');
+ await p.click('#more');ok(await p.isVisible('.menu >> text=複製'),'doc menu has copy');await p.keyboard.press('Escape');
  await p.click('#back');ok(await p.$eval('ul[aria-label="未有日期"]',x=>x.children.length===3&&x.textContent.includes('未定')),'copy listed with the undated scripts');
  const t=await p.evaluate(()=>{const h=document.querySelector('.lib h1').getBoundingClientRect(),e=document.querySelector('.edge .glass').getBoundingClientRect();return [Math.round(h.top),Math.round(e.bottom)]});console.log(w,'h1 top vs toolbar bottom',t);
 }

@@ -33,10 +33,10 @@ await p1.ctx.setOffline(false);await p1.evaluate(()=>window.dispatchEvent(new Ev
 await p1.evaluate(()=>window.dispatchEvent(new Event('online')));await p1.waitForTimeout(1200);
 const t1=await titles(p1);
 assert(t1.includes(tag+'禮二')&&t1.includes(tag+'禮一'),'conflict keeps both versions');
-await p1.click('#liblist .item >> text='+tag+'禮一');await p1.click('#more');await p1.click('.menu >> text=刪除成份講稿');await p1.waitForTimeout(2500);
+await p1.click('#liblist .item >> text='+tag+'禮一');await p1.click('#more');await p1.click('.menu >> text=刪除');await p1.waitForTimeout(2500);
 await p2.click('#back');await p2.waitForTimeout(1000);
 const t2=await titles(p2); assert(!t2.includes(tag+'禮一')&&t2.includes(tag+'禮二'),'deletion reaches iPad 2');
 // clean up: delete the test script too, so nothing stays in the live list
-await p2.click('#liblist .item >> text='+tag+'禮二');await p2.click('#more');await p2.click('.menu >> text=刪除成份講稿');await p2.waitForTimeout(2500);
+await p2.click('#liblist .item >> text='+tag+'禮二');await p2.click('#more');await p2.click('.menu >> text=刪除');await p2.waitForTimeout(2500);
 await p2.reload();await p2.waitForTimeout(1000);assert(await view(p2)==='list'&&!(await titles(p2)).some(t=>t.includes(tag)),'passcode remembered; test scripts gone');
 console.log('errors:',JSON.stringify(errs));await b.close();})();
