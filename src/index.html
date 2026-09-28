@@ -16,6 +16,8 @@
   --canvas:#FBFAF7; /* tell-ok: CA Design System token */
   /* CA Design System: neutrals carry the page; Strong Yellow, the CA accent, is the primary action colour; Text Yellow marks what still needs filling */
   --current:#F1EFE8; --field:#EDEBE3; --fill:#6E5916; --primary:#BAA877; --on-primary:#1A1A18;
+  /* Tinted glass: the accent, slightly see-through, with light falling on its upper half */
+  --primary-glass:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.06) 55%,rgba(255,255,255,0)),color-mix(in srgb,var(--primary) 84%,transparent);
   --text:#1A1A18; /* tell-ok: CA Design System token */
   --secondary:#6B6A64; --caption:#85837C; --faint:#85837C;
   --danger:#9A3B2E; --btn:#1A1A18; --btn-text:#FBFAF7; /* tell-ok: CA Design System token */
@@ -114,12 +116,12 @@ body:not([data-view="list"]) .search,body.noscripts .search{display:none}
 /* Add button: floats at the bottom trailing corner */
 .fab{position:fixed;z-index:20;right:calc(var(--side) + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;color:var(--text)}
 .fab svg.i{width:24px;height:24px}
-.fab:not([aria-disabled="true"]){background:var(--primary);color:var(--on-primary)}
+.fab:not([aria-disabled="true"]){background:var(--primary-glass);color:var(--on-primary)}
 .fab[aria-disabled="true"]{opacity:.3}
 .fab:hover:not([aria-disabled="true"]){filter:brightness(1.08)}
 .fab:focus-visible{outline:none;filter:brightness(1.15)}
 .fab svg.i{transition:transform .2s ease}
-.fab[aria-expanded="true"],.tb[aria-expanded="true"]{background:var(--primary);color:var(--on-primary)}
+.fab[aria-expanded="true"],.tb[aria-expanded="true"]{background:var(--primary-glass);color:var(--on-primary)}
 .fab[aria-expanded="true"] svg.i{transform:rotate(45deg)}
 
 /* Menus and toast: also control layer */
