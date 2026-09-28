@@ -14,14 +14,19 @@ for (const [w,h,scheme] of [[1440,900,'dark'],[820,1180,'light']]){
  ok(!(await p.isVisible('text=畢業禮')),'held events folded away');
  await p.screenshot({path:`${out}/list-${w}.png`});
  await p.click('button.sh');ok(await p.isVisible('text=畢業禮'),'tap 已舉行 opens it');await p.click('button.sh');
- // list menu > select
- await p.click('#listmore');await p.click('.menu >> text=選取講稿');
- ok(await p.isVisible('#seldone')&&!(await p.isVisible('#insert'))&&!(await p.isVisible('#q')),'select mode swaps controls');
- await p.click('.item >> nth=1');await p.click('.item >> nth=2');
- ok((await p.textContent('#libcount'))==='已選取 2 份','count shows picked');
- await p.screenshot({path:`${out}/select-${w}.png`});
- await p.click('#seldel');ok((await p.$$('.item')).length===8,'two deleted');
- await p.click('.toast >> text=復原');ok((await p.$$eval('.section:first-child .item',x=>x.length))===3,'undo restores');
+ // each row has its own ⋯
+ ok(!(await p.isVisible('.edge')),'no page-wide ⋯ on the list');
+ ok((await p.$$('li .rowmore')).length===10,'every row has a ⋯');
+ await p.click('li >> nth=0 >> .rowmore');
+ ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["分享","複製成新講稿","刪除"]','row ⋯ offers share, copy, delete');
+ await p.waitForTimeout(400);
+ const [dl]=await Promise.all([p.waitForEvent('download',{timeout:5000}).catch(()=>null),p.click('.menu >> text=分享')]);
+ ok(!!dl,'share from the list hands over the Word file');
+ await p.click('li >> nth=1 >> .rowmore');await p.click('.menu >> text=刪除');
+ ok((await p.$$('.item')).length===9,'row ⋯ delete removes one');
+ await p.click('.toast >> text=復原');ok((await p.$$('.item')).length===10,'undo restores');
+ const lv=await p.evaluate(()=>{const f=s=>{const c=getComputedStyle(document.querySelector(s));return c.fontSize+'/'+c.fontWeight};return [f('.lib h1'),f('#libcount'),f('.sh'),f('.item .t'),f('.item .s')]});
+ console.log(w,'text levels',JSON.stringify(lv));
  // right click row
  await p.click('.item >> nth=0',{button:'right'});ok(await p.isVisible('.menu >> text=複製成新講稿'),'right-click shows row actions');
  await p.click('.menu >> text=複製成新講稿');ok(await p.evaluate(()=>document.body.dataset.view==='doc'&&document.getElementById('date-text').textContent==='YY/MM/DD'),'copy opens without a date');
