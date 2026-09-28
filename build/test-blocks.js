@@ -11,6 +11,10 @@ for (const [w,h,scheme] of [[820,1180,'light'],[1440,900,'dark']]){
  await p.click('#insert');await p.click('.menu >> text=流程提示');await p.keyboard.type('校長上台');
  const vis=await p.$$eval('.bmore',x=>x.map(e=>getComputedStyle(e).opacity));
  ok(JSON.stringify(vis)==='["0","1"]','⋯ shows only on the paragraph being edited');
+ // switch speaker while the picker still has focus (as on a real browser)
+ const g=await p.$$('#mcline input');await g[3].click();await p.keyboard.type('乙同學');await p.mouse.click(5,h-5);await p.waitForTimeout(300);
+ await p.focus('.row.line .who select');await p.evaluate(()=>{const s=document.querySelector('.row.line .who select');s.value=s.options[1].value;s.dispatchEvent(new Event('change',{bubbles:true}))});await p.waitForTimeout(300);
+ ok((await p.evaluate(()=>document.querySelector('.row.line .who').firstChild.textContent))==='乙同學：','switching the speaker updates the label');
  await p.click('#more');
  ok(JSON.stringify(await p.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["複製成新講稿","刪除成份講稿"]','toolbar ⋯ has whole-script actions only');
  await p.keyboard.press('Escape');

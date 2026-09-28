@@ -458,7 +458,8 @@ var CLOUD = %%CLOUD%%;
       var sel = el("select", { "aria-label": "選擇司儀" }, list.map(function (m) { return el("option", { value: m.id, text: speakerName(m) }); }));
       if (cur) sel.value = cur.id; else sel.selectedIndex = -1;
       sel.addEventListener("focus", function () { setCurrent(b.id); });
-      sel.addEventListener("change", function () { b.mc = sel.value; save(); refreshRows(); });
+      // Let go of the picker first: a focused picker is left alone by refreshRows, so its label would stay on the old name.
+      sel.addEventListener("change", function () { b.mc = sel.value; sel.blur(); save(); refreshRows(); });
       kids.push(sel);
     }
     return el("span", { class: "who who-slot" + (cur ? "" : " unset") + (sp && !sp.show && cur ? " faint" : "") }, kids);
