@@ -343,7 +343,8 @@ var CLOUD = %%CLOUD%%;
     measureCtx.font = cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
     var text = inp.value ? (inp.classList.contains("upper") ? inp.value.toUpperCase() : inp.value) : (inp.placeholder || "");
     var w = measureCtx.measureText(text).width;
-    inp.style.width = Math.ceil(w + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 2) + "px";
+    // The fields are content-box, so the width is the text alone; padding sits outside it.
+    inp.style.width = Math.ceil(w + 1) + "px";
   }
   function oneLine(inp, onchange) {
     inp.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); inp.blur(); } });
