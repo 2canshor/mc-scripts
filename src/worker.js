@@ -1,5 +1,7 @@
 // MC Scripts: serves the page and keeps every member's scripts in one D1 database.
-// The page sends the CA passcode with each request; only its SHA-256 is kept here.
+// The page sends the CA passcode with each request. The passcode is the Worker secret PASSCODE,
+// which the chairs change in the Cloudflare dashboard (Settings > Variables and Secrets).
+// Until that secret exists, the passcode whose SHA-256 is below still works.
 import PAGE from "./index.html";
 
 const PASSCODE_SHA256 = "ce2325ecb6f8053ce8b4a754665425454d7a6cbd0460f64c8daa1155c2116845";
@@ -28,7 +30,8 @@ export default {
       if (url.pathname !== "/") return Response.redirect(url.origin + "/" + url.hash, 302);
       return new Response(PAGE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-robots-tag": "noindex" } });
     }
-    if (await sha256(request.headers.get("x-passcode") || "") !== PASSCODE_SHA256) return json({ error: "passcode" }, 403);
+    const expected = env.PASSCODE ? await sha256(String(env.PASSCODE).trim().toLowerCase()) : PASSCODE_SHA256;
+    if (await sha256(request.headers.get("x-passcode") || "") !== expected) return json({ error: "passcode" }, 403);
     await ensureTables(env.DB);
     const path = url.pathname.slice("/api/".length);
 
