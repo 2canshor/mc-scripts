@@ -22,5 +22,9 @@ head = ('<!doctype html>\n<html lang="zh-Hant-HK">\n<head>\n<meta charset="utf-8
         '<meta name="apple-mobile-web-app-title" content="MC Scripts">\n<meta name="robots" content="noindex">\n')
 std = head + page[:i] + '\n</head>\n<body>' + page[i:] + '\n</body>\n</html>\n'
 open(os.path.join(root, 'src', 'index.html'), 'w', encoding='utf-8').write(std)
-bad = [w for w in ['陳加森', '梁穎晞', '何秉諾', '曾崧茵', '鄭校長', '黃詩琦', '王姿曼', 'Carson'] if w in std]
+names = ['陳加森', '梁穎晞', '何秉諾', '曾崧茵', '鄭校長', '黃詩琦', '王姿曼', 'Carson', '王希澄', '胡尊', '劉桓瑜', '蔡杏兒']
+bad = [w for w in names if w in std]
 print('built', len(std), 'real names found:', bad)
+# The events page (src/events.html) is edited directly; its data comes from the server, never from this repository.
+ev = open(os.path.join(root, 'src', 'events.html'), encoding='utf-8').read()
+print('events page real names found:', [w for w in names if w in ev])

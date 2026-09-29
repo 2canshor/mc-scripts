@@ -1,5 +1,5 @@
-// MC Scripts: serves the page and keeps every member's scripts in one D1 database.
-// The page sends the CA passcode with each request. The passcode is the Worker secret PASSCODE,
+// MC Scripts: serves the event tool at "/" and the script editor at "/scripts", and keeps both in one D1 database.
+// The event tool signs in with an account (see events-api.js). The script editor sends the CA passcode with each request. The passcode is the Worker secret PASSCODE,
 // which the chairs change in the Cloudflare dashboard (Settings > Variables and Secrets).
 // Until that secret exists, the passcode whose SHA-256 is below still works.
 // Word files carry their fonts (see embedFonts in build/gen.js). Noto Serif TC (SIL OFL) is a public
@@ -7,6 +7,8 @@
 // only with the passcode; the key is the Worker secret FONT_KEY. Without that secret, Word files
 // carry Noto Serif TC only.
 import PAGE from "./index.html";
+import EVENTS_PAGE from "./events.html";
+import { handleEvents, sessionOf, ensureEventTables } from "./events-api.js";
 import TEXT_MEDIUM from "./fonts/AnthropicSerif-Text-Medium.bin";
 import TEXT_MEDIUM_ITALIC from "./fonts/AnthropicSerif-Text-MediumItalic.bin";
 import DISPLAY_MEDIUM from "./fonts/AnthropicSerif-Display-Medium.bin";
@@ -47,14 +49,21 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) {
-      if (url.pathname !== "/") return Response.redirect(url.origin + "/" + url.hash, 302);
-      return new Response(PAGE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-robots-tag": "noindex" } });
+      const html = { "/": EVENTS_PAGE, "/scripts": PAGE }[url.pathname];
+      if (!html) return Response.redirect(url.origin + "/", 302);
+      return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-robots-tag": "noindex" } });
     }
+    const path = url.pathname.slice("/api/".length);
+    if (/^(login|logout|state|events\/[A-Za-z0-9_-]+|rosters|chairs|accounts|password)$/.test(path)) return handleEvents(request, env, url, path);
+    // The script editor: the CA passcode, or a signed-in account of the event tool (not the teacher's, which only reads)
     const expected = env.PASSCODE ? await sha256(String(env.PASSCODE).replace(/\s+/g, "").toLowerCase()) : PASSCODE_SHA256;
     let given = request.headers.get("x-passcode") || "";
     try { given = decodeURIComponent(given); } catch { given = ""; }
-    if (await sha256(given.replace(/\s+/g, "").toLowerCase()) !== expected) return json({ error: "passcode" }, 403);
-    const path = url.pathname.slice("/api/".length);
+    if (await sha256(given.replace(/\s+/g, "").toLowerCase()) !== expected) {
+      let acct = null;
+      if (request.headers.get("authorization")) { await ensureEventTables(env.DB); acct = await sessionOf(request, env); }
+      if (!acct || acct.type === "teacher") return json({ error: "passcode" }, 403);
+    }
 
     const font = /^fonts\/([A-Za-z-]{1,60})$/.exec(path);
     if (font && request.method === "GET") {

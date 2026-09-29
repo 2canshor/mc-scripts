@@ -3,7 +3,7 @@
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 const JSZip=require(process.env.JSZIP||'jszip');
 const ok=(c,m)=>{console.log(c?'ok':'FAIL',m);if(!c)process.exitCode=1};
-const BASE=process.argv[2]||'http://127.0.0.1:8787/', CODE=process.env.PASSCODE;
+const BASE=process.argv[2]||'http://127.0.0.1:8787/scripts', CODE=process.env.PASSCODE;
 (async()=>{const b=await chromium.launch();const p=await (await b.newContext({viewport:{width:820,height:1180},acceptDownloads:true})).newPage();
 await p.goto(BASE);await p.waitForTimeout(600);await p.fill('#code',CODE);await p.click('.join button');await p.waitForTimeout(800);
 await p.click('#insert');await p.fill('#date',new Date(Date.now()+8*36e5).toISOString().slice(0,10));await p.dispatchEvent('#date','input');

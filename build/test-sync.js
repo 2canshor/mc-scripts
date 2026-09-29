@@ -1,6 +1,6 @@
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 const assert=(c,m)=>{if(!c){console.log('FAIL',m);process.exitCode=1}else console.log('ok',m)};
-const BASE=process.argv[2]||'http://127.0.0.1:8787/'; const CODE=process.env.PASSCODE;
+const BASE=process.argv[2]||'http://127.0.0.1:8787/scripts'; const CODE=process.env.PASSCODE;
 (async()=>{
 const b=await chromium.launch(); const errs=[];
 async function dev(n,hash){const c=await b.newContext({viewport:{width:820,height:1180},hasTouch:true});

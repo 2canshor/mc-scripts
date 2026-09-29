@@ -1,0 +1,1371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Events">
+<meta name="robots" content="noindex">
+<title>Events</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&display=swap">
+<style>
+/* Tokens are the CA Design System's, as used by MC Scripts */
+:root{
+  --canvas:#FBFAF7; /* tell-ok: CA Design System token */
+  --current:#F1EFE8; --field:#EDEBE3; --fill:#6E5916; --primary:#BAA877; --on-primary:#1A1A18; /* tell-ok: CA Design System tokens */
+  /* tell-ok: MC Scripts' tinted glass for the add button */
+  --primary-glass:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.06) 55%,rgba(255,255,255,0)),color-mix(in srgb,var(--primary) 84%,transparent);
+  --text:#1A1A18; /* tell-ok: CA Design System token */
+  --secondary:#6B6A64; --caption:#85837C;
+  --present:#64C77B; /* tell-ok: CA attendance colour for Attended */
+  --danger:#9A3B2E; --btn:#1A1A18; --btn-text:#FBFAF7; /* tell-ok: CA Design System token */
+  --glass:rgba(255,255,255,.62); --glass-hi:rgba(255,255,255,.92);
+  --glass-shadow:0 1px 1px rgba(26,26,24,.04),0 8px 28px rgba(26,26,24,.12);
+  --serif:"Noto Serif TC","Songti TC","PMingLiU",Georgia,serif;
+  --side:max(24px, calc((100vw - 860px) / 2));  /* content column and floating controls share one edge at every width, as in MC Scripts */
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --canvas:#1C1C1A; /* tell-ok: CA dark tokens */ --current:#262623; --field:#2E2D2A; --fill:#BAA877;
+    --text:#F2F0EA; /* tell-ok: CA Design System token (dark) */
+    --secondary:#B0AEA5; --caption:#8E8D87;
+    --danger:#E59A8C; --btn:#F2F0EA; --btn-text:#1A1A18; /* tell-ok: CA Design System token (dark) */
+    --glass:rgba(44,44,41,.62); --glass-hi:rgba(70,70,66,.94);
+    --glass-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 28px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --canvas:#1C1C1A; /* tell-ok: CA dark tokens */ --current:#262623; --field:#2E2D2A; --fill:#BAA877;
+  --text:#F2F0EA; /* tell-ok: CA Design System token (dark) */
+  --secondary:#B0AEA5; --caption:#8E8D87;
+  --danger:#E59A8C; --btn:#F2F0EA; --btn-text:#1A1A18; /* tell-ok: CA Design System token (dark) */
+  --glass:rgba(44,44,41,.62); --glass-hi:rgba(70,70,66,.94);
+  --glass-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 28px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{background:var(--canvas)}
+body{margin:0;color:var(--text);font-family:var(--serif);font-size:17px;line-height:1.5;padding-inline:24px;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{border:0;background:transparent;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round} /* stroke-ok: line icons */
+
+/* ---------- Control layer: floats above the content on the same margins ---------- */
+.page{max-width:860px;margin:0 auto;padding-bottom:132px;min-height:calc(100dvh + 1px)}
+.ctl{position:fixed;top:calc(16px + env(safe-area-inset-top,0px) + var(--vvtop,0px));display:flex;gap:8px;z-index:5}
+.ctl.l{left:calc(var(--side) + env(safe-area-inset-left,0px))}.ctl.r{right:calc(var(--side) + env(safe-area-inset-right,0px))}
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(1.6);backdrop-filter:blur(22px) saturate(1.6);box-shadow:var(--glass-shadow);border-radius:999px}
+.grp{display:flex;align-items:center;gap:2px;padding:4px}
+.tb{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;padding:0 12px;border-radius:999px}
+/* One size for every round button: back, account */
+.tb.round{width:52px;height:52px;padding:0;flex:none}
+.tb.round svg.i{width:22px;height:22px}
+.tb.round.av{font-weight:600;font-size:19px}
+@media (hover:hover){.tb:hover{background:var(--glass-hi)}}
+.tb:focus-visible{outline:none;background:var(--glass-hi)}
+/* Scroll-edge fade: content passes under the controls instead of colliding with them (iOS 26 scroll edge effect) */
+.edge{position:fixed;left:0;right:0;top:0;z-index:4;pointer-events:none;height:calc(76px + env(safe-area-inset-top,0px) + var(--vvtop,0px));background:linear-gradient(to bottom,var(--canvas) 30%,color-mix(in srgb,var(--canvas) 0%,transparent))}
+.edge.b{top:auto;bottom:0;height:calc(84px + env(safe-area-inset-bottom,0px) + var(--kb,0px));background:linear-gradient(to top,var(--canvas) 20%,color-mix(in srgb,var(--canvas) 0%,transparent))}
+.fab{position:fixed;z-index:5;right:calc(var(--side) + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px) + var(--kb,0px));width:56px;height:56px;display:grid;place-items:center;border-radius:999px;background:var(--primary-glass);color:var(--on-primary);box-shadow:var(--glass-shadow)}
+.fab svg.i{width:24px;height:24px}
+.fab:focus-visible{outline:none;filter:brightness(1.12)}
+.search{position:fixed;z-index:5;left:calc(var(--side) + env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px) + var(--kb,0px));height:56px;display:flex;align-items:center;gap:10px;padding:0 20px;cursor:text}
+.search.withfab{right:calc(var(--side) + 56px + 12px + env(safe-area-inset-right,0px))}
+.search:not(.withfab){right:calc(var(--side) + env(safe-area-inset-right,0px))}
+.search svg.i{color:var(--secondary)}
+.search input{flex:1;min-width:0;height:100%;font-size:17px;background:transparent;border:0;outline:none;padding:0;-webkit-appearance:none;appearance:none}
+.search input::placeholder{color:var(--secondary)}
+
+/* ---------- Content layer: title 27, body 17, caption 15 ---------- */
+.titlebar{display:flex;align-items:center;gap:12px;padding-top:92px}
+.title{flex:1;min-width:0;font-size:27px;font-weight:600;line-height:1.3;margin:0;text-wrap:balance}
+.title.doct{word-break:keep-all;overflow-wrap:anywhere}
+.title .sep{color:var(--secondary);font-weight:400;margin:0 .2em}
+.title .nw{white-space:nowrap}
+.sub{margin:6px 0 0;color:var(--secondary)}
+.sub .v{color:var(--text)}
+.sep2{color:var(--secondary);margin:0 .15em}
+.sec{margin-top:40px}
+.sh{margin:0 0 8px;font-size:15px;color:var(--secondary)}
+.list{display:flex;flex-direction:column}
+.row{display:grid;column-gap:14px;align-items:baseline;width:calc(100% + 24px);min-height:44px;margin:0 -12px;padding:9px 12px;border-radius:12px;text-align:left}
+@media (hover:hover){button.row:hover{background:var(--current)}}
+button.row:focus-visible{background:var(--current);outline:none}
+.row.current{background:var(--current)}
+.row>.span{grid-column:1/-1}
+.t{color:var(--secondary);font-variant-numeric:tabular-nums;position:relative}
+.cap{display:block;font-size:15px;line-height:1.45;color:var(--secondary);margin-top:2px}
+.det{justify-self:end;text-align:right;color:var(--secondary)}
+.names .nm{display:block}
+.me{color:var(--text)}
+.unset,.unset .cap{color:var(--danger)}
+.empty{color:var(--secondary)}
+.danger{color:var(--danger)}
+.go{width:18px;height:18px;color:var(--caption);align-self:center;justify-self:end}
+.dot{position:absolute;left:-14px;top:.62em;width:8px;height:8px;border-radius:50%;background:var(--primary)}
+.para{margin:0;white-space:pre-line;line-height:1.7}
+.ic{color:var(--secondary);align-self:center}
+
+/* Column grids: one per kind of list, the same on every page */
+.tl .row{grid-template-columns:4em minmax(0,1fr) 32px}                  /* time | what | › or delete */
+.tl.ev .row{grid-template-columns:4.6em minmax(0,1fr) 32px}              /* date | event | › */
+.nav .row{grid-template-columns:minmax(0,1fr) auto 32px}                 /* name | detail | › */
+.nav.icons .row{grid-template-columns:22px minmax(0,1fr) auto 32px}      /* symbol | name | detail | › */
+.kv .row{grid-template-columns:7em minmax(0,1fr) 32px}                   /* label | value | › or delete */
+.tasks .row{grid-template-columns:8.6em minmax(0,1fr) 32px;align-items:start}  /* who | task | delete: as the Script's MC | line */
+.tasks .who{display:inline}
+.tasks .who svg.i{vertical-align:-1px;margin-left:2px}
+.roles .row{grid-template-columns:minmax(0,1fr) auto 32px;align-items:center} /* role | holder | delete */
+.people .row{grid-template-columns:32px minmax(0,1fr) 8.6em;align-items:center}  /* ○ | name | role: a fixed right column, text left-aligned */
+.people.plain .row{grid-template-columns:minmax(0,1fr) 8.6em}
+.people .row>:last-child{justify-self:start;text-align:left;color:var(--secondary)}
+.nmb .tm{margin-left:10px;font-size:15px;color:var(--secondary);font-variant-numeric:tabular-nums}
+.nmb{text-align:left;min-height:32px}
+.nmb .st{margin-left:10px}
+@media (hover:hover){.nmb:hover{text-decoration:underline;text-underline-offset:3px}}
+.pick .row{grid-template-columns:minmax(0,1fr) 32px}
+.roster .row{grid-template-columns:4.2em minmax(0,1fr) 32px;align-items:center}   /* class | name | delete */
+.gu .row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;align-items:center}
+.aw .row{grid-template-columns:4.2em minmax(0,1fr) auto;align-items:center}
+.aw.edit .row{grid-template-columns:32px 4.2em minmax(0,1fr) auto 32px}   /* ○ | class | name | status | delete */
+.props .row{grid-template-columns:22px 10.4em minmax(0,1fr);align-items:baseline}   /* symbol | property | value, as Obsidian's properties */
+.props .row .ic{align-self:start;margin-top:.2em}
+.pill{white-space:nowrap}
+.props .k{color:var(--secondary);white-space:nowrap}
+.props .dt.none span{background:none;padding:0;margin:0}
+/* On a phone the value sits under its name, so pills and long values get the full width */
+@media (max-width:480px){.props .row{grid-template-columns:20px minmax(0,1fr);column-gap:12px;row-gap:4px}.props .row>:nth-child(3){grid-column:2}}
+/* Several values: one pill each, × to remove, type and Return to add (Obsidian's list property) */
+.pills{display:flex;flex-wrap:wrap;align-items:center;gap:6px 6px;min-height:1.5em}
+.pill{display:inline-flex;align-items:center;gap:2px;max-width:100%;padding:1px 4px 1px 10px;border-radius:999px;background:var(--field);line-height:1.5}
+.pill.ro{padding-right:10px}
+.pill>button:not(.px){text-align:left}
+.pill.unset>button:not(.px){color:var(--danger)}
+.px{width:26px;height:26px;margin:-3px -2px -3px 0;display:grid;place-items:center;border-radius:999px;color:var(--caption)}
+.px svg.i{width:14px;height:14px}
+@media (hover:hover){.px:hover{color:var(--text);background:var(--current)}}
+.fld.pin{flex:1;min-width:5em;width:auto}
+.addg{color:var(--caption)}
+.hist .row{grid-template-columns:4em minmax(0,1fr) 32px;align-items:start}
+.pwl .row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px;align-items:center}
+/* Deleting a thing from a list that opens it: swipe left for Delete (touch, as on iPhone); a bin on hover (mouse). Both ask first. */
+.sw{position:relative;width:calc(100% + 24px);margin:0 -12px;border-radius:12px;overflow:hidden;touch-action:pan-y}
+.sw>.row{position:relative;z-index:1;width:100%;margin:0;background:var(--canvas);transition:transform .2s ease}
+@media (hover:hover){.sw>.row:hover{background:var(--current)}}
+.sw:not(.open):not(.moving) .swdel{visibility:hidden}
+.swdel{position:absolute;z-index:0;right:0;top:0;bottom:0;width:88px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--danger);color:var(--btn-text);font-size:13px}
+.swdel svg.i{width:18px;height:18px}
+.hdel{position:absolute;z-index:2;right:44px;top:50%;transform:translateY(-50%);margin:0;visibility:hidden}
+@media (hover:hover) and (pointer:fine){.sw:hover .hdel,.hdel:focus-visible{visibility:visible}}
+@media not ((hover:hover) and (pointer:fine)){.hdel{display:none}}
+.sw.open .hdel{display:none}
+.award h3.row{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:center;margin:0 -12px 4px;padding:6px 12px;min-height:40px}
+/* Add a row: ⊕ and what it adds, at the end of its list, starting at the list's own edge */
+.row.add{display:flex;align-items:center;gap:10px;color:var(--text)}
+.row.add svg.i{width:22px;height:22px;color:var(--primary)}
+@media (hover:hover){.row.add:hover{background:var(--current)}}
+
+/* ---------- Fields ----------
+   In a title or a sentence (event date and name, a line's time and place): as MC Scripts' title, as wide as the text;
+   empty, its name in grey on a light fill.
+   In a list row (tasks, class and name, guests, teachers, roles): the cell is the field; empty, only its name in grey.
+   Remarks: always a large box. */
+.fld{font:inherit;color:inherit;background:transparent;border:0;outline:none;margin:0;padding:0;border-radius:8px;box-sizing:border-box;max-width:100%;min-width:0;vertical-align:baseline;-webkit-appearance:none;appearance:none}
+.fld::placeholder{color:var(--caption);opacity:1}
+.fld.inl{padding:0 .05em;min-width:1.5em}
+.fld.inl:placeholder-shown{background:var(--field);padding:0 .35em;margin-left:-.35em}
+.fld.inl:focus{background:var(--current)}
+.fld.cell{width:100%}
+textarea.fld{display:block;resize:none;overflow:hidden;line-height:1.5;min-height:1.5em;width:100%}
+.title .fld{font-weight:600}
+h3 .fld{font-weight:600}
+.box{display:block;width:100%;min-height:8.5em;padding:10px 14px;border-radius:14px;background:var(--field);line-height:1.7;resize:vertical;overflow:auto}
+.box:focus{background:var(--current)}
+.upper{text-transform:uppercase} /* tell-ok: class codes are capitals, e.g. 3C12 */
+.upper::placeholder{text-transform:none}
+/* A short choice: the value, a small ↕, and the system list on tap (MC Scripts' speaker picker) */
+.who{position:relative;display:inline-flex;align-items:center;gap:2px;border-radius:6px;max-width:100%}
+.who>span{min-width:0}
+.who svg.i{width:14px;height:14px;color:var(--caption)}
+.who.unset svg.i{color:var(--danger)}
+.who select{position:absolute;inset:-9px -10px;width:calc(100% + 20px);height:calc(100% + 18px);opacity:0;font-size:16px;-webkit-appearance:none;appearance:none;cursor:pointer}
+.who:focus-within{background:var(--current)}
+.nwp{white-space:nowrap}
+/* Date and time: the system picker, opened from the value itself (MC Scripts' date) */
+.dt{position:relative;display:inline-flex;align-items:center;gap:2px;border-radius:6px;font-variant-numeric:tabular-nums}
+.dt svg.i{width:14px;height:14px;color:var(--caption)}
+.dt input{position:absolute;inset:-9px -6px;width:calc(100% + 12px);height:calc(100% + 18px);opacity:0;font-size:16px;-webkit-appearance:none;appearance:none;cursor:pointer}
+.dt.none span{color:var(--caption);background:var(--field);border-radius:8px;padding:0 .35em;margin-left:-.35em}
+.dt:focus-within{background:var(--current)}
+/* Row actions: a 44px target sitting in a 32px column, never making its row taller */
+.ib{width:44px;height:44px;margin:-10px -6px;display:grid;place-items:center;border-radius:999px;color:var(--secondary);align-self:center;justify-self:end}
+@media (hover:hover){.ib:hover{background:var(--field)}}
+.ib:focus-visible{background:var(--field);outline:none}
+.rdel{visibility:hidden}
+.row.current .rdel,.rdel:focus-visible{visibility:visible}
+@media (hover:hover){.row:hover .rdel{visibility:visible}}
+.tasks .rdel{align-self:start;margin-top:-10px}
+/* Presence, one control everywhere (attendance and roll call): empty circle, green tick for there, red cross for absent */
+.ckb{justify-self:start}
+.ckb svg.i{width:24px;height:24px;color:var(--caption)}
+.ckb.on svg.i{color:var(--present)}
+.ckb.off svg.i{color:var(--danger)}
+.st{font-size:15px;color:var(--secondary);white-space:nowrap}
+.adot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.gone{color:var(--caption);text-decoration:line-through} /* stroke-ok: an absent awardee is struck out, as on the printed list */
+
+/* ---------- Documents: the MC Scripts editor layout ---------- */
+.mcline{font-weight:600;margin:10px 0 28px}
+.mcline .sep2{font-weight:400}
+.srow{display:grid;grid-template-columns:5.4em minmax(0,1fr) 32px;column-gap:12px;align-items:start;width:calc(100% + 24px);margin:0 -12px 6px;padding:4px 12px;border-radius:10px}
+.srow .sp{font-weight:600;line-height:1.7;white-space:nowrap}
+.srow .sp .who.unset{font-weight:400}
+.srow .body,.srow textarea.fld{line-height:1.7}
+.srow.cue .body,.srow.cue textarea{color:var(--secondary);font-size:15px}
+.srow .pm{visibility:hidden;margin-top:-6px;align-self:start}
+.srow.current .pm,.srow .pm:focus-visible{visibility:visible}
+@media (hover:hover){.srow:hover .pm{visibility:visible}}
+.srow.current{background:var(--current)}
+.aws{display:grid;grid-template-columns:4.2em minmax(0,1fr);line-height:1.7}
+.aws .c{font-variant-numeric:tabular-nums}
+.end{text-align:center;font-style:italic;color:var(--secondary);margin:32px 0 0}
+.award{margin-top:28px}
+.award:first-child{margin-top:0}
+.award h3{font-size:17px;font-weight:600;margin:0 0 4px;min-height:1.5em}
+
+/* ---------- Sign in and Who Are You: a gate before the app, as MC Scripts' passcode screen ---------- */
+.gate{max-width:480px;min-height:100vh;min-height:100dvh;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding-block:48px}
+.gate > svg.gate-i{width:52px;height:52px;stroke-width:1.4;color:var(--caption);margin-bottom:8px} /* stroke-ok: line icons */
+.gate h2{margin:0;font-size:27px;font-weight:600;line-height:1.3}
+.gsub{margin:0;color:var(--secondary)}
+.gate form{display:flex;flex-direction:column;gap:10px;width:100%;max-width:420px;margin-top:18px}
+.gate input{height:50px;border:0;border-radius:14px;background:var(--field);text-align:center;outline:none;-webkit-appearance:none;appearance:none;font-size:17px}
+.gate input::placeholder{color:var(--caption)}
+.gate input:focus{background:var(--current)}
+.gate button[type=submit]{height:50px;border-radius:14px;background:var(--primary);color:var(--on-primary);font-weight:600}
+.gate .err{min-height:1.5em;margin:6px 0 0;font-size:15px}
+.faces{display:flex;flex-wrap:wrap;gap:24px 12px;width:100%;margin-top:32px}
+.gate .faces{justify-content:center}
+.page .faces{margin-top:0}
+.face{width:96px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 0;border-radius:16px}
+.face .av{width:72px;height:72px;border-radius:50%;background:var(--field);display:grid;place-items:center;font-size:27px;font-weight:600}
+.face[aria-pressed="true"] .av{background:var(--btn);color:var(--btn-text)}
+@media (hover:hover){.face:hover .av{background:var(--current)}}
+.face:focus-visible .av{background:var(--current)}
+.face:focus-visible{outline:none}
+
+/* ---------- Menus, alerts and toasts: their own layer, so showing one never rebuilds the page ---------- */
+.scrim{position:fixed;inset:0;z-index:8}
+.menu{position:fixed;z-index:9;min-width:220px;max-width:calc(100vw - 32px);max-height:70vh;overflow:auto;padding:6px;border-radius:18px;background:var(--glass-hi);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);box-shadow:var(--glass-shadow);display:flex;flex-direction:column}
+.menu button{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 14px 0 12px;border-radius:12px;text-align:left;font-size:16px}
+.menu button:focus-visible{background:var(--current);outline:none}
+@media (hover:hover){.menu button:hover{background:var(--current)}}
+.menu .lbl{flex:1}
+.menu .noi,.menu svg.i{width:20px;flex:none}
+.menu .ck{visibility:hidden}
+.menu .on .ck{visibility:visible}
+.menu .gap{height:6px}
+.menu .adot{margin:0 6px}
+/* A question before deleting: in the middle of the screen over a dimmed page, as Apple's alerts; a tap outside cancels */
+.dim{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.36);display:grid;place-items:center;padding:24px}
+.alert{width:min(320px,100%);padding:22px 18px 16px;border-radius:26px;background:var(--glass-hi);-webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);box-shadow:var(--glass-shadow);text-align:center}
+.alert h2{margin:0;font-size:17px;font-weight:600;line-height:1.35}
+.alert p{margin:6px 0 0;font-size:15px;color:var(--secondary)}
+.alert .btns{display:flex;gap:10px;margin-top:18px}
+.alert .btns button{flex:1;height:48px;border-radius:999px;background:var(--field);font-weight:600}
+.alert .btns .danger{color:var(--danger)}
+.alert .btns button:focus-visible{outline:none;background:var(--current)}
+.toast{position:fixed;z-index:7;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px) + var(--kb,0px));display:flex;align-items:center;gap:6px;padding:4px 4px 4px 16px;font-size:15px;max-width:min(360px,calc(100vw - 32px))}
+.toast .msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast.plain{padding-right:16px;min-height:44px}
+.toast .tb{height:36px;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div id="layer"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-plus-c" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M12 7.5v9M7.5 12h9" stroke="#1A1A18"/></symbol><!-- stroke-ok: the plus inside the filled circle -->
+  <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-updown" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.34-4.34"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+  <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+  <symbol id="i-check-fill" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="m7.5 12.5 3 3 6-6.5" stroke="#FFFFFF"/></symbol><!-- stroke-ok: the tick inside the filled circle -->
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
+  <symbol id="i-award" viewBox="0 0 24 24"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-cue" viewBox="0 0 24 24"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></symbol>
+</svg>
+
+<script>
+const uid = () => 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const item = (arr, id) => arr.find(x => x.id === id);
+
+/* ---------- Groups and accounts ---------- */
+// Twelve small groups. Sample rosters (fictional names and classes) only for the groups used here.
+const ALL_GROUPS = ['MC', 'Backstage', 'Reception'].flatMap(m => ['A', 'B', 'C', 'D'].map(x => `${m} Group ${x}`));
+let ROSTERS = {};  // from the server: the chairs keep them (Roster page)
+const roster = g => ROSTERS[g] = ROSTERS[g] || {lead: {cls: '', name: ''}, people: []};
+const peopleNames = g => roster(g).people.map(p => p.name).filter(Boolean);
+const membersOf = g => [roster(g).lead.name, ...peopleNames(g)].filter(Boolean);
+const clsOf = (g, n) => { const r = roster(g); return r.lead.name === n ? r.lead.cls : ((r.people.find(p => p.name === n) || {}).cls || ''); };
+// One account per small group (members pick their name), one per Group Lead, one for the chairs, one for teachers
+let CHAIRS = [];  // from the server
+const ACCOUNTS = [
+  {id: 'Event Lead', name: 'Event Lead', type: 'lead'}, {id: 'Teacher', name: 'Teacher', type: 'teacher'},
+  ...ALL_GROUPS.map(g => ({id: g, name: g, type: 'group', group: g})),
+  ...ALL_GROUPS.map(g => ({id: g + ' Lead', name: g + ' Lead', type: 'gl', group: g}))
+];
+const PASSWORDS = {};  // accounts whose password was set in this visit (a tick on the Passwords page)
+const peopleOf = a => { const l = a.type === 'lead' ? CHAIRS : a.type === 'group' ? peopleNames(a.group) : null; return l && l.length ? l : null; };
+const personOf = a => a.type === 'gl' ? roster(a.group).lead.name : '';
+const OTHER = ['Off', 'Covering', 'Excluded'];  // statuses set before the day; Attended and Absent are taken at assembly
+const ATTEND_COLOUR = {Attended: '#64C77B', Off: '#91BAE4', Absent: '#F49D92', Covering: '#D2B34C', Excluded: '#EDEBE3'};  // tell-ok: List of Members attendance colours (Decision Record A2)
+const MC_ROLES = ['Host 1', 'Host 2', 'Writer', 'Pronunciation', 'Stage Cue', 'Backup MC'];
+const DOC_OF = {MC: 'script', Backstage: 'awardees', Reception: 'guests'};
+const DOC_NAME = {script: 'Script', awardees: 'Awardee List', guests: 'Guest List'};     // interface: always English
+const DOC_ZH = {script: '講稿', awardees: '得獎名單', guests: '嘉賓名單'};                 // document titles in a Chinese event
+const DOC_ICON = {script: 'file', awardees: 'award', guests: 'users'};
+const kindOf = g => g.split(' ')[0];
+// Default roles: the six 司儀 roles (Decision Record A2). Backstage and Reception defaults are still open (A6); every group can add its own.
+// Default roles. 司儀: Decision Record A2. 後台 and 接待: the duties in Group Lead SOP 八 (approved by the chairs, 26/09/30).
+// Any role can be removed and any group can add its own.
+const DEFAULT_ROLES = {MC: MC_ROLES, Backstage: ['Roll Call', 'Props', 'Stage Reset', 'Photo Positions', 'IG Footage'], Reception: ['Check-in', 'Seating', 'Handoff', 'Send-off']};
+const rolesFor = g => DEFAULT_ROLES[kindOf(g)].map(r => ({id: r, name: r, who: null}));
+
+const blank = (id, date, name) => ({id, date, name, start: '', end: '', venue: '', leading: [], support: [], lead: '', remarks: '', groups: [], lines: [], docs: [], log: []});
+let EVENTS = [];
+
+/* ---------- Session ---------- */
+const S = {acct: null, who: null, stack: [], q: '', menu: null, alert: null, toast: null, undo: null, focusKey: null, before: null, seen: {}};
+let toastTimer = 0, lastKey = '', navAt = 0, downEl = null;
+const A = () => ACCOUNTS.find(a => a.id === S.acct);
+const cur = () => S.stack[S.stack.length - 1];
+const E = () => EVENTS.find(e => e.id === (cur() && cur().ev)) || EVENTS[0];
+const me = () => { const a = A(); return a.type === 'gl' ? personOf(a) : S.who; };
+const touch = matchMedia('(pointer: coarse)').matches;
+
+/* ---------- Permissions: only what the account is responsible for, and only while its group is on duty ---------- */
+const onDuty = (ev, g) => ev.groups.some(x => x.name === g);
+const myDocType = ev => { const a = A(); return (a.type === 'group' || a.type === 'gl') && onDuty(ev, a.group) ? DOC_OF[kindOf(a.group)] : null; };
+const actingOf = ev => { const a = A(), g = a.type === 'group' && S.who && group(ev, a.group); return g && g.acting === S.who ? a.group : null; };
+const glOf = ev => { const a = A(); return a.type === 'gl' && onDuty(ev, a.group) ? a.group : actingOf(ev); };  // a Group Lead on duty, or the Acting Group Lead
+const can = {
+  event: () => A().type === 'lead',
+  roles: g => A().type === 'lead' || glOf(E()) === g,
+  doc: (ev, d) => A().type === 'lead' || myDocType(ev) === d.type,
+  attendance: g => A().type === 'lead' || glOf(E()) === g,
+  // Two-level allocation (A1): the Event Lead gives work to groups; a Group Lead gives it to the group's roles and members
+  addTask: ev => A().type === 'lead' || !!glOf(ev),
+  task: (ev, t) => A().type === 'lead' || (!!glOf(ev) && !!t.to && /^[rp]:/.test(t.to) && t.to.split(':')[1] === glOf(ev)),
+  export: () => A().type === 'lead'
+};
+
+/* ---------- Derived data ---------- */
+const group = (ev, n) => ev.groups.find(g => g.name === n);
+const sortGroups = gs => [...gs].sort((a, b) => ALL_GROUPS.indexOf(a.name) - ALL_GROUPS.indexOf(b.name));
+const doc = (ev, id) => ev.docs.find(d => d.id === id);
+const zh = x => /[㐀-鿿]/.test(x || '');
+const W = (ev, z, e) => zh(ev.name) ? z : e;  // only document titles and document content follow the event's language
+const docLabel = d => (d.q ? d.q + ' ' : '') + DOC_NAME[d.type];                       // interface
+const docTitle = (ev, d) => zh(ev.name) ? (d.q || '') + DOC_ZH[d.type] : docLabel(d);   // the document's own title
+const sorted = ev => ev.lines.map((l, i) => [l, i]).sort((a, b) => a[0].time.localeCompare(b[0].time) || a[1] - b[1]).map(x => x[0]);
+const endOf = (ev, l) => sorted(ev).map(x => x.time).filter(t => t > l.time).sort()[0] || '';
+const role = (g, id) => g && g.roles.find(r => r.id === id);
+const hostsOf = g => ['Host 1', 'Host 2'].map(r => (role(g, r) || {}).who).filter(Boolean);
+const taskAt = (ev, id) => { for (const l of ev.lines) { const t = item(l.tasks, id); if (t) return [l, t]; } return [null, null]; };
+// Who a task is for: everyone, one group, one role, both Hosts, or one member. One owner per task (Decision Record §2).
+function includes(ev, t, n) {
+  if (t === 'all') return ev.groups.some(g => g.lead === n || membersOf(g.name).includes(n));
+  if (!t) return false;
+  const [k, gn, r] = t.split(':'); const g = group(ev, gn); if (!g) return false;
+  if (k === 'g') return g.lead === n || membersOf(gn).includes(n);
+  if (k === 'p') return r === n;
+  return r === 'Hosts' ? hostsOf(g).includes(n) : (role(g, r) || {}).who === n;
+}
+function resolve(ev, t) {
+  if (t === 'all') return [{txt: 'All'}];
+  if (!t) return [{txt: 'Unassigned', open: true}];
+  const [k, gn, r] = t.split(':'); const g = group(ev, gn);
+  if (!g) return [{txt: tlabel(ev, t), open: true}];  // its group is no longer on duty
+  if (k === 'g') return [{txt: gn}];
+  if (k === 'p') return [{txt: r, name: r}];
+  const ns = r === 'Hosts' ? hostsOf(g) : [(role(g, r) || {}).who].filter(Boolean);
+  return ns.length ? ns.map(n => ({txt: n, name: n})) : [{txt: tlabel(ev, t), open: true}];
+}
+function tlabel(ev, t) {
+  if (!t) return 'Unassigned'; if (t === 'all') return 'All';
+  const [k, gn, r] = t.split(':');
+  if (k === 'g') return gn; if (k === 'p' || r === 'Hosts') return r;
+  return (role(group(ev, gn), r) || {}).name || 'Removed role';
+}
+const openCount = g => g.roles.filter(r => !r.who).length;
+const snap = ev => JSON.parse(JSON.stringify({...ev, log: []}));
+const now = () => new Date().toTimeString().slice(0, 5);
+function logChange(ev, what, before) { ev.log.unshift({at: now(), ts: Date.now(), who: me() || A().name, acct: A().name, what, snap: before}); persistSoon(); }
+const toMin = t => +t.slice(0, 2) * 60 + +t.slice(3);
+const fromMin = m => String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+
+/* ---------- Components: one per kind of information; every page calls these and builds no control of its own ----------
+   inline field   text in a title or sentence: as wide as its text; empty, its name in grey on a light fill (MC Scripts' title)
+   cell field     text in a list row: the cell is the field; empty, its name in grey
+   remarks        a large box, on every page that has Remarks
+   choice         the value, a small ↕, the system list (MC Scripts' speaker picker)
+   date, time     the value, a small ↕, the system picker; empty, as an inline field
+   add row        ⊕ and what it adds, at the end of its list; ＋ at the bottom corner only makes something with a page of its own
+   presence       circle before the name: tap for there, again for absent, again to clear (attendance and roll call alike)
+   delete row     a bin on the row being edited, with Undo; deleting a whole thing asks in an alert in the middle of the screen
+   menu           symbol first, then words; only for two or more actions */
+const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const head = (title, sub, trail = '') => `<div class="titlebar"><h1 class="title">${title}</h1>${trail}</div>${sub ? `<p class="sub">${sub}</p>` : ''}`;
+const bar = (...xs) => xs.filter(Boolean).join('<span class="sep2">｜</span>');
+const evSub = ev => bar(esc(ev.date), esc(ev.name));
+const listSec = (cls, rows, sh) => `<section class="sec">${sh ? `<p class="sh">${sh}</p>` : ''}<div class="list ${cls}">${rows}</div></section>`;
+const emptyRow = txt => `<div class="row"><span class="span empty">${txt}</span></div>`;
+const fld = (k, v, ph, cls, label) => `<input class="fld ${cls}" data-k="${k}" value="${esc(v)}" placeholder="${esc(ph || ' ')}" aria-label="${esc(label || ph)}" autocomplete="off" enterkeyhint="next">`;
+const inlineFld = (k, v, ph, label) => fld(k, v, ph, 'inl', label);
+const cellFld = (k, v, ph, cls = '', label) => fld(k, v, ph, 'cell ' + cls, label);
+const cellArea = (k, v, ph, label) => `<textarea class="fld cell" data-k="${k}" rows="1" placeholder="${esc(ph)}" aria-label="${esc(label || ph)}" enterkeyhint="next">${esc(v)}</textarea>`;
+const remarks = (k, v, edit) => `<section class="sec"><p class="sh">Remarks</p>${edit ? `<textarea class="fld box" data-k="${k}" rows="4" aria-label="Remarks">${esc(v)}</textarea>` : `<p class="para">${esc(v)}</p>`}</section>`;
+const optHtml = (o, val) => `<option value="${esc(o[0])}"${o[0] === val ? ' selected' : ''}${o[2] ? ' disabled' : ''}>${esc(o[1])}</option>`;
+const picker = (k, val, shown, opts, unsetText, label, quiet) => `<label class="who${val ? '' : quiet ? ' empty' : ' unset'}"><span>${esc(val ? shown : unsetText)}</span>${ic('updown')}<select data-k="${k}" aria-label="${esc(label || unsetText)}">${val ? '' : '<option value="" selected disabled></option>'}${opts.map(o => o.group ? `<optgroup label="${esc(o.group)}">${o.items.map(x => optHtml(x, val)).join('')}</optgroup>` : optHtml(o, val)).join('')}</select></label>`;
+const timeCtl = (k, v, label) => `<label class="dt${v ? '' : ' none'}"><span>${esc(v || label)}</span><input type="time" step="300" data-k="${k}" value="${esc(v)}" aria-label="${esc(label)}"></label>`;
+const toIso = d => /^\d\d\/\d\d\/\d\d$/.test(d) ? '20' + d.replace(/\//g, '-') : '';
+const fromIso = s => s ? s.slice(2).replace(/-/g, '/') : '';
+const dateCtl = (k, v) => `<label class="dt${v ? '' : ' none'}"><span>${esc(v || 'Date')}</span><input type="date" data-k="${k}" value="${toIso(v)}" aria-label="Date"></label>`;
+const ibtn = (icon, act, label, cls = '') => `<button class="ib ${cls}" data-act="${act}" type="button" aria-label="${esc(label)}">${ic(icon)}</button>`;
+const rdel = (act, label) => ibtn('trash', act, label, 'rdel');
+const swRow = (rowHtml, act, label) => act ? `<div class="sw">${rowHtml}<button class="ib hdel" data-act="${act}" type="button" aria-label="${esc(label)}">${ic('trash')}</button><button class="swdel" data-act="${act}" type="button" tabindex="-1" aria-hidden="true">${ic('trash')}<span>Delete</span></button></div>` : rowHtml;
+const addRow = (act, label) => `<button class="row add" data-act="${act}" type="button">${ic('plus-c')}<span>${label}</span></button>`;
+const presence = (act, on, name) => `<button class="ib ckb${on ? ' on' : ''}" data-act="${act}" type="button" aria-pressed="${on}" aria-label="${esc(name)} is here">${ic(on ? 'check-fill' : 'circle')}</button>`;
+// Roll call: once anyone on the list is ticked, everyone not ticked counts as absent (the chairs: not ticked = absent)
+const called = d => d.awards.some(aw => aw.rows.some(r => r.here === 'Present'));
+const absent = (d, r) => called(d) && r.here !== 'Present';
+// Several values as pills (Obsidian's list property). key names the list; values are strings.
+const pills = (key, values, ph, edit) => `<span class="pills">${values.map((v, i) => `<span class="pill${edit ? '' : ' ro'}"><span>${esc(v)}</span>${edit ? `<button class="px" data-act="unpill:${key}:${i}" type="button" aria-label="Remove ${esc(v)}">${ic('x')}</button>` : ''}</span>`).join('')}${edit ? `<input class="fld cell pin" data-pill="${key}" placeholder="${esc(ph)}" aria-label="Add ${esc(ph)}" autocomplete="off" enterkeyhint="done">` : ''}</span>`;
+const chev = ic('chev-r', 'go');
+const namesHtml = (ev, t) => resolve(ev, t).map(x => `<span class="nm${x.open ? ' unset' : ''}${x.name && x.name === me() ? ' me' : ''}">${esc(x.txt)}</span>`).join('');
+const faces = (names, act) => `<div class="faces">${names.map(n => `<button class="face" data-act="${act}:${esc(n)}" type="button" aria-pressed="${n === S.who}"><span class="av">${esc([...n][0] || '')}</span><span>${esc(n)}</span></button>`).join('')}</div>`;
+
+/* ---------- Pages: one job, one kind of thing each ---------- */
+function pSignIn() {
+  return {page: 'signin', body: `<div class="gate">${ic('key', 'gate-i')}<h2>Sign In</h2>
+    <form id="signin"><input id="acct" aria-label="Account" placeholder="Account" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false">
+    <input id="pw" type="password" aria-label="Password" placeholder="Password" autocomplete="current-password">
+    <button type="submit">Sign In</button></form><p class="err danger" role="alert"></p></div>`};
+}
+function pLoading() { return {page: 'loading', body: `<div class="gate">${ic('clock', 'gate-i')}<h2>Loading</h2><p class="gsub">${SYNC.offline ? 'No connection yet' : ''}</p></div>`}; }
+function pWho() {
+  const a = A();
+  return {page: 'who', body: `<div class="gate"><h2>Who Are You?</h2><p class="gsub">${esc(a.name)}</p>${faces(peopleOf(a), 'be')}</div>`};
+}
+function pAccount() {
+  const a = A();
+  let h = head(esc(a.name), peopleOf(a) ? '' : me() ? esc(me()) : '');
+  if (peopleOf(a)) h += `<section class="sec"><p class="sh">Switch Person</p>${faces(peopleOf(a), 'be')}</section>`;
+  if (a.type === 'lead') h += listSec('nav icons', `<button class="row" data-act="roster">${ic('users', 'ic')}<span>Roster</span><span></span>${chev}</button><button class="row" data-act="passwords">${ic('key', 'ic')}<span>Passwords</span><span></span>${chev}</button>`);
+  h += listSec('nav icons', `<button class="row danger" data-act="signout">${ic('logout')}<span>Sign Out</span><span></span><span></span></button>`);
+  return {page: 'account', back: true, body: h};
+}
+
+function pEvents() {
+  const n = me(), av = `<button class="tb glass round av" data-act="account" type="button" aria-label="Account">${n ? esc([...n][0]) : ic('person')}</button>`;
+  return {page: 'events', search: true, fab: can.event() ? ['plus', 'newevent', 'New Event'] : null,
+    body: head('Events', '', av) + `<section class="sec"><div class="list tl ev" id="evlist">${evRows()}</div></section>`};
+}
+function evRows() {
+  const q = S.q.trim().toLowerCase();
+  const rows = EVENTS.filter(e => !q || (e.date + ' ' + e.name).toLowerCase().includes(q));
+  return rows.length ? rows.map(e => swRow(`<button class="row" data-act="open:${e.id}"><span class="t">${esc(e.date) || '<span class="empty">No date</span>'}</span><span>${esc(e.name) || '<span class="empty">New Event</span>'}</span>${chev}</button>`, can.event() ? 'askev:' + e.id : '', 'Delete Event')).join('') : emptyRow('No results');
+}
+
+// A person's tasks: time | task, place below. Tasks given to this person alone can be written here by their Group Lead or the Event Lead.
+function taskRows(ev, name, dots) {
+  const seen = dots && S.seen[name] && S.seen[name][ev.id], rows = [];
+  sorted(ev).forEach(l => l.tasks.forEach(t => { if (includes(ev, t.to, name)) rows.push([l, t]); }));
+  const lineOpts = sorted(ev).map(l => [l.id, `${l.time} ${l.title}`]);
+  const out = rows.map(([l, t]) => {
+    if (t.to && t.to.startsWith('p:') && can.task(ev, t)) return `<div class="row" data-row="task:${t.id}"><span class="t">${picker('tl:' + t.id, l.id, l.time, lineOpts, 'Time', 'When')}</span><span>${cellArea('t:' + t.id, t.text, 'Task')}<span class="cap">${esc(l.place)}</span></span>${rdel('rm:task:' + t.id, 'Delete Task')}</div>`;
+    return `<button class="row" data-act="line:${l.id}"><span class="t">${seen && l.v > (seen[l.id] ?? -1) ? '<span class="dot" aria-label="Changed"></span>' : ''}${l.time}</span><span>${esc(t.text)}<span class="cap">${esc(l.place)}</span></span>${chev}</button>`;
+  }).join('');
+  return out || emptyRow('No tasks yet');
+}
+function roleText(ev, n) {
+  const g = ev.groups.find(x => x.lead === n || membersOf(x.name).includes(n)); if (!g) return '';
+  if (g.lead === n) return esc(g.name) + ' Lead';
+  const rs = g.roles.filter(r => r.who === n).map(r => r.name);
+  return rs.length ? esc(rs.join(', ')) : g.roles.length ? '<span class="unset">No role yet</span>' : esc(g.name);
+}
+function pMyTasks(ev) {
+  return {page: 'mytasks', back: true, right: [['info', 'details', 'Event Details']],
+    body: head('My Tasks', bar(evSub(ev), roleText(ev, me()))) + listSec('tl', taskRows(ev, me(), true))};
+}
+function pPerson(ev, name) {
+  const g = ev.groups.find(x => x.lead === name || membersOf(x.name).includes(name));
+  const add = g && ev.lines.length && (A().type === 'lead' || glOf(ev) === g.name) ? addRow(`addptask:${g.name}:${esc(name)}`, 'Add Task') : '';
+  let props = '';
+  if (g && g.lead !== name && can.roles(g.name)) { const mine = g.roles.find(r => r.who === name);
+    props += `<div class="row">${ic('flag', 'ic')}<span class="k">Role</span><span>${picker(`pr:${esc(name)}`, mine ? mine.id : '', mine ? mine.name : '', [['', 'No role'], ...g.roles.map(r => [r.id, r.name + (r.who && r.who !== name ? ` (${r.who})` : '')])], 'No role', 'Role', true)}</span></div>`; }
+  return {page: 'person', back: true, body: head(esc(name), bar(evSub(ev), roleText(ev, name))) + (props ? listSec('props', props) : '') + listSec('tl', taskRows(ev, name, false) + add, 'Tasks')};
+}
+
+// A group on duty: its roles as pills (unfilled ones in red), then one list of members:
+// ○ attendance | name (opens their tasks) | role ↕. No other buttons on a row.
+function pGroup(ev, name, first) {
+  const g = group(ev, name);
+  if (!g) return {page: 'group', back: true, body: head(esc(name), 'Not on duty for this event')};
+  const edit = can.roles(g.name), att = can.attendance(g.name);
+  const at = att ? (((ev.attendance = ev.attendance || {})[g.name] = ev.attendance[g.name] || {})) : {};
+  let body = head(esc(g.name), evSub(ev));
+  const pillsHtml = g.roles.map(r => `<span class="pill${edit ? '' : ' ro'}${r.who ? '' : ' unset'}"><span>${esc(r.name)}</span>${edit ? `<button class="px" data-act="unrole:${esc(r.id)}" type="button" aria-label="Remove ${esc(r.name)}">${ic('x')}</button>` : ''}</span>`).join('');
+  body += `<section class="sec"><p class="sh">Roles</p><span class="pills">${pillsHtml}${edit ? `<input class="fld cell pin" data-pill="role" placeholder="Role" aria-label="Add a role" autocomplete="off" enterkeyhint="done">` : ''}${!pillsHtml && !edit ? '<span class="empty">No roles yet</span>' : ''}</span></section>`;
+  const members = [g.lead, ...membersOf(g.name).filter(n => n !== g.lead)].filter(Boolean);
+  const rows = members.map(n => {
+    const s = at[n] || '', mine = g.roles.find(r => r.who === n);
+    const shown = n === g.lead ? 'Group Lead' : mine ? mine.name : '';
+    const opts = [['', 'No role'], ...g.roles.map(r => [r.id, r.name + (r.who && r.who !== n ? ` (${r.who})` : '')])];
+    const roleCtl = n === g.lead ? `<span>Group Lead</span>` : edit ? `<span class="nwp">${picker(`pr:${esc(n)}`, mine ? mine.id : '', shown, opts, 'No role', 'Role of ' + n, true)}</span>` : `<span>${esc(shown)}</span>`;
+    // Attendance: the tick is the record; the system keeps the time it was ticked (the chairs: no other status to choose)
+    const t = s === 'Attended' && ((ev.attTime || {})[g.name] || {})[n];
+    const st = t ? `<span class="tm">${t}</span>` : '';
+    return `<div class="row">${att ? presence(`here:${esc(g.name)}:${esc(n)}`, s === 'Attended', n) : ''}<button class="nmb" data-act="person:${esc(n)}" type="button">${esc(n)}${st}</button>${roleCtl}</div>`;
+  }).join('');
+  body += listSec(att ? 'people' : 'people plain', rows || emptyRow('No members yet'), 'Members');
+  // Acting Group Lead: leads the group on site when the Group Lead cannot (Group Lead SOP)
+  const others = membersOf(g.name).filter(n => n !== g.lead);
+  if (edit && A().type !== 'group') body += listSec('props', `<div class="row">${ic('flag', 'ic')}<span class="k">Acting Group Lead</span><span>${picker('ag', g.acting || '', g.acting || '', [['', 'None'], ...others.map(n => [n, n])], 'None', 'Acting Group Lead', true)}</span></div>`);
+  else if (g.acting) body += listSec('props', `<div class="row">${ic('flag', 'ic')}<span class="k">Acting Group Lead</span><span>${esc(g.acting)}</span></div>`);
+  return {page: 'group', back: true, right: first ? [['info', 'details', 'Event Details']] : null, body};
+}
+
+function pRundown(ev, first) {
+  const rows = sorted(ev).map(l => swRow(`<button class="row" data-act="line:${l.id}"><span class="t">${l.time}</span><span>${esc(l.title) || '<span class="empty">New Line</span>'}${l.place ? `<span class="cap">${esc(l.place)}</span>` : ''}</span>${chev}</button>`, can.event() ? 'askline:' + l.id : '', 'Delete Line')).join('');
+  return {page: 'rundown', back: true, right: first ? [['info', 'details', 'Event Details']] : null,
+    body: head('Rundown', evSub(ev)) + listSec('tl', rows || emptyRow('No lines yet')), fab: can.event() ? ['plus', 'newline', 'New Line'] : null};
+}
+function pEvent(ev) {
+  const a = A();
+  if ((a.type === 'group' || a.type === 'gl') && onDuty(ev, a.group)) return glOf(ev) ? pGroup(ev, a.group, true) : pMyTasks(ev);
+  return pDetails(ev);
+}
+
+// Who does a task: the Event Lead chooses from every group on duty; a Group Lead from its own group's roles and members
+function assignOpts(ev, t) {
+  const own = A().type === 'lead' ? null : glOf(ev), o = own ? [] : [['all', 'All']];
+  sortGroups(ev.groups).filter(g => !own || g.name === own).forEach(g => o.push({group: g.name, items: [
+    ...(own ? [] : [['g:' + g.name, g.name]]),
+    ...(role(g, 'Host 1') ? [['r:' + g.name + ':Hosts', 'Hosts']] : []),
+    ...g.roles.map(r => ['r:' + g.name + ':' + r.id, r.name || 'Role']),
+    ...membersOf(g.name).map(n => ['p:' + g.name + ':' + n, n])]}));
+  if (t.to && !JSON.stringify(o).includes(JSON.stringify(t.to))) o.push([t.to, tlabel(ev, t.to)]);
+  return o;
+}
+const assignPicker = (ev, t) => { const gone = t.to && t.to !== 'all' && !group(ev, t.to.split(':')[1]);
+  return picker('to:' + t.id, t.to, tlabel(ev, t.to), assignOpts(ev, t), 'Unassigned', 'Who does this').replace('class="who"', `class="who${gone ? ' unset' : ''}"`); };
+const taskRow = (ev, t) => can.task(ev, t)
+  ? `<div class="row" data-row="task:${t.id}"><span>${assignPicker(ev, t)}</span>${cellArea('t:' + t.id, t.text, 'Task')}${rdel('rm:task:' + t.id, 'Delete Task')}</div>`
+  : `<div class="row"><span class="names">${namesHtml(ev, t.to)}</span><span>${esc(t.text)}</span><span></span></div>`;
+function pLine(ev, id) {
+  const l = ev.lines.find(x => x.id === id);
+  if (!l) return {page: 'line', back: true, body: head('Deleted')};
+  const end = endOf(ev, l), lead = can.event();
+  let h = lead ? `<div class="titlebar"><h1 class="title">${inlineFld('l:title', l.title, 'Name')}</h1></div>` +
+    `<p class="sub">${bar(`<span class="v">${timeCtl('l:time', l.time, 'Time')}</span>${end ? '–' + end : ''}`, `<span class="v">${inlineFld('l:place', l.place, 'Place')}</span>`)}</p>`
+    : head(esc(l.title), bar(`${l.time}${end ? '–' + end : ''}`, esc(l.place)));
+  h += listSec('tasks', l.tasks.map(t => taskRow(ev, t)).join('') + (can.addTask(ev) ? addRow('addtask', 'Add Task') : '') || emptyRow('No tasks yet'), 'Tasks');
+  if (lead || l.remarks) h += remarks('l:remarks', l.remarks, lead);
+  return {page: 'line', back: true, right: lead ? [['trash', 'ask:delline', 'Delete Line']] : null, body: h};
+}
+
+// Event Details: the title as MC Scripts writes it, then one list of properties (Obsidian's properties), then every document
+function dutyPills(ev, lead) {
+  const gs = sortGroups(ev.groups).map(g => { const n = openCount(g);
+    return `<span class="pill${lead ? '' : ' ro'}${n ? ' unset' : ''}"><button data-act="group:${esc(g.name)}" type="button" aria-label="${esc(g.name)}${n ? `, ${n} ${n > 1 ? 'roles' : 'role'} to fill` : ''}">${esc(g.name)}</button>${lead ? `<button class="px" data-act="dutyask:${esc(g.name)}" type="button" aria-label="Take ${esc(g.name)} off duty">${ic('x')}</button>` : ''}</span>`; }).join('');
+  const free = ['MC', 'Backstage', 'Reception'].map(k => ({group: k, items: ALL_GROUPS.filter(g => kindOf(g) === k && !onDuty(ev, g)).map(g => [g, g])})).filter(o => o.items.length);
+  const add = lead && free.length ? `<label class="who addg"><span>Group</span>${ic('updown')}<select data-k="addgroup" aria-label="Add a duty group"><option value="" selected disabled></option>${free.map(o => `<optgroup label="${o.group}">${o.items.map(x => optHtml(x, '')).join('')}</optgroup>`).join('')}</select></label>` : '';
+  return `<span class="pills">${gs}${add}${!gs && !add ? '<span class="empty">None yet</span>' : ''}</span>`;
+}
+function pDetails(ev) {
+  const lead = can.event();
+  let h = lead
+    ? `<div class="titlebar"><h1 class="title">${dateCtl('d:date', ev.date)}<span class="sep">｜</span>${inlineFld('d:name', ev.name, 'Event Name')}</h1></div>`
+    : head(evSub(ev) || 'Event');
+  const prop = (icon, label, v, show) => show ? `<div class="row">${ic(icon, 'ic')}<span class="k">${label}</span><span>${v}</span></div>` : '';
+  let rows = prop('clock', 'Start', lead ? timeCtl('d:start', ev.start, 'Time') : ev.start, lead || ev.start);
+  rows += prop('clock', 'End', lead ? timeCtl('d:end', ev.end, 'Time') : ev.end, lead || ev.end);
+  rows += prop('pin', 'Venue', lead ? cellFld('d:venue', ev.venue, 'Place', '', 'Venue') : esc(ev.venue), lead || ev.venue);
+  rows += prop('person', 'Leading Teacher', pills('leading', ev.leading, 'Name', lead), lead || ev.leading.length);
+  rows += prop('users', 'Supporting Teachers', pills('support', ev.support, 'Name', lead), lead || ev.support.length);
+  rows += prop('flag', 'Event Lead', lead ? picker('d:lead', ev.lead, ev.lead, CHAIRS.map(n => [n, n]), 'None', 'Event Lead') : esc(ev.lead), lead || ev.lead);
+  rows += prop('layers', 'Duty Groups', dutyPills(ev, lead), true);
+  h += listSec('props', rows);
+  if (lead || ev.remarks) h += remarks('d:remarks', ev.remarks, lead);
+  const docs = `<button class="row" data-act="rundown">${ic('clock', 'ic')}<span>Rundown</span><span></span>${chev}</button>` +
+    [...ev.docs].sort((x, y) => Object.keys(DOC_NAME).indexOf(x.type) - Object.keys(DOC_NAME).indexOf(y.type)).map(d => swRow(`<button class="row" data-act="doc:${d.id}">${ic(DOC_ICON[d.type], 'ic')}<span>${esc(docLabel(d))}</span><span></span>${chev}</button>`, can.doc(ev, d) ? 'askdoc:' + d.id : '', 'Delete ' + DOC_NAME[d.type])).join('');
+  h += listSec('nav icons', docs, 'Documents');
+  const t = myDocType(ev);
+  return {page: 'details', back: true, right: lead ? [['history', 'history', 'History'], ['download', 'export', 'Export Attendance'], ['trash', 'ask:delevent', 'Delete Event']] : null,
+    body: h, fab: lead ? ['plus', 'adddoc-menu', 'New Document'] : t ? ['plus', 'adddoc:' + t, 'New ' + DOC_NAME[t]] : null};
+}
+
+// Documents open in the MC Scripts editor: fields for the accounts that own them, plain text for everyone else
+function docHead(ev, d, edit) {
+  const same = ev.docs.filter(x => x.type === d.type).length > 1, sep = zh(ev.name) ? '｜' : ' | ';
+  // tell-ok: the separators in "YY/MM/DD｜name｜講稿" are the MC Scripts title convention
+  const type = zh(ev.name) ? DOC_ZH[d.type] : DOC_NAME[d.type];
+  return `<div class="titlebar"><h1 class="title doct">${esc(ev.date)}⁠<span class="sep">${sep}</span><wbr>${esc(ev.name)}⁠<span class="sep">${sep}</span><wbr>` +
+    (edit && same ? `<span class="nw">${inlineFld('dq:' + d.id, d.q, W(ev, '類別', 'Qualifier'))}${zh(ev.name) ? '' : ' '}${type}</span>` : `<span class="nw">${esc(docTitle(ev, d))}</span>`) + `</h1></div>`;
+}
+function scriptBody(ev, d, edit) {
+  const mc = sortGroups(ev.groups).find(g => role(g, 'Host 1')), holder = r => mc && (role(mc, r) || {}).who;
+  const hosts = ['Host 1', 'Host 2'].filter(holder);
+  // The MC line, as in MC Scripts and the Script Template: class number and name of each MC
+  let h = `<p class="mcline">${hosts.map(r => esc(`${clsOf(mc.name, holder(r))} ${holder(r)}`.trim())).join('<span class="sep2">．</span>') || `<span class="unset">${W(ev, '未有司儀', 'No MC yet')}</span>`}</p>`;
+  h += d.blocks.map(b => {
+    const pm = edit ? ibtn('more', `pmenu:${d.id}:${b.id}`, 'Paragraph actions', 'pm') : '<span></span>';
+    if (b.type === 'cue') return `<div class="srow cue" data-row="blk:${b.id}"><span></span><span class="body">${edit ? cellArea(`s:${d.id}:${b.id}`, b.text, W(ev, '流程提示', 'Stage Direction')) : esc(b.text)}</span>${pm}</div>`;
+    if (b.type === 'award') {
+      const l = doc(ev, b.list), aw = l && item(l.awards, b.award);
+      const rows = aw ? aw.rows.filter(r => r.cls || r.name).map(r => `<span class="c${absent(l, r) ? ' gone' : ''}">${esc(r.cls)}</span><span class="${absent(l, r) ? 'gone' : ''}">${esc(r.name)}</span>`).join('') : '';
+      return `<div class="srow" data-row="blk:${b.id}"><span></span><div class="aws">${rows || `<span></span><span class="empty">${aw ? esc(aw.award) : W(ev, '得獎名單', 'Awardee List')}</span>`}</div>${pm}</div>`;
+    }
+    const n = holder(b.sp);
+    const who = edit ? picker(`sp:${d.id}:${b.id}`, n ? b.sp : '', n, hosts.map(r => [r, holder(r)]), W(ev, '選擇司儀', 'Choose MC'), W(ev, '選擇司儀', 'Choose MC')) : `<span class="${n ? '' : 'unset'}">${esc(n || W(ev, '未有司儀', 'No MC yet'))}</span>`;
+    return `<div class="srow" data-row="blk:${b.id}"><span class="sp">${who}</span><span class="body">${edit ? cellArea(`s:${d.id}:${b.id}`, b.text, W(ev, '司儀對白', 'MC Line')) : esc(b.text)}</span>${pm}</div>`;
+  }).join('') + `<p class="end">{End of Script}</p>`;
+  return h;
+}
+const awRow = (ev, d, aw, r) => `<div class="row" data-row="aw:${aw.id}:${r.id}">${presence(`call:${d.id}:${aw.id}:${r.id}`, r.here === 'Present', r.name || 'Awardee')}` +
+  `<span>${cellFld(`ac:${d.id}:${aw.id}:${r.id}`, r.cls, W(ev, '班別', 'Class'), 'upper')}</span><span>${cellFld(`an:${d.id}:${aw.id}:${r.id}`, r.name, W(ev, '得獎者姓名', 'Name'))}</span>` +
+  `<span></span>${rdel(`rm:aw:${d.id}:${aw.id}:${r.id}`, 'Delete Awardee')}</div>`;
+function awardeeBody(ev, d, edit) {
+  if (edit) return `<section class="sec awards">${d.awards.map(aw => `<div class="award" data-award="${aw.id}"><h3 class="row" data-row="awh:${aw.id}">${cellFld(`aw:${d.id}:${aw.id}`, aw.award, W(ev, '獎項', 'Award'))}${rdel(`rm:award:${d.id}:${aw.id}`, 'Delete Award')}</h3><div class="list aw edit">${aw.rows.map(r => awRow(ev, d, aw, r)).join('')}${addRow(`addawardee:${aw.id}`, 'Add Awardee')}</div></div>`).join('')}<div class="list">${addRow('addaward', 'Add Award')}</div></section>`;
+  const blocks = d.awards.filter(aw => aw.award || aw.rows.length).map(aw => `<div class="award"><h3>${esc(aw.award)}</h3><div class="list aw">${aw.rows.filter(r => r.cls || r.name).map(r =>
+    `<div class="row"><span class="t${absent(d, r) ? ' gone' : ''}">${esc(r.cls)}</span><span class="${absent(d, r) ? 'gone' : ''}">${esc(r.name)}</span><span class="st${absent(d, r) ? ' unset' : ''}">${absent(d, r) ? 'Absent' : r.here === 'Present' ? 'Present' : ''}</span></div>`).join('')}</div></div>`).join('');
+  return `<section class="sec awards">${blocks || '<p class="empty">No awards yet</p>'}</section>`;
+}
+function pDoc(ev, id) {
+  const d = doc(ev, id);
+  if (!d) return {page: 'doc', back: true, body: head('Deleted')};
+  const edit = can.doc(ev, d), right = edit ? [['trash', 'ask:deldoc', 'Delete ' + DOC_NAME[d.type]]] : null;
+  let h = docHead(ev, d, edit);
+  if (d.type === 'script') return {page: 'doc-script', back: true, right, body: h + scriptBody(ev, d, edit), fab: edit ? ['plus', 'addblock-menu', 'New Paragraph'] : null};
+  if (d.type === 'awardees') return {page: 'doc-awardees', back: true, right, body: h + awardeeBody(ev, d, edit)};
+  const rows = edit ? d.guests.map(g => `<div class="row" data-row="gu:${g.id}"><span>${cellFld(`gn:${d.id}:${g.id}`, g.name, W(ev, '姓名', 'Name'))}</span><span>${cellFld(`gr:${d.id}:${g.id}`, g.role, W(ev, '身份', 'Role'))}</span>${rdel(`rm:gu:${d.id}:${g.id}`, 'Delete Guest')}</div>`).join('') + addRow('addguest', 'Add Guest')
+    : d.guests.filter(g => g.name || g.role).map(g => `<div class="row"><span>${esc(g.name)}</span><span class="t">${esc(g.role)}</span><span></span></div>`).join('') || emptyRow('No guests yet');
+  return {page: 'doc-guests', back: true, right, body: h + listSec('gu', rows)};
+}
+
+// Roster: the chairs keep each small group's members, with class numbers, from List of Members
+function pRoster() {
+  return {page: 'roster', back: true, body: head('Roster') + listSec('nav', ALL_GROUPS.map(g => `<button class="row" data-act="rostergroup:${g}"><span>${g}</span><span class="det">${membersOf(g).length || ''}</span>${chev}</button>`).join(''))};
+}
+function pRosterGroup(g) {
+  const r = roster(g);
+  const lead = `<div class="row"><span>${cellFld(`rl:${g}:cls`, r.lead.cls, 'Class', 'upper')}</span><span>${cellFld(`rl:${g}:name`, r.lead.name, 'Name', '', 'Group Lead')}</span><span></span></div>`;
+  const people = r.people.map(p => `<div class="row" data-row="rp:${p.id}"><span>${cellFld(`rc:${g}:${p.id}`, p.cls, 'Class', 'upper')}</span><span>${cellFld(`rp:${g}:${p.id}`, p.name, 'Name')}</span>${rdel(`rm:rp:${g}:${p.id}`, 'Remove ' + p.name)}</div>`).join('');
+  return {page: 'rostergroup', back: true, body: head(esc(g), 'Roster') + listSec('roster', lead, 'Group Lead') + listSec('roster', people + addRow('addmember', 'Add Member'), 'Members')};
+}
+function pPasswords() {
+  const row = a => `<div class="row"><span>${esc(a.name)}</span><input class="fld cell" type="password" placeholder="New Password" data-pw="${esc(a.id)}" aria-label="New password for ${esc(a.name)}" autocomplete="new-password"><span class="det" data-set="${esc(a.id)}">${PASSWORDS[a.id] ? ic('check') : ''}</span></div>`;
+  const sec = (sh, list) => listSec('pwl', list.map(row).join(''), sh);
+  return {page: 'passwords', back: true, body: head('Passwords', '15 characters or more') +
+    sec('Event Lead and Teacher', ACCOUNTS.filter(a => a.type === 'lead' || a.type === 'teacher')) + sec('Small Groups', ACCOUNTS.filter(a => a.type === 'group')) + sec('Group Leads', ACCOUNTS.filter(a => a.type === 'gl'))};
+}
+function pHistory(ev) {
+  const rows = ev.log.length ? ev.log.map((e, i) => `<div class="row"><span class="t">${e.at}</span><span>${esc(e.what)}<span class="cap">${bar(esc(e.who), esc(e.acct))}</span></span>${e.snap && can.event() ? ibtn('undo', 'restore:' + i, 'Restore to before this change') : '<span></span>'}</div>`).join('') : emptyRow('No changes yet');
+  return {page: 'history', back: true, body: head('History', evSub(ev)) + listSec('hist', rows)};
+}
+
+const PAGES = {events: pEvents, account: pAccount, event: () => pEvent(E()), rundown: () => pRundown(E(), false), person: p => pPerson(E(), p.name),
+  line: p => pLine(E(), p.id), group: p => pGroup(E(), p.name, false),
+  details: () => pDetails(E()), doc: p => pDoc(E(), p.id), history: () => pHistory(E()),
+  roster: pRoster, rostergroup: p => pRosterGroup(p.name), passwords: pPasswords};
+
+/* ---------- Render: the whole page is built only when the page changes or after a finished tap; typing never rebuilds it ---------- */
+const app = document.getElementById('app'), layer = document.getElementById('layer');
+function render() {
+  let cfg, key;
+  if (!S.acct) { cfg = pSignIn(); key = 'signin'; }
+  else if (!SYNC.loaded) { cfg = pLoading(); key = 'loading'; }
+  else if (peopleOf(A()) && !S.who) { cfg = pWho(); key = 'who'; }
+  else { const p = cur(); key = p.p + (p.id || p.name || '') + (p.ev || ''); cfg = PAGES[p.p](p); }
+  const nav = key !== lastKey, keep = nav ? 0 : window.scrollY;
+  if (nav) { navAt = performance.now(); if (S.toast && S.toast.at !== key) { S.toast = null; clearTimeout(toastTimer); } }
+  lastKey = key;
+  const gate = cfg.page === 'signin' || cfg.page === 'who' || cfg.page === 'loading';
+  let h = gate ? cfg.body : `<main class="page">${cfg.body}</main><div class="edge"></div>${cfg.search ? '<div class="edge b"></div>' : ''}`;
+  if (cfg.back) h += `<div class="ctl l"><button class="tb glass round" data-act="back" type="button" aria-label="Back">${ic('back')}</button></div>`;
+  if (cfg.right && cfg.right.length) h += `<div class="ctl r"><div class="glass grp">${cfg.right.map(b => `<button class="tb" data-act="${b[1]}" type="button" aria-label="${b[2]}">${ic(b[0])}</button>`).join('')}</div></div>`;
+  if (cfg.search) h += `<label class="search glass${cfg.fab ? ' withfab' : ''}">${ic('search')}<input data-k="q" type="search" value="${esc(S.q)}" placeholder="Search" aria-label="Search events" autocomplete="off"></label>`;
+  if (cfg.fab) h += `<button class="fab" data-act="${cfg.fab[1]}" type="button" aria-label="${cfg.fab[2]}">${ic(cfg.fab[0])}</button>`;
+  app.innerHTML = h;
+  window.scrollTo(0, keep);
+  prep(app);
+  if (S.focusKey) { const f = app.querySelector(`[data-k="${S.focusKey}"]`); if (f) { f.focus({preventScroll: !nav}); f.closest('[data-row]') && f.closest('[data-row]').classList.add('current'); f.scrollIntoView({block: 'nearest'}); } S.focusKey = null; }
+  renderLayer();
+  persistSoon();
+}
+// Inline fields are as wide as their text, measured like MC Scripts' fit()
+const measureCtx = document.createElement('canvas').getContext('2d');
+function measure(el, text) { const cs = getComputedStyle(el); measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; return Math.ceil(measureCtx.measureText(text).width + 2); }
+const pad = el => { const cs = getComputedStyle(el); return parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight); };
+function fit(inp) { const text = inp.value || inp.placeholder.trim(); inp.style.width = text ? measure(inp, text) + pad(inp) + 'px' : '3em'; }
+function grow(t) { if (t.classList.contains('box')) return; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+function prep(root) { root.querySelectorAll('input.fld.inl').forEach(fit); root.querySelectorAll('textarea.fld').forEach(grow); }
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => prep(app));
+window.addEventListener('resize', () => prep(app));
+
+// Menus, alerts and toasts sit on their own layer: opening one never rebuilds the page under the finger
+const item2 = (act, label, icon = '', cls = '') => `<button class="${cls}" data-act="${act}" type="button" role="menuitem">${icon || '<span class="noi"></span>'}<span class="lbl">${label}</span></button>`;
+function renderLayer() {
+  let h = '';
+  if (S.toast) h += `<div class="toast glass${S.toast.act ? '' : ' plain'}" role="status"><span class="msg">${esc(S.toast.msg)}</span>${S.toast.act ? `<button class="tb" data-act="toastact" type="button">${esc(S.toast.label)}</button>` : ''}</div>`;
+  if (S.menu) h += `<div class="scrim" data-act="closemenu"></div><div class="menu" role="menu" style="left:${S.menu.x}px;${S.menu.up ? 'bottom' : 'top'}:${S.menu.y}px">${S.menu.items.map(x => x === 'gap' ? '<div class="gap"></div>' : item2(x[0], esc(x[1]), x[2] || '', x[3] || '')).join('')}</div>`;
+  if (S.alert) h += `<div class="dim" data-act="closealert"><div class="alert" role="alertdialog" aria-modal="true" aria-labelledby="al-t"><h2 id="al-t">${esc(S.alert.title)}</h2>${S.alert.msg ? `<p>${esc(S.alert.msg)}</p>` : ''}<div class="btns"><button data-act="closealert" type="button">Cancel</button><button class="danger" data-act="${S.alert.yes}" type="button">${esc(S.alert.verb)}</button></div></div></div>`;
+  layer.innerHTML = h;
+  if (S.alert) { const c = layer.querySelector('.alert [data-act="closealert"]'); if (c) c.focus({preventScroll: true}); }
+}
+function toast(msg, act, label) { S.toast = {msg, act, label, at: lastKey}; clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = null; renderLayer(); }, act ? 7000 : 2600); renderLayer(); }
+function menu(el, items) {
+  const r = el.getBoundingClientRect(), Wd = window.innerWidth, H = window.innerHeight, up = r.top > H * .55;
+  S.menu = {items, up, x: Math.max(16, Math.min(r.right - 240, Wd - 256)), y: up ? H - r.top + 8 : r.bottom + 8};
+  renderLayer();
+}
+const ask = (title, msg, verb, yes) => { S.menu = null; S.alert = {title, msg, verb, yes}; renderLayer(); };
+const closeLayer = () => { S.menu = null; S.alert = null; renderLayer(); };
+
+/* ---------- Navigation ---------- */
+function leaving() {
+  const p = cur(); if (!p || !S.acct) return;
+  const ev = E();
+  if (p.p === 'event' && A().type === 'group') { S.seen[me()] = S.seen[me()] || {}; S.seen[me()][ev.id] = Object.fromEntries(ev.lines.map(l => [l.id, l.v])); }
+  if (p.p === 'line') { const l = ev.lines.find(x => x.id === p.id); if (l && !l.title.trim() && !l.tasks.some(t => t.text.trim())) ev.lines = ev.lines.filter(x => x !== l); }  // an untouched new line is not kept
+}
+function go(p) { if (document.activeElement) document.activeElement.blur(); leaving(); S.stack.push({ev: cur() ? cur().ev : undefined, ...p}); S.menu = null; S.alert = null; render(); }
+function back() {
+  if (document.activeElement) document.activeElement.blur();
+  leaving();
+  const was = cur(), ev = was && was.ev && E();
+  S.stack.pop(); S.menu = null; S.alert = null;
+  if (was && was.p === 'event' && ev && !ev.name.trim() && !ev.date && !ev.lines.length && !ev.groups.length && !ev.docs.length) EVENTS = EVENTS.filter(e => e !== ev);  // an untouched new event is not kept
+  if (!S.stack.length) S.stack = [{p: 'events'}];
+  render();
+}
+function land() {
+  if (A().type === 'group' && S.who) { S.seen[S.who] = S.seen[S.who] || {}; EVENTS.forEach(ev => { if (!S.seen[S.who][ev.id]) S.seen[S.who][ev.id] = Object.fromEntries(ev.lines.map(l => [l.id, l.v])); }); }
+  S.stack = [{p: 'events'}];  // signing in always shows the list of events (the chairs)
+  render();
+}
+
+/* ---------- Editing in place: every change saves at once and goes into History ---------- */
+function setVal(t, k, v) {
+  const p = k.split(':'), ns = p[0];
+  if (k === 'q') { S.q = v; document.getElementById('evlist').innerHTML = evRows(); return; }
+  if (ns === 'rl') { roster(p[1]).lead[p[2]] = p[2] === 'cls' ? v.toUpperCase() : v; return; }
+  if (ns === 'rp' || ns === 'rc') { const x = item(roster(p[1]).people, p[2]); if (x) x[ns === 'rc' ? 'cls' : 'name'] = ns === 'rc' ? v.toUpperCase() : v; return; }
+  const ev = E();
+  if (ns === 'd') { ev[p[1]] = v; return; }
+  if (ns === 'l') { const l = ev.lines.find(x => x.id === cur().id); l[p[1]] = v; return; }
+  if (ns === 't') { const [, x] = taskAt(ev, p[1]); if (x) x.text = v; return; }
+  if (ns === 'rn') { const g = group(ev, cur().p === 'group' ? cur().name : A().group), r = role(g, p[1]); if (r) r.name = v; return; }
+  if (ns === 'dq') { doc(ev, p[1]).q = v; return; }
+  if (ns === 's') { item(doc(ev, p[1]).blocks, p[2]).text = v; return; }
+  const d = doc(ev, p[1]);
+  if (ns === 'aw') { item(d.awards, p[2]).award = v; return; }
+  if (ns === 'ac' || ns === 'an') { const r = item(item(d.awards, p[2]).rows, p[3]); if (r) r[ns === 'ac' ? 'cls' : 'name'] = ns === 'ac' ? v.toUpperCase() : v; return; }
+  if (ns === 'gn' || ns === 'gr') { const g = item(d.guests, p[2]); if (g) g[ns === 'gn' ? 'name' : 'role'] = v; }
+}
+// A row emptied of all its text goes, once the cursor has left it (MC Scripts)
+function dropIfEmpty(row) {
+  if (!row || !row.isConnected || row.contains(document.activeElement) || !S.stack.length) return;
+  const [kind, a, b] = row.dataset.row.split(':'), ev = E();
+  const gone = () => { row.remove(); };
+  if (kind === 'task') { const [l, t] = taskAt(ev, a); if (t && !t.text.trim() && !t.to) { l.tasks = l.tasks.filter(x => x !== t); gone(); } }
+  if (kind === 'aw') { const d = doc(ev, cur().id), aw = d && item(d.awards, a), r = aw && item(aw.rows, b); if (r && !r.cls.trim() && !r.name.trim()) { aw.rows = aw.rows.filter(x => x !== r); gone(); } }
+  if (kind === 'gu') { const d = doc(ev, cur().id), g = d && item(d.guests, a); if (g && !g.name.trim() && !g.role.trim()) { d.guests = d.guests.filter(x => x !== g); gone(); } }
+  if (kind === 'rp') { const r = roster(cur().name), x = item(r.people, a); if (x && !x.name.trim() && !x.cls.trim()) { r.people = r.people.filter(y => y !== x); gone(); } }
+  if (kind === 'role') { const g = group(ev, cur().name), r = role(g, a); if (r && r.custom && !r.name.trim() && !r.who) { g.roles = g.roles.filter(x => x !== r); gone(); } }
+}
+function dropAwardIfEmpty(box) {
+  if (!box || !box.isConnected || box.contains(document.activeElement)) return;
+  const d = doc(E(), cur().id), aw = d && item(d.awards, box.dataset.award);
+  if (aw && !aw.award.trim() && !aw.rows.length) { d.awards = d.awards.filter(x => x !== aw); box.remove(); }
+}
+// Pasting several lines adds several rows. "3C12 吳子晴" lines are awardees; in an Award heading, a line without a class starts a new award.
+const CLS = /^(\d[A-Za-z]\d{0,2})\s*(.*)$/;
+function pasteRows(t, text) {
+  const k = t.dataset.k || '', p = k.split(':'), ns = p[0], lines = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  if (lines.length < 2) return false;
+  const ev = E(), before = snap(ev);
+  if (ns === 'aw' || ns === 'ac' || ns === 'an') {
+    const d = doc(ev, p[1]); let aw = item(d.awards, p[2]);
+    const here = ns !== 'aw' ? aw.rows.findIndex(r => r.id === p[3]) : -1;
+    let at = here, first = true;
+    lines.forEach(l => {
+      const m = CLS.exec(l);
+      if (m || ns !== 'aw') {
+        const r = m ? {id: uid(), cls: m[1].toUpperCase(), name: m[2].trim(), here: ''} : {id: uid(), cls: '', name: l, here: ''};
+        if (first && at >= 0 && !aw.rows[at].cls && !aw.rows[at].name) aw.rows.splice(at, 1, r); else if (at >= 0) aw.rows.splice(++at, 0, r); else aw.rows.push(r);
+      } else if (first && !aw.award) aw.award = l;
+      else { aw = {id: uid(), award: l, rows: []}; d.awards.push(aw); at = -1; }
+      first = false;
+    });
+    logChange(ev, 'Pasted into ' + docLabel(d), before);
+  } else if (ns === 'gn' || ns === 'gr') {
+    const d = doc(ev, p[1]);
+    d.guests = d.guests.filter(g => g.name || g.role);
+    lines.forEach(l => { const [name, ...rest] = l.split(/\t|\s{2,}|，|,/); d.guests.push({id: uid(), name: (name || '').trim(), role: rest.join(' ').trim()}); });
+    logChange(ev, 'Pasted into ' + docLabel(d), before);
+  } else if (ns === 't') {
+    const [l, x] = taskAt(ev, p[1]); if (!x.text) l.tasks = l.tasks.filter(y => y !== x);
+    lines.forEach(s => l.tasks.push({id: uid(), text: s, to: x.to})); logChange(ev, 'Pasted tasks into ' + (l.title || 'a line'), before);
+  } else if (ns === 'rp' || ns === 'rc') {
+    const r = roster(p[1]); r.people = r.people.filter(x => x.name || x.cls);
+    lines.forEach(s => { const m = CLS.exec(s); r.people.push(m ? {id: uid(), cls: m[1].toUpperCase(), name: m[2].trim()} : {id: uid(), cls: '', name: s}); });
+  } else return false;
+  render(); S.undo = ns === 'rp' || ns === 'rc' ? null : {ev: ev.id, snap: before}; toast(`Added ${lines.length} rows`, S.undo ? 'undo' : '', 'Undo');
+  return true;
+}
+
+const discrete = t => t.tagName === 'SELECT' || t.type === 'time' || t.type === 'date';
+document.addEventListener('focusin', e => {
+  const t = e.target, k = t.dataset && t.dataset.k;
+  const row = t.closest && t.closest('[data-row]');
+  if (row) { app.querySelectorAll('.current').forEach(x => x !== row && x.classList.remove('current')); row.classList.add('current'); }
+  if (k && k !== 'q' && !/^r[lpc]:/.test(k) && S.stack.length && !S.before) S.before = snap(E());
+});
+document.addEventListener('focusout', e => {
+  const row = e.target.closest && e.target.closest('[data-row]'), box = e.target.closest && e.target.closest('.award');
+  setTimeout(() => { dropIfEmpty(row); dropAwardIfEmpty(box); }, 0);
+  // iOS 26 leaves fixed controls out of place after the keyboard closes until the page scrolls; a 1px scroll puts them back
+  setTimeout(() => { const a = document.activeElement; if (!a || !a.matches('input,textarea,select')) { const y = window.scrollY; window.scrollTo(0, y + 1); window.scrollTo(0, y); } }, 120);
+});
+document.addEventListener('input', e => {
+  const t = e.target, k = t.dataset && t.dataset.k; if (!k || discrete(t)) return;
+  if (t.matches('input.fld.inl')) fit(t); else if (t.tagName === 'TEXTAREA') grow(t);
+  setVal(t, k, t.value);
+  persistSoon(900);
+});
+document.addEventListener('paste', e => {
+  const t = e.target; if (!t.dataset || !t.dataset.k || t.classList.contains('box')) return;
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if (pasteRows(t, text)) e.preventDefault();
+});
+document.addEventListener('keydown', e => {
+  const t = e.target; if (e.isComposing || !t.dataset || !t.dataset.k || t.classList.contains('box') || t.dataset.k === 'q') return;
+  // Return moves to the next field, as in a form on iPhone
+  if (e.key === 'Enter') { e.preventDefault(); const all = [...app.querySelectorAll('.fld:not(.box)')], i = all.indexOf(t); if (all[i + 1]) all[i + 1].focus(); else t.blur(); }
+});
+function addPills(t, text) {
+  const key = t.dataset.pill, names = text.split(/[\n,，、;；]/).map(x => x.trim()).filter(Boolean); if (!names.length) return;
+  const ev = E(), before = snap(ev);
+  if (key === 'role') { const g = group(ev, cur().name); names.forEach(n => g.roles.push({id: uid(), name: n, who: null})); logChange(ev, 'Added ' + names.join(', ') + ' to ' + g.name, before); }
+  else { ev[key].push(...names); logChange(ev, 'Added ' + names.join(', ') + ' to Event Details', before); }
+  S.focusKey = null; render(); const f = app.querySelector(`[data-pill="${key}"]`); if (f && t === document.activeElement) f.focus();
+}
+document.addEventListener('keydown', e => {
+  const t = e.target; if (!t.dataset || !t.dataset.pill || e.isComposing) return;
+  if (e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); const v = t.value; t.value = ''; if (v.trim()) { addPills(t, v); const f = app.querySelector(`[data-pill="${t.dataset.pill}"]`); if (f) f.focus(); } else t.blur(); }
+  if (e.key === 'Backspace' && !t.value && t.dataset.pill !== 'role') { const ev = E(), l = ev[t.dataset.pill]; if (l.length) { e.preventDefault(); const before = snap(ev), v = l.pop(); logChange(ev, `Removed ${v} from Event Details`, before); render(); const f = app.querySelector(`[data-pill="${t.dataset.pill}"]`); if (f) f.focus(); } }
+}, true);
+document.addEventListener('change', e => { const t = e.target; if (t.dataset && t.dataset.pill && t.value.trim()) { const v = t.value; t.value = ''; addPills(t, v); } }, true);
+document.addEventListener('paste', e => { const t = e.target; if (!t.dataset || !t.dataset.pill) return; e.preventDefault(); e.stopImmediatePropagation(); addPills(t, t.value + '\n' + (e.clipboardData || window.clipboardData).getData('text')); t.value = ''; }, true);
+// Date and time open their picker from a tap anywhere on the value, not only on the browser's small icon
+document.addEventListener('click', e => { const t = e.target; if (t.matches && t.matches('.dt input') && t.showPicker) { try { t.showPicker(); } catch (x) {} } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && (S.menu || S.alert)) closeLayer(); });
+document.addEventListener('change', e => {
+  const t = e.target, pwId = t.dataset && t.dataset.pw;
+  if (pwId) {
+    const v = t.value; if (!v) return;
+    if ([...v.trim()].length < 15) { toast('Use 15 characters or more'); return; }
+    t.value = '';
+    api('password', {method: 'POST', body: JSON.stringify({account: pwId, password: v})}).then(r => {
+      if (!r.ok) { toast('Password not changed'); return; }
+      PASSWORDS[pwId] = true; const m = app.querySelector(`[data-set="${CSS.escape(pwId)}"]`); if (m) m.innerHTML = ic('check'); toast('Password set for ' + pwId);
+      if (pwId === S.acct) setTimeout(() => signedOut('Sign in with the new password'), 1200);
+    }).catch(() => toast('No connection. Password not changed.'));
+    return;
+  }
+  const k = t.dataset && t.dataset.k; if (!k || k === 'q' || /^r[lpc]:/.test(k)) return;
+  const ev = E(), before = S.before || snap(ev), p = k.split(':'); S.before = null;
+  if (!discrete(t)) {
+    const [tl] = p[0] === 't' ? taskAt(ev, p[1]) : [null];
+    if (tl) tl.v++; else if (p[0] === 'l') { const l = ev.lines.find(x => x.id === cur().id); if (l) l.v++; }
+    const what = tl ? (tl.title || 'a Rundown line') : p[0] === 'l' ? 'a Rundown line' : p[0] === 'd' ? 'Event Details' : p[0] === 'rn' ? 'a role' : docLabel(doc(ev, p[1]));
+    logChange(ev, 'Changed ' + what, before); return;
+  }
+  // A choice is a finished action: the page is rebuilt once, after the system picker has closed
+  const v = t.value;
+  if (p[0] === 'r') {
+    const g = group(ev, cur().p === 'group' ? cur().name : A().group);
+    if (p[1] === 'lead') { g.lead = v; logChange(ev, `Group Lead of ${g.name}: ${v}`, before); render(); return; }
+    const r = role(g, p[1]);
+    // One role per person: choosing someone who holds another role moves them (so Host 1 and Host 2 are never the same person)
+    const other = v && g.roles.find(x => x !== r && x.who === v);
+    if (other) other.who = null;
+    r.who = v || null;
+    ev.lines.forEach(l => { if (l.tasks.some(x => x.to === 'r:' + g.name + ':' + r.id || (x.to === 'r:' + g.name + ':Hosts' && r.id.startsWith('Host')))) l.v++; });  // whoever now holds the role sees the change
+    logChange(ev, `${r.name} in ${g.name}: ${v || 'None'}`, before);
+    render();
+    if (other) { S.undo = {ev: ev.id, snap: before}; toast(`${v} moved from ${other.name}`, 'undo', 'Undo'); }
+    return;
+  }
+  if (p[0] === 'pr') {
+    const g = group(ev, cur().p === 'group' ? cur().name : ev.groups.find(x => membersOf(x.name).includes(p[1])).name), n = p[1];
+    g.roles.forEach(r => { if (r.who === n) r.who = null; });
+    const r = role(g, v), was = r && r.who; if (r) r.who = n;
+    ev.lines.forEach(l => { if (l.tasks.some(x => x.to && x.to.startsWith('r:' + g.name + ':'))) l.v++; });
+    logChange(ev, `${n} in ${g.name}: ${r ? r.name : 'No role'}`, before); render();
+    if (was && was !== n) { S.undo = {ev: ev.id, snap: before}; toast(`${r.name} moved from ${was}`, 'undo', 'Undo'); }
+    return;
+  }
+  if (k === 'ag') { const g = group(ev, cur().p === 'group' ? cur().name : A().group); g.acting = v || null; logChange(ev, `Acting Group Lead of ${g.name}: ${v || 'None'}`, before); render(); return; }
+  if (p[0] === 'at') { setAttend(ev, p[1], p[2], v === 'Absent' ? '' : v); render(); return; }
+  if (k === 'addgroup') { ev.groups.push({name: v, lead: roster(v).lead.name || null, roles: rolesFor(v)}); logChange(ev, 'Added ' + v, before); render(); return; }
+  if (p[0] === 'to') { const [l, tk] = taskAt(ev, p[1]); tk.to = v; l.v++; logChange(ev, `${tk.text || 'A task'}: ${tlabel(ev, v)}`, before); }
+  else if (p[0] === 'tl') { const [l, tk] = taskAt(ev, p[1]), to = ev.lines.find(x => x.id === v); l.tasks = l.tasks.filter(x => x !== tk); to.tasks.push(tk); l.v++; to.v++; logChange(ev, `${tk.text || 'A task'} moved to ${to.time}`, before); }
+  else if (p[0] === 'sp') { item(doc(ev, p[1]).blocks, p[2]).sp = v; logChange(ev, 'Changed ' + docLabel(doc(ev, p[1])), before); }
+  else if (k === 'd:lead') { ev.lead = v; logChange(ev, 'Event Lead: ' + v, before); }
+  else if (k === 'd:date') { ev.date = fromIso(v); logChange(ev, 'Date: ' + ev.date, before); }
+  else if (k === 'd:start' || k === 'd:end') { ev[p[1]] = v; logChange(ev, 'Time: ' + (ev.start || '') + '–' + (ev.end || ''), before); }
+  else if (k === 'l:time' && v) {
+    const l = ev.lines.find(x => x.id === cur().id), old = l.time, delta = toMin(v) - toMin(old);
+    const later = sorted(ev).filter(x => x !== l && x.time >= old && (x.time > old || ev.lines.indexOf(x) > ev.lines.indexOf(l))).map(x => x.id);
+    l.time = v; l.v++; logChange(ev, `Moved ${l.title || 'a line'} to ${v}`, before);
+    if (delta > 0 && later.length) { S.shift = {ids: later, delta}; setTimeout(() => toast(`Moved ${delta} min later`, 'shift', 'Shift Later Lines')); }
+  }
+  render();
+});
+document.addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = app.querySelector('.err'), btn = app.querySelector('#signin button');
+  btn.disabled = true; err.textContent = '';
+  try {
+    const r = await api('login', {method: 'POST', body: JSON.stringify({account: app.querySelector('#acct').value, password: app.querySelector('#pw').value})});
+    const b = await r.json();
+    if (!r.ok) { err.textContent = b.error || 'Could not sign in'; btn.disabled = false; return; }
+    SYNC.token = b.token; S.acct = b.account.id; S.who = null; S.q = ''; S.stack = [];
+    store.set('token', b.token); store.set('acct', S.acct); store.del('who');
+    render(); await loadAll();
+  } catch (x) { err.textContent = 'No connection. Try again when online.'; btn.disabled = false; }
+});
+
+function newDoc(ev, type) {
+  const before = snap(ev), id = 'd' + Date.now();
+  const d = {id, type, q: '', ...(type === 'script' ? {blocks: [{id: uid(), type: 'line', sp: 'Host 1', text: ''}]} : type === 'awardees' ? {awards: []} : {guests: []})};
+  ev.docs.push(d); logChange(ev, 'Added ' + docLabel(d), before);
+  go({p: 'doc', id});
+}
+function withUndo(ev, before, msg) { S.menu = null; S.alert = null; S.undo = {ev: ev.id, snap: before}; toast(msg, 'undo', 'Undo'); }
+const setAttend = (ev, g, n, s) => { const before = snap(ev); ((ev.attendance = ev.attendance || {})[g] = ev.attendance[g] || {})[n] = s;
+  ((ev.attTime = ev.attTime || {})[g] = ev.attTime[g] || {})[n] = s ? now() : ''; logChange(ev, `Attendance in ${g}: ${n} ${s || 'cleared'}`, before); };
+// Adding a row: the row appears at the end of its list with the cursor in it
+const addAndFocus = key => { S.focusKey = key; render(); };
+
+// Attendance for every group on duty, as a table the chairs copy into List of Members (Event Lead only)
+async function exportAttendance(ev) {
+  const at = ev.attendance || {}, esc2 = s => /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  const rows = [['Group', 'Class', 'Name', 'Status', 'Ticked At']];
+  sortGroups(ev.groups).forEach(g => [g.lead, ...membersOf(g.name).filter(n => n !== g.lead)].filter(Boolean).forEach(n => rows.push([g.name, clsOf(g.name, n), n, (at[g.name] || {})[n] || 'Absent', ((ev.attTime || {})[g.name] || {})[n] || ''])));
+  const csv = '﻿' + rows.map(r => r.map(esc2).join(',')).join('\r\n');
+  const name = `${ev.name || 'Event'} ${ev.date.replace(/\//g, '')} Attendance.csv`;
+  const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+  if (!dl) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); return; }
+  try { await dl.save({filename: name, data: csv}); } catch (e) { if (e && e.code !== 'declined') toast('Export did not finish'); }
+}
+
+// Pointer safety: a tap counts only on the control it started on, and not in the moment after a page change,
+// so a page rebuilt or a control moved under the finger can never receive the tap.
+document.addEventListener('pointerdown', e => { downEl = e.target.closest && e.target.closest('[data-act]'); }, true);
+// Swipe left on a row to show its Delete; a tap anywhere else, or a swipe back, hides it
+let sw = null, swipeAt = 0;
+const closeSwipes = keep => app.querySelectorAll('.sw.open').forEach(w => { if (w !== keep) { w.classList.remove('open'); w.firstElementChild.style.transform = ''; } });
+document.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse') return;
+  const w = e.target.closest && e.target.closest('.sw'); if (!e.target.closest || !e.target.closest('.swdel')) closeSwipes(w);
+  sw = w && !e.target.closest('.swdel') ? {w, x: e.clientX, y: e.clientY, open: w.classList.contains('open'), dx: 0, moved: false} : null;
+}, true);
+document.addEventListener('pointermove', e => {
+  if (!sw) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+  if (!sw.moved && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) sw.moved = true;
+  if (!sw.moved) return;
+  const x = Math.min(0, Math.max(-120, (sw.open ? -88 : 0) + dx)), r = sw.w.firstElementChild;
+  sw.w.classList.add('moving'); r.style.transition = 'none'; r.style.transform = `translateX(${x}px)`; sw.dx = x;
+}, true);
+const endSwipe = () => { if (!sw) return; const r = sw.w.firstElementChild; r.style.transition = ''; sw.w.classList.remove('moving');
+  if (sw.moved) { const open = sw.dx < -44; sw.w.classList.toggle('open', open); r.style.transform = open ? 'translateX(-88px)' : ''; swipeAt = performance.now(); }
+  sw = null; };
+document.addEventListener('pointerup', endSwipe, true);
+document.addEventListener('pointercancel', endSwipe, true);
+// Tapping the empty part of an editable row puts the cursor in its first field
+app.addEventListener('click', e => {
+  if (e.target.closest('[data-act],input,textarea,select,label')) return;
+  const row = e.target.closest('[data-row]'); if (!row) return;
+  const f = row.querySelector('.fld'); if (f) f.focus(); else { app.querySelectorAll('.current').forEach(x => x.classList.remove('current')); row.classList.add('current'); }
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  if (e.detail !== 0 && (b !== downEl || !b.isConnected || performance.now() - navAt < 350)) return;
+  if (performance.now() - swipeAt < 400) return;                       // the end of a swipe is not a tap
+  const w = b.closest('.sw'); if (w && w.classList.contains('open') && !b.classList.contains('swdel')) { closeSwipes(); return; }  // a tap on an open row closes it
+  // A tap on the dimmed background cancels; a tap inside the alert's own card does nothing
+  if (b.classList.contains('dim') && e.target.closest('.alert')) return;
+  const [cmd, ...rest] = b.dataset.act.split(':'), arg = rest.join(':'), ev = S.acct && S.stack.length ? E() : null;
+  const D = () => doc(ev, cur().id), L = () => ev.lines.find(x => x.id === cur().id);
+  const G = () => group(ev, cur().p === 'group' ? cur().name : A().group);
+  switch (cmd) {
+    case 'back': back(); break;
+    case 'account': go({p: 'account'}); break;
+    case 'be': { const first = !S.who; S.who = arg; store.set('who', arg); if (first) land(); else back(); break; }
+    case 'signout': signOut(); break;
+    case 'open': go({p: 'event', ev: arg}); break;
+    case 'rundown': go({p: 'rundown'}); break;
+    case 'line': go({p: 'line', id: arg}); break;
+    case 'group': go({p: 'group', name: arg}); break;
+    case 'person': go({p: 'person', name: arg}); break;
+    case 'details': go({p: 'details'}); break;
+    case 'history': go({p: 'history'}); break;
+    case 'doc': go({p: 'doc', id: arg}); break;
+    case 'roster': go({p: 'roster'}); break;
+    case 'rostergroup': go({p: 'rostergroup', name: arg}); break;
+    case 'passwords': go({p: 'passwords'}); loadAccounts(); break;
+    case 'export': exportAttendance(ev); break;
+    case 'newevent': {
+      const n = blank('e' + uid().slice(1), '', ''); n.lead = me(); EVENTS.unshift(n);
+      if (document.activeElement) document.activeElement.blur();
+      S.stack.push({p: 'event', ev: n.id}); if (!touch) S.focusKey = 'd:name'; render(); break;
+    }
+    case 'newline': {
+      const ls = sorted(ev), t = ls.length ? fromMin(toMin(ls[ls.length - 1].time) + 5) : (ev.start || '07:45'), id = 'n' + Date.now();
+      const before = snap(ev); ev.lines.push({id, time: t, title: '', place: '', v: 1, remarks: '', tasks: []});
+      logChange(ev, 'Added a Rundown line', before); if (!touch) S.focusKey = 'l:title'; go({p: 'line', id}); break;
+    }
+    // Adding rows: ⊕ at the end of the list
+    case 'addtask': { const l = L(), t = {id: uid(), text: '', to: glOf(ev) ? 'g:' + glOf(ev) : ''}; if (glOf(ev)) t.to = ''; l.tasks.push(t); addAndFocus('t:' + t.id); break; }
+    case 'addptask': { const [g, n] = [arg.split(':')[0], arg.split(':').slice(1).join(':')], l = sorted(ev)[0], t = {id: uid(), text: '', to: `p:${g}:${n}`}; l.tasks.push(t); addAndFocus('t:' + t.id); break; }
+    case 'unrole': { const g = group(ev, cur().name), r = role(g, arg), before = snap(ev); g.roles = g.roles.filter(x => x !== r); logChange(ev, `Removed ${r.name} from ${g.name}`, before); render(); withUndo(ev, before, 'Removed ' + r.name); break; }
+    case 'unpill': { const [key, i] = arg.split(':'), before = snap(ev), v = ev[key][+i]; ev[key].splice(+i, 1); logChange(ev, `Removed ${v} from Event Details`, before); render(); withUndo(ev, before, 'Removed ' + v); break; }
+    case 'addrole': { const r = {id: uid(), name: '', who: null, custom: true}; G().roles.push(r); addAndFocus('rn:' + r.id); break; }
+    case 'addguest': { const d = D(), g = {id: uid(), name: '', role: ''}; d.guests.push(g); addAndFocus(`gn:${d.id}:${g.id}`); break; }
+    case 'addaward': { const d = D(), aw = {id: uid(), award: '', rows: []}; d.awards.push(aw); addAndFocus(`aw:${d.id}:${aw.id}`); break; }
+    case 'addawardee': { const d = D(), aw = item(d.awards, arg), r = {id: uid(), cls: '', name: '', here: ''}; aw.rows.push(r); addAndFocus(`ac:${d.id}:${aw.id}:${r.id}`); break; }
+    case 'addmember': { const g = cur().name, x = {id: uid(), cls: '', name: ''}; roster(g).people.push(x); addAndFocus(`rc:${g}:${x.id}`); break; }
+    // Deleting a whole thing asks first, in the middle of the screen
+    case 'ask': {
+      if (arg === 'delline') ask('Delete This Line?', 'Its tasks go with it. You can undo right after.', 'Delete', 'delline');
+      if (arg === 'delevent') ask('Delete This Event?', 'Its Rundown and documents go with it. You can undo right after.', 'Delete', 'delevent');
+      if (arg === 'deldoc') ask(`Delete This ${DOC_NAME[D().type]}?`, 'It is removed for everyone. You can undo right after.', 'Delete', 'deldoc');
+      break;
+    }
+    case 'askev': ask('Delete This Event?', 'Its Rundown and documents go with it. You can undo right after.', 'Delete', 'delev:' + arg); break;
+    case 'askline': ask('Delete This Line?', 'Its tasks go with it. You can undo right after.', 'Delete', 'dell:' + arg); break;
+    case 'askdoc': ask(`Delete This ${DOC_NAME[doc(ev, arg).type]}?`, 'It is removed for everyone. You can undo right after.', 'Delete', 'deld:' + arg); break;
+    case 'delev': { const x = EVENTS.find(e2 => e2.id === arg), i = EVENTS.indexOf(x); S.undoEvent = {i, copy: JSON.parse(JSON.stringify(x))}; EVENTS.splice(i, 1); S.alert = null; render(); toast('Deleted ' + (x.name || 'event'), 'undoevent', 'Undo'); break; }
+    case 'dell': { const before = snap(ev), l = ev.lines.find(x => x.id === arg); ev.lines = ev.lines.filter(x => x !== l); logChange(ev, 'Deleted ' + (l.title || 'a line'), before); S.alert = null; render(); withUndo(ev, before, 'Deleted ' + (l.title || 'line')); break; }
+    case 'deld': { const before = snap(ev), d = doc(ev, arg); ev.docs = ev.docs.filter(x => x !== d); logChange(ev, 'Deleted ' + docLabel(d), before); S.alert = null; render(); withUndo(ev, before, 'Deleted ' + docLabel(d)); break; }
+    case 'closealert': case 'closemenu': closeLayer(); break;
+    case 'delline': { const before = snap(ev), l = L(); ev.lines = ev.lines.filter(x => x !== l); logChange(ev, 'Deleted ' + (l.title || 'a line'), before); S.stack.pop(); S.alert = null; render(); withUndo(ev, before, 'Deleted ' + (l.title || 'line')); break; }
+    case 'deldoc': { const before = snap(ev), d = D(); ev.docs = ev.docs.filter(x => x !== d); logChange(ev, 'Deleted ' + docLabel(d), before); S.stack.pop(); S.alert = null; render(); withUndo(ev, before, 'Deleted ' + docLabel(d)); break; }
+    case 'delevent': { const i = EVENTS.indexOf(ev); S.undoEvent = {i, copy: JSON.parse(JSON.stringify(ev))}; EVENTS.splice(i, 1); S.alert = null; S.stack = [{p: 'events'}]; render(); toast('Deleted ' + (ev.name || 'event'), 'undoevent', 'Undo'); break; }
+    // Deleting a row: at once, with Undo
+    case 'rm': {
+      const p = arg.split(':'), before = ev && snap(ev);
+      if (p[0] === 'task') { const [l] = taskAt(ev, p[1]); l.tasks = l.tasks.filter(x => x.id !== p[1]); l.v++; logChange(ev, 'Deleted a task from ' + (l.title || 'a line'), before); render(); withUndo(ev, before, 'Deleted Task'); }
+      if (p[0] === 'aw') { const d = doc(ev, p[1]), aw = item(d.awards, p[2]); aw.rows = aw.rows.filter(x => x.id !== p[3]); logChange(ev, 'Changed ' + docLabel(d), before); render(); withUndo(ev, before, 'Deleted Awardee'); }
+      if (p[0] === 'award') { const d = doc(ev, p[1]), aw = item(d.awards, p[2]); d.awards = d.awards.filter(x => x !== aw); logChange(ev, 'Deleted ' + (aw.award || 'an award') + ' from ' + docLabel(d), before); render(); withUndo(ev, before, 'Deleted ' + (aw.award || 'Award')); }
+      if (p[0] === 'gu') { const d = doc(ev, p[1]); d.guests = d.guests.filter(x => x.id !== p[2]); logChange(ev, 'Changed ' + docLabel(d), before); render(); withUndo(ev, before, 'Deleted Guest'); }
+      if (p[0] === 'role') { const g = G(); g.roles = g.roles.filter(x => x.id !== p[1]); logChange(ev, 'Deleted a role in ' + g.name, before); render(); withUndo(ev, before, 'Deleted Role'); }
+      if (p[0] === 'rp') { const r = roster(p[1]), copy = r.people.slice(), x = item(r.people, p[2]); r.people = r.people.filter(y => y !== x); render(); S.undo = {roster: p[1], people: copy}; toast('Removed ' + (x.name || 'member'), 'undo', 'Undo'); }
+      break;
+    }
+    // Presence: the same circle for attendance and roll call
+    case 'here': { const [g, n] = arg.split(':'), s = ((ev.attendance || {})[g] || {})[n] || ''; setAttend(ev, g, n, s === 'Attended' ? '' : 'Attended'); render(); break; }
+    case 'call': { const [id, a, r] = arg.split(':'), d = doc(ev, id), row = item(item(d.awards, a).rows, r), before = snap(ev);
+      row.here = row.here === 'Present' ? '' : 'Present'; logChange(ev, `Roll call: ${row.name} ${row.here || 'not here'}`, before); render(); break; }
+    case 'atmenu': { const [g, ...n] = arg.split(':'), nm = n.join(':'), s = ((ev.attendance || {})[g] || {})[nm];
+      menu(b, [...OTHER.map(x => ['atset:' + g + ':' + nm + ':' + x, x, `<span class="adot" style="background:${ATTEND_COLOUR[x]}"></span>`, s === x ? 'on' : '']), 'gap', ['atset:' + g + ':' + nm + ':', 'Clear', ic('undo')]]); break; }
+    case 'atset': { const p = arg.split(':'); setAttend(ev, p[0], p[1], p[2]); S.menu = null; render(); break; }
+    case 'dutyask': ask(`Take ${arg} Off Duty?`, 'Its members lose their tasks and rights in this event. Its documents stay.', 'Take Off', 'dutyoff:' + arg); break;
+    case 'dutyoff': { const before = snap(ev); ev.groups = ev.groups.filter(g => g.name !== arg); logChange(ev, 'Took ' + arg + ' off duty', before); render(); withUndo(ev, before, arg + ' off duty'); break; }
+    case 'adddoc-menu': menu(b, Object.keys(DOC_NAME).map(t => ['adddoc:' + t, DOC_NAME[t], ic(DOC_ICON[t])])); break;
+    case 'adddoc': S.menu = null; renderLayer(); newDoc(ev, arg); break;
+    case 'addblock-menu': {
+      const lists = ev.docs.filter(x => x.type === 'awardees');
+      menu(b, [['addblock:line', 'MC Line', ic('mic')], ['addblock:cue', 'Stage Direction', ic('cue')], ...lists.flatMap(l => l.awards.filter(aw => aw.award).map(aw => [`addblock:award:${l.id}:${aw.id}`, aw.award, ic('award')]))]);
+      break;
+    }
+    case 'addblock': {
+      const d = D(), before = snap(ev), [t, list, a] = arg.split(':'), last = [...d.blocks].reverse().find(x => x.type === 'line');
+      const blk = t === 'award' ? {id: uid(), type: 'award', list, award: a} : t === 'cue' ? {id: uid(), type: 'cue', text: ''} : {id: uid(), type: 'line', sp: last && last.sp === 'Host 1' ? 'Host 2' : 'Host 1', text: ''};
+      d.blocks.push(blk); logChange(ev, 'Changed ' + docLabel(d), before); S.menu = null;
+      if (t !== 'award') S.focusKey = `s:${d.id}:${blk.id}`; render(); break;
+    }
+    // A paragraph's own ⋯, as in MC Scripts: its kind, or which award it shows, and Delete
+    case 'pmenu': {
+      const [id, bid] = arg.split(':'), d = doc(ev, id), blk = item(d.blocks, bid);
+      const items = blk.type === 'award'
+        ? ev.docs.filter(x => x.type === 'awardees').flatMap(l => l.awards.filter(aw => aw.award).map(aw => [`pshow:${id}:${bid}:${l.id}:${aw.id}`, aw.award, ic('check', 'ck'), blk.award === aw.id ? 'on' : '']))
+        : [['ptype:' + arg + ':line', 'MC Line', ic('check', 'ck'), blk.type === 'line' ? 'on' : ''], ['ptype:' + arg + ':cue', 'Stage Direction', ic('check', 'ck'), blk.type === 'cue' ? 'on' : '']];
+      menu(b, [...items, 'gap', ['pdel:' + arg, 'Delete Paragraph', ic('trash'), 'danger']]); break;
+    }
+    case 'ptype': { const [id, bid, t] = arg.split(':'), d = doc(ev, id), blk = item(d.blocks, bid), before = snap(ev); blk.type = t; if (t === 'line' && !blk.sp) blk.sp = 'Host 1'; logChange(ev, 'Changed ' + docLabel(d), before); S.menu = null; render(); break; }
+    case 'pshow': { const [id, bid, l, a] = arg.split(':'), d = doc(ev, id), blk = item(d.blocks, bid), before = snap(ev); blk.list = l; blk.award = a; logChange(ev, 'Changed ' + docLabel(d), before); S.menu = null; render(); break; }
+    case 'pdel': { const [id, bid] = arg.split(':'), d = doc(ev, id), before = snap(ev); d.blocks = d.blocks.filter(x => x.id !== bid); logChange(ev, 'Changed ' + docLabel(d), before); S.menu = null; render(); withUndo(ev, before, 'Deleted Paragraph'); break; }
+    case 'restore': { const en = ev.log[+arg], before = snap(ev), log = ev.log; Object.assign(ev, JSON.parse(JSON.stringify(en.snap)), {log}); logChange(ev, 'Restored to before ' + en.at, before); render(); toast('Restored'); break; }
+    case 'toastact': {
+      const act = S.toast && S.toast.act; S.toast = null; clearTimeout(toastTimer);
+      if (act === 'shift') { const before = snap(ev); ev.lines.forEach(l => { if (S.shift.ids.includes(l.id)) { l.time = fromMin(toMin(l.time) + S.shift.delta); l.v++; } }); logChange(ev, 'Shifted later lines', before); }
+      if (act === 'undo' && S.undo) {
+        if (S.undo.roster) roster(S.undo.roster).people = S.undo.people;
+        else { const t = EVENTS.find(x => x.id === S.undo.ev), log = t.log; Object.assign(t, S.undo.snap, {log}); }
+        S.undo = null;
+      }
+      if (act === 'undoevent' && S.undoEvent) { EVENTS.splice(S.undoEvent.i, 0, S.undoEvent.copy); S.undoEvent = null; }
+      render(); break;
+    }
+  }
+});
+
+/* On-screen keyboard: how much of the page it covers, so ＋, search and toasts stay visible (MC Scripts) */
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const onViewport = () => {
+    const cover = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    document.documentElement.style.setProperty('--kb', (cover > 80 ? cover : 0) + 'px');
+    document.documentElement.style.setProperty('--vvtop', Math.max(0, vv.offsetTop) + 'px');
+  };
+  vv.addEventListener('resize', onViewport); vv.addEventListener('scroll', onViewport);
+}
+
+/* ---------- Server: sign-in, loading and saving ----------
+   Every event is one record on the server. The page saves an event a moment after it changes; if someone else saved
+   the same event in between, the server answers with their version, and the two are merged piece by piece (a Rundown
+   line, a task, a document, a group) before saving again. The device keeps a copy, so the page opens without a
+   connection and uploads its changes when back online. */
+const store = {
+  get: k => { try { return JSON.parse(localStorage.getItem('ev:' + k)); } catch (e) { return null; } },
+  set: (k, v) => { try { localStorage.setItem('ev:' + k, JSON.stringify(v)); } catch (e) {} },
+  del: k => { try { localStorage.removeItem('ev:' + k); } catch (e) {} }
+};
+const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', pending: false};
+async function api(path, opts = {}) {
+  const headers = {'content-type': 'application/json'};
+  if (SYNC.token) headers.authorization = 'Bearer ' + SYNC.token;
+  if (S.who) headers['x-who'] = encodeURIComponent(S.who);
+  const r = await fetch('/api/' + path, {...opts, headers, cache: 'no-store'});
+  if (r.status === 401 && path !== 'login') { signedOut('Please sign in again'); throw new Error('signin'); }
+  return r;
+}
+const isBlank = ev => !ev.name.trim() && !ev.date && !ev.lines.length && !ev.groups.length && !ev.docs.length;
+const sortEvents = () => EVENTS.sort((a, b) => (!a.date) - (!b.date) || b.date.localeCompare(a.date));
+function cacheSave() {
+  if (!S.acct) return;
+  store.set('cache', {acct: S.acct, events: EVENTS, base: SYNC.base, rev: SYNC.rev, seq: SYNC.seq, rosters: ROSTERS, chairs: CHAIRS, rosterBase: SYNC.rosterBase});
+  store.set('seen', S.seen);
+}
+function cacheLoad() {
+  const c = store.get('cache');
+  if (!c || c.acct !== S.acct) return false;
+  EVENTS = c.events || []; SYNC.base = c.base || {}; SYNC.rev = c.rev || {}; SYNC.seq = c.seq || 0;
+  ROSTERS = c.rosters || {}; CHAIRS = c.chairs || []; SYNC.rosterBase = c.rosterBase || JSON.stringify(ROSTERS);
+  return true;
+}
+// Rebuild the page with new data, but never under the fingers of someone typing or choosing
+function refresh() {
+  const a = document.activeElement;
+  if (S.menu || S.alert || (a && app.contains(a) && a.matches('input,textarea,select'))) { SYNC.pending = true; return; }
+  render();
+}
+document.addEventListener('focusout', () => { if (SYNC.pending) setTimeout(() => { if (SYNC.pending) { SYNC.pending = false; refresh(); } }, 200); });
+
+// ---- Merging: whoever changed a piece keeps their change; if both changed the same piece, this device's wins ----
+const J = x => JSON.stringify(x === undefined ? null : x);
+const pick = (b, m, t) => J(m) === J(b) ? t : m;
+function mergeList(b, m, t, key, deep) {
+  b = b || []; m = m || []; t = t || [];
+  const bi = new Map(b.map(x => [x[key], x])), mi = new Map(m.map(x => [x[key], x])), ti = new Map(t.map(x => [x[key], x]));
+  const out = [];
+  [...m.map(x => x[key]), ...t.map(x => x[key]).filter(id => !mi.has(id))].forEach(id => {
+    const B = bi.get(id), M = mi.get(id), T = ti.get(id);
+    if (M && T) out.push(deep ? deep(B, M, T) : pick(B, M, T));
+    else if (M) { if (!B || J(M) !== J(B)) out.push(M); }      // they deleted it: gone, unless this device changed it
+    else if (T && !B) out.push(T);                               // they added it
+  });
+  return out;
+}
+function mergeObj(B, M, T, special = {}) {
+  const o = {};
+  new Set([...Object.keys(M), ...Object.keys(T)]).forEach(k => { o[k] = special[k] ? special[k](B && B[k], M[k], T[k]) : pick(B && B[k], M[k], T[k]); });
+  return o;
+}
+function merge3(b, m, t) {
+  const perGroup = (B, M, T) => { const x = {}; new Set([...Object.keys(M || {}), ...Object.keys(T || {})]).forEach(g => { x[g] = pick((B || {})[g], (M || {})[g], (T || {})[g]); }); return x; };
+  return mergeObj(b || {}, m, t, {
+    lines: (B, M, T) => mergeList(B, M, T, 'id', (b2, m2, t2) => mergeObj(b2, m2, t2, {tasks: (B3, M3, T3) => mergeList(B3, M3, T3, 'id'), v: (x, y, z) => Math.max(y || 0, z || 0)})),
+    docs: (B, M, T) => mergeList(B, M, T, 'id'),
+    groups: (B, M, T) => mergeList(B, M, T, 'name', (b2, m2, t2) => mergeObj(b2, m2, t2)),
+    attendance: perGroup, attTime: perGroup,
+    log: (B, M, T) => { const seen = new Set(); return [...(M || []), ...(T || [])].filter(e => { const id = (e.ts || e.at) + '|' + e.who + '|' + e.what; if (seen.has(id)) return false; seen.add(id); return true; }).sort((x, y) => (y.ts || 0) - (x.ts || 0)); }
+  });
+}
+function replaceIn(target, src) { Object.keys(target).forEach(k => delete target[k]); Object.assign(target, src); }
+
+// ---- Loading ----
+function apply(rows) {
+  let changed = false;
+  rows.forEach(row => {
+    SYNC.seq = Math.max(SYNC.seq, row.rev);
+    if (SYNC.busy.has(row.id) || (SYNC.rev[row.id] || 0) >= row.rev) return;   // a save in flight is merged when it returns
+    const i = EVENTS.findIndex(e => e.id === row.id), local = EVENTS[i];
+    const clean = local && JSON.stringify(local) === SYNC.base[row.id];
+    if (row.deleted) { if (local && clean) { EVENTS.splice(i, 1); changed = true; } delete SYNC.base[row.id]; SYNC.rev[row.id] = row.rev; return; }
+    const theirs = JSON.parse(row.data);
+    if (!local) EVENTS.push(theirs);
+    else if (clean) replaceIn(local, theirs);
+    else { replaceIn(local, merge3(SYNC.base[row.id] ? JSON.parse(SYNC.base[row.id]) : null, local, theirs)); persistSoon(100); }
+    SYNC.base[row.id] = row.data; SYNC.rev[row.id] = row.rev; changed = true;
+  });
+  if (changed) { sortEvents(); cacheSave(); }
+  return changed;
+}
+async function loadAll() {
+  try {
+    const r = await api('state?since=0&full=1'), b = await r.json();
+    if (!r.ok) throw new Error(b.error);
+    const rosterDirty = SYNC.rosterBase && JSON.stringify(ROSTERS) !== SYNC.rosterBase;
+    if (!rosterDirty) { ROSTERS = b.rosters || {}; SYNC.rosterBase = JSON.stringify(ROSTERS); }
+    CHAIRS = b.chairs || [];
+    apply(b.rows);
+    // An event this device knew that the server no longer has at all: keep only if it has unsent changes
+    const onServer = new Set(b.rows.map(x => x.id));
+    EVENTS = EVENTS.filter(ev => onServer.has(ev.id) || SYNC.base[ev.id] === undefined);
+    SYNC.offline = false;
+    const first = !SYNC.loaded; SYNC.loaded = true; cacheSave();
+    if (first && !S.stack.length) { if (peopleOf(A()) && !S.who) render(); else land(); } else refresh();
+  } catch (e) {
+    if (String(e.message) === 'signin') return;
+    SYNC.offline = true;
+    if (!SYNC.loaded) render();
+    setTimeout(loadAll, 8000);
+  }
+}
+async function pull() {
+  if (!SYNC.token || !SYNC.loaded || document.hidden) return;
+  try {
+    const r = await api('state?since=' + SYNC.seq); if (!r.ok) return;
+    const b = await r.json(); SYNC.offline = false;
+    if (apply(b.rows)) refresh();
+  } catch (e) { SYNC.offline = true; }
+}
+setInterval(pull, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { pull(); persist(); } });
+window.addEventListener('online', () => { persist(); pull(); });
+
+// ---- Saving ----
+function persistSoon(ms = 600) { clearTimeout(SYNC.timer); SYNC.timer = setTimeout(persist, ms); }
+function persist() {
+  if (!SYNC.token || !SYNC.loaded) return;
+  store.set('seen', S.seen);
+  Object.keys(SYNC.base).forEach(id => { if (!EVENTS.some(e => e.id === id) && !SYNC.busy.has(id)) push(id, null); });
+  EVENTS.forEach(ev => {
+    const s = JSON.stringify(ev);
+    if (s !== SYNC.base[ev.id] && !SYNC.busy.has(ev.id) && !(SYNC.base[ev.id] === undefined && isBlank(ev))) push(ev.id, s);
+  });
+  if (A() && A().type === 'lead' && SYNC.rosterBase && JSON.stringify(ROSTERS) !== SYNC.rosterBase && !SYNC.busy.has('rosters')) pushRosters();
+  cacheSave();
+}
+async function push(id, s) {
+  SYNC.busy.add(id);
+  let again = 0;
+  try {
+    const r = await api('events/' + id, {method: 'PUT', body: JSON.stringify(s === null ? {rev: SYNC.rev[id] || 0, deleted: true} : {rev: SYNC.rev[id] || 0, data: s})});
+    const b = await r.json().catch(() => ({}));
+    const local = EVENTS.find(e => e.id === id);
+    if (r.ok) {
+      SYNC.rev[id] = b.rev; SYNC.seq = Math.max(SYNC.seq, b.rev);
+      if (s === null) delete SYNC.base[id];
+      else { SYNC.base[id] = b.data; if (local && JSON.stringify(local) === s) replaceIn(local, JSON.parse(b.data)); }
+      SYNC.offline = false;
+    } else if (r.status === 409) {
+      SYNC.rev[id] = b.rev;
+      if (b.deleted || !b.data) {
+        if (s === null) delete SYNC.base[id];
+        else if (b.deleted) { delete SYNC.base[id]; if (local) { EVENTS.splice(EVENTS.indexOf(local), 1); toast('This event was deleted on another device'); refresh(); } }
+      } else {
+        const theirs = JSON.parse(b.data);
+        if (local) replaceIn(local, merge3(SYNC.base[id] ? JSON.parse(SYNC.base[id]) : null, local, theirs));
+        SYNC.base[id] = b.data; again = 50; refresh();
+      }
+    } else if (r.status === 403) {
+      // Something this account may not change: go back to the saved version
+      if (local && SYNC.base[id]) replaceIn(local, JSON.parse(SYNC.base[id]));
+      else if (local && s !== null) EVENTS.splice(EVENTS.indexOf(local), 1);
+      toast('Only those responsible can change that'); refresh();
+    } else again = 5000;
+  } catch (e) {
+    if (String(e.message) !== 'signin') { SYNC.offline = true; again = 6000; }
+  } finally {
+    SYNC.busy.delete(id); cacheSave();
+    if (again) persistSoon(again);
+  }
+}
+async function pushRosters() {
+  SYNC.busy.add('rosters');
+  const text = JSON.stringify(ROSTERS);
+  try { const r = await api('rosters', {method: 'PUT', body: text}); if (r.ok) SYNC.rosterBase = text; else persistSoon(6000); }
+  catch (e) { persistSoon(6000); }
+  finally { SYNC.busy.delete('rosters'); cacheSave(); }
+}
+async function loadAccounts() {
+  try { const r = await api('accounts'); if (!r.ok) return; const b = await r.json(); b.accounts.forEach(a => { if (a.changed) PASSWORDS[a.id] = true; }); if (cur() && cur().p === 'passwords') refresh(); } catch (e) {}
+}
+
+// ---- Signing out ----
+function signedOut(msg) {
+  SYNC.token = null; SYNC.loaded = false; SYNC.base = {}; SYNC.rev = {}; SYNC.seq = 0; SYNC.rosterBase = '';
+  store.del('token'); store.del('acct'); store.del('who'); store.del('cache');
+  EVENTS = []; ROSTERS = {}; CHAIRS = []; S.acct = null; S.who = null; S.stack = []; S.menu = null; S.alert = null;
+  render(); if (msg) toast(msg);
+}
+function signOut() {
+  const t = SYNC.token;
+  if (t) fetch('/api/logout', {method: 'POST', headers: {authorization: 'Bearer ' + t}}).catch(() => {});
+  signedOut();
+}
+
+// ---- Start: the last account on this device, its copy of the events, then the server ----
+// An MC Scripts join link from before the events page (…/#k=passcode) still opens MC Scripts
+if (/^#k=/.test(location.hash)) location.replace('/scripts' + location.hash);
+SYNC.token = store.get('token'); S.acct = store.get('acct'); S.who = store.get('who'); S.seen = store.get('seen') || {};
+if (SYNC.token && S.acct && ACCOUNTS.some(a => a.id === S.acct)) {
+  if (cacheLoad()) { SYNC.loaded = true; S.stack = [{p: 'events'}]; }
+  render(); loadAll();
+} else { SYNC.token = null; S.acct = null; render(); }
+
+</script>
+</body>
+</html>
