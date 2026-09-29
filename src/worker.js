@@ -2,7 +2,27 @@
 // The page sends the CA passcode with each request. The passcode is the Worker secret PASSCODE,
 // which the chairs change in the Cloudflare dashboard (Settings > Variables and Secrets).
 // Until that secret exists, the passcode whose SHA-256 is below still works.
+// Word files carry their fonts (see embedFonts in build/gen.js). Noto Serif TC (SIL OFL) is a public
+// file under /fonts/. Anthropic Serif may not be published, so it is stored here encrypted and sent
+// only with the passcode; the key is the Worker secret FONT_KEY. Without that secret, Word files
+// carry Noto Serif TC only.
 import PAGE from "./index.html";
+import TEXT_MEDIUM from "./fonts/AnthropicSerif-Text-Medium.bin";
+import TEXT_MEDIUM_ITALIC from "./fonts/AnthropicSerif-Text-MediumItalic.bin";
+import DISPLAY_MEDIUM from "./fonts/AnthropicSerif-Display-Medium.bin";
+import DISPLAY_MEDIUM_ITALIC from "./fonts/AnthropicSerif-Display-MediumItalic.bin";
+const PRIVATE_FONTS = {
+  "AnthropicSerif-Text-Medium": TEXT_MEDIUM, "AnthropicSerif-Text-MediumItalic": TEXT_MEDIUM_ITALIC,
+  "AnthropicSerif-Display-Medium": DISPLAY_MEDIUM, "AnthropicSerif-Display-MediumItalic": DISPLAY_MEDIUM_ITALIC
+};
+async function privateFont(name, env) {
+  const sealed = PRIVATE_FONTS[name];
+  if (!sealed || !env.FONT_KEY) return null;
+  const raw = Uint8Array.from(atob(String(env.FONT_KEY).trim()), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+  const data = new Uint8Array(sealed);
+  return crypto.subtle.decrypt({ name: "AES-GCM", iv: data.slice(0, 12) }, key, data.slice(12));
+}
 
 const PASSCODE_SHA256 = "ce2325ecb6f8053ce8b4a754665425454d7a6cbd0460f64c8daa1155c2116845";
 const MAX_SCRIPT = 500000;
@@ -34,8 +54,17 @@ export default {
     let given = request.headers.get("x-passcode") || "";
     try { given = decodeURIComponent(given); } catch { given = ""; }
     if (await sha256(given.replace(/\s+/g, "").toLowerCase()) !== expected) return json({ error: "passcode" }, 403);
-    await ensureTables(env.DB);
     const path = url.pathname.slice("/api/".length);
+
+    const font = /^fonts\/([A-Za-z-]{1,60})$/.exec(path);
+    if (font && request.method === "GET") {
+      let bytes = null;
+      try { bytes = await privateFont(font[1], env); } catch { bytes = null; }
+      if (!bytes) return json({ error: "not found" }, 404);
+      return new Response(bytes, { headers: { "content-type": "font/ttf", "cache-control": "private, max-age=604800" } });
+    }
+
+    await ensureTables(env.DB);
 
     if (path === "join" && request.method === "POST") return json({ ok: true });
 

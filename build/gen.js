@@ -192,7 +192,63 @@ var ScriptGen = (function () {
     return zip.generateAsync({ type: "uint8array", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
   }
 
+  // Fonts the Word file carries, so it looks the same on a device without them (iPad Word).
+  // Each family matches a font name in the template's styles; faces are listed in the order Word expects.
+  var FACES = [
+    { family: "Anthropic Serif Text Medium", face: "Regular", src: "AnthropicSerif-Text-Medium" },
+    { family: "Anthropic Serif Text Medium", face: "Italic", src: "AnthropicSerif-Text-MediumItalic" },
+    { family: "Anthropic Serif Display Medium", face: "Regular", src: "AnthropicSerif-Display-Medium" },
+    { family: "Anthropic Serif Display Medium", face: "Italic", src: "AnthropicSerif-Display-MediumItalic" },
+    { family: "Noto Serif TC", face: "Regular", src: "NotoSerifTC-Regular" },
+    { family: "Noto Serif TC", face: "Bold", src: "NotoSerifTC-Bold" },
+    { family: "Noto Serif TC SemiBold", face: "Regular", src: "NotoSerifTC-SemiBold" }
+  ];
+  function unesc(s) { return s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&"); }
+  function newGuid() {
+    var b = new Uint8Array(16); crypto.getRandomValues(b);
+    var h = Array.prototype.map.call(b, function (x) { return ("0" + x.toString(16)).slice(-2); }).join("").toUpperCase();
+    return "{" + h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20) + "}";
+  }
+  // Word stores embedded fonts obfuscated: the first 32 bytes XOR the font key, read backwards (ECMA-376 Part 1, 17.8.1).
+  function obfuscate(data, guid) {
+    var hex = guid.replace(/[{}-]/g, ""), key = [];
+    for (var i = 0; i < 16; i++) key.push(parseInt(hex.substr(30 - 2 * i, 2), 16));
+    var out = new Uint8Array(data);
+    for (var j = 0; j < 32 && j < out.length; j++) out[j] ^= key[j % 16];
+    return out;
+  }
+  // getFont(src, text) resolves to a TrueType font cut down to the characters in text, or null to leave that face out.
+  async function embedFonts(JSZipLib, bytes, getFont) {
+    var zip = await JSZipLib.loadAsync(bytes);
+    var doc = await zip.file("word/document.xml").async("string");
+    var text = " {}" + (doc.match(/<w:t[^>]*>[^<]*<\/w:t>/g) || []).map(function (r) { return unesc(r.replace(/<[^>]+>/g, "")); }).join("");
+    var got = await Promise.all(FACES.map(function (f) { return Promise.resolve(getFont(f.src, text)).catch(function () { return null; }); }));
+    var table = await zip.file("word/fontTable.xml").async("string");
+    var rels = [], n = 0;
+    FACES.forEach(function (f, i) {
+      if (!got[i]) return;
+      n++; var guid = newGuid(), id = "rIdFont" + n;
+      zip.file("word/fonts/font" + n + ".odttf", obfuscate(got[i], guid));
+      rels.push('<Relationship Id="' + id + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font' + n + '.odttf"/>');
+      var tag = '<w:embed' + f.face + ' r:id="' + id + '" w:fontKey="' + guid + '"/>';
+      var open = '<w:font w:name="' + f.family + '">', at = table.indexOf(open);
+      if (at < 0) table = table.replace("</w:fonts>", open + '<w:family w:val="roman"/><w:pitch w:val="variable"/>' + tag + "</w:font></w:fonts>");
+      else { var end = table.indexOf("</w:font>", at); table = table.slice(0, end) + tag + table.slice(end); }
+    });
+    if (!n) return bytes;
+    if (!/<w:fonts[^>]*xmlns:r=/.test(table)) table = table.replace("<w:fonts ", '<w:fonts xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ');
+    zip.file("word/fontTable.xml", table);
+    zip.file("word/_rels/fontTable.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + rels.join("") + "</Relationships>");
+    var types = await zip.file("[Content_Types].xml").async("string");
+    if (types.indexOf('Extension="odttf"') < 0) types = types.replace("<Default ", '<Default Extension="odttf" ContentType="application/vnd.openxmlformats-officedocument.obfuscatedFont"/><Default ');
+    zip.file("[Content_Types].xml", types);
+    var settings = await zip.file("word/settings.xml").async("string");
+    if (settings.indexOf("<w:embedTrueTypeFonts") < 0) settings = settings.replace(/(<w:zoom[^>]*\/>)/, "$1<w:embedTrueTypeFonts/><w:saveSubsetFonts/>");
+    zip.file("word/settings.xml", settings);
+    return zip.generateAsync({ type: "uint8array", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  }
+
   return { isEnglish: isEnglish, describe: describe, layout: layout, speakers: speakers, bodyXml: bodyXml, awardRows: awardRows, lines: lines,
-    mcLabel: mcLabel, cls: cls, named: named, buildDocx: buildDocx, yymmdd: yymmdd };
+    mcLabel: mcLabel, cls: cls, named: named, buildDocx: buildDocx, embedFonts: embedFonts, FACES: FACES, yymmdd: yymmdd };
 })();
 if (typeof module !== "undefined") module.exports = ScriptGen;

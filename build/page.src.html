@@ -1068,19 +1068,65 @@ var CLOUD = %%CLOUD%%;
   if (window.claude && typeof window.claude.use === "function") {
     window.claude.use("downloads").then(function (ns) { downloads = ns; }).catch(function () { downloads = null; });
   }
+  /* Fonts inside the Word file, so iPad Word shows Noto Serif TC and Anthropic Serif without having them.
+     Each font is cut down to the characters the script uses (HarfBuzz, public/hb-subset.wasm).
+     Noto Serif TC is a public file; Anthropic Serif comes from the API with the passcode. Only on the
+     launched site: if anything fails, the file is shared without the fonts it could not get. */
+  var hb = null, faces = {};
+  function harfbuzz() {
+    if (!hb) hb = fetch("/hb-subset.wasm").then(function (r) { if (!r.ok) throw new Error("wasm"); return r.arrayBuffer(); })
+      .then(function (b) { return WebAssembly.instantiate(b); }).then(function (m) { return m.instance.exports; })
+      .catch(function (e) { hb = null; throw e; });
+    return hb;
+  }
+  function fontFace(ex, src) {
+    if (!faces[src]) {
+      var url = /^Anthropic/.test(src) ? CLOUD.api + "/fonts/" + src : "/fonts/" + src + ".ttf";
+      var opts = /^Anthropic/.test(src) ? { headers: { "X-Passcode": encodeURIComponent(cloud.space) } } : {};
+      faces[src] = fetch(url, opts).then(function (r) { if (!r.ok) throw new Error(src); return r.arrayBuffer(); }).then(function (buf) {
+        var len = buf.byteLength, ptr = ex.malloc(len);
+        new Uint8Array(ex.memory.buffer).set(new Uint8Array(buf), ptr);
+        var blob = ex.hb_blob_create(ptr, len, 2, 0, 0), face = ex.hb_face_create(blob, 0);
+        ex.hb_blob_destroy(blob);
+        return face;
+      }).catch(function (e) { delete faces[src]; throw e; });
+    }
+    return faces[src];
+  }
+  function subsetFont(src, text) {
+    return harfbuzz().then(function (ex) {
+      return fontFace(ex, src).then(function (face) {
+        var input = ex.hb_subset_input_create_or_fail(); if (!input) return null;
+        var set = ex.hb_subset_input_unicode_set(input);
+        for (var ch of text) ex.hb_set_add(set, ch.codePointAt(0));
+        var sub = ex.hb_subset_or_fail(face, input); ex.hb_subset_input_destroy(input);
+        if (!sub) return null;
+        var blob = ex.hb_face_reference_blob(sub);
+        var out = new Uint8Array(ex.memory.buffer, ex.hb_blob_get_data(blob, 0), ex.hb_blob_get_length(blob)).slice();
+        ex.hb_blob_destroy(blob); ex.hb_face_destroy(sub);
+        return out.length ? out : null;
+      });
+    });
+  }
+  function makeDocx(st) {
+    return ScriptGen.buildDocx(JSZip, TEMPLATE_B64, st).then(function (bytes) {
+      if (!CLOUD || !cloud) return bytes;
+      return ScriptGen.embedFonts(JSZip, bytes, subsetFont).catch(function () { return bytes; });
+    });
+  }
   function prebuild() {
     ready = null; clearTimeout(buildTimer);
     buildTimer = setTimeout(function () {
       var d = ScriptGen.describe(state); if (d.problems.length) return;
       var no = ++buildNo;
-      ScriptGen.buildDocx(JSZip, TEMPLATE_B64, state).then(function (bytes) {
+      makeDocx(state).then(function (bytes) {
         if (no === buildNo) ready = { file: new File([bytes], d.filename, { type: MIME }), bytes: bytes, name: d.filename };
       });
     }, 500);
   }
   function buildFile(st) {
     var d = ScriptGen.describe(st);
-    return ScriptGen.buildDocx(JSZip, TEMPLATE_B64, st).then(function (bytes) { return { file: new File([bytes], d.filename, { type: MIME }), bytes: bytes, name: d.filename }; });
+    return makeDocx(st).then(function (bytes) { return { file: new File([bytes], d.filename, { type: MIME }), bytes: bytes, name: d.filename }; });
   }
   function saveFile(f) {
     var url = URL.createObjectURL(f.file);
