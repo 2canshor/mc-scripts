@@ -41,6 +41,10 @@ await A.click('#seg-run');ok(await A.isVisible('text=未有 Rundown'),'empty Run
 for(const r of [['07:45','07:55','準備','練習講稿','排列獎狀'],['08:00','08:15','正式宣佈','宣佈','遞獎狀']]){
  await A.click('#insert');await fill('開始',r[0]);await fill('結束',r[1]);await fill('環節',r[2]);await fill('司儀要做',r[3]);await fill('後台要做',r[4]);await A.click('.sheet .done');}
 ok(JSON.stringify(await A.$$eval('#ev-body .it .tm',x=>x.map(e=>e.textContent)))==='["07:45–07:55","08:00–08:15"]','Rundown in time order');
+await A.click('#ev-body li >> nth=0 >> .rowmore');ok(JSON.stringify(await A.$$eval('.menu button',x=>x.map(e=>e.textContent)))==='["複製","刪除"]','each Rundown line has its own ⋯ with copy and delete');
+await A.click('.menu >> text=複製');ok(await sh.locator('label.f',{hasText:'環節'}).locator('input').inputValue()==='準備','copy opens a new line filled from the old one');await A.click('.sheet .bar >> text=取消');
+const sizes=await A.evaluate(()=>[...new Set([...document.querySelectorAll('.ev *')].filter(e=>e.offsetParent&&!e.closest('.seg')&&e.tagName!=='H1'&&[...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())).map(e=>getComputedStyle(e).fontSize+'/'+getComputedStyle(e).fontWeight))]);
+ok(sizes.length===1,'one text style below the title: '+sizes.join(','));
 // Tasks with the six 司儀 roles
 await A.click('#seg-task');
 const roles=['主持 1','主持 2','撰稿','讀音','台側提示','後備司儀'], ppl=['乙同學','丙同學','丁同學','戊同學','己同學'];

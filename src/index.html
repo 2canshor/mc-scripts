@@ -214,29 +214,31 @@ body[data-view="list"] #evmore{display:none}
 .ev h1.untitled{color:var(--caption)}
 .ev .facts{margin:0;color:var(--secondary)}
 .ev .facts span{white-space:nowrap}
-.ev .facts span+span::before{content:"｜"}
+.ev .facts span:not(:last-child)::after{content:"｜"}
 .ev .note{margin:8px 0 0;color:var(--secondary);white-space:pre-line}
 .seg{display:flex;gap:2px;padding:4px;margin:24px 0 8px;width:max-content;max-width:100%}
 .seg button{height:40px;padding:0 20px;border-radius:999px;font-size:15px;color:var(--text)}
 .seg button[aria-selected="true"]{background:var(--glass-sel);color:var(--btn-text)}
 .seg button:focus-visible{background:var(--glass-hi);outline:none}
 .seg button[aria-selected="true"]:focus-visible{background:var(--glass-sel);opacity:.85}
-.ev h2{display:flex;align-items:baseline;gap:12px;margin:28px 0 4px;font-size:17px;font-weight:600}
+.ev h2{display:flex;align-items:baseline;gap:12px;margin:32px 0 4px;font-size:17px;font-weight:400;color:var(--secondary)}
 .ev h2 .aside{margin-left:auto;font-weight:400;color:var(--secondary)}
 .ev h2 .aside.todo{color:var(--fill)}
 .ev ul{list-style:none;margin:0;padding:0}
-.ev li{margin:0 -12px;border-radius:12px}
+.ev li{display:flex;align-items:flex-start;margin:0 -12px;border-radius:12px}
 .ev li:hover,.ev li:focus-within{background:var(--current)}
-.ev .it{width:100%;display:grid;grid-template-columns:6.6em minmax(0,1fr);gap:2px 16px;min-height:48px;padding:12px;text-align:left;font-size:17px;line-height:1.4;border-radius:12px;outline:none}
+.ev .it{flex:1;min-width:0;display:grid;grid-template-columns:6.6em minmax(0,1fr);gap:2px 16px;min-height:48px;padding:12px;text-align:left;font-size:17px;line-height:1.4;border-radius:12px;outline:none}
 .ev .it .tm{color:var(--secondary);font-variant-numeric:tabular-nums}
 .ev .it .tm.none{color:var(--caption)}
 .ev .it .main{min-width:0}
-.ev .it .sub{grid-column:2;color:var(--secondary);font-size:15px}
-.ev .it .chg{grid-column:2;color:var(--fill);font-size:15px}
+.ev .it .sub{grid-column:2;color:var(--secondary)}
+.ev .it .chg{grid-column:2;color:var(--fill)}
 .ev li.missing .main,.ev li.missing .tm{color:var(--caption)}
 .ev .mine .it{grid-template-columns:6.6em minmax(0,1fr)}
-.ev .mine li.next .main{font-weight:600}
-.ev .ask{display:flex;align-items:center;gap:12px;margin:16px 0 0;padding:12px 16px;border-radius:14px;background:var(--current);color:var(--secondary)}
+.ev .rowmore{flex:none;width:44px;height:44px;margin:6px 4px 0 0;display:grid;place-items:center;border-radius:999px;color:var(--secondary)}
+.ev .rowmore:hover,.ev .rowmore:focus-visible,.ev .rowmore[aria-expanded="true"]{background:var(--field);color:var(--text);outline:none}
+.ev li.held{background:var(--current)}
+.ev .ask{font-size:17px;display:flex;align-items:center;gap:12px;margin:16px 0 0;padding:12px 16px;border-radius:14px;background:var(--current);color:var(--secondary)}
 .ev .ask span{flex:1}
 .ev .ask button{height:40px;padding:0 14px;border-radius:999px;color:var(--text)}
 .ev .ask button:hover,.ev .ask button:focus-visible{background:var(--field);outline:none}
@@ -245,8 +247,8 @@ body[data-view="list"] #evmore{display:none}
 .ev .linkish{margin-top:8px;height:44px;padding:0 16px;border-radius:999px;background:var(--field);color:var(--text)}
 .ev .linkish:hover,.ev .linkish:focus-visible{background:var(--current);outline:none}
 .ev p.facts.todo{color:var(--fill)}
-.ev .duty{display:block;color:var(--secondary);font-size:15px}
-.ev .duty b{font-weight:600;color:var(--text)}
+.ev .duty{display:block;color:var(--secondary)}
+.ev .duty b{font-weight:400;color:var(--text)}
 
 /* Sheets: forms that slide over the page, with Cancel and Done at the top as on iPhone */
 .scrim{position:fixed;inset:0;z-index:40;background:rgba(26,26,24,.28);display:flex;align-items:flex-end;justify-content:center}
@@ -260,26 +262,27 @@ body[data-view="list"] #evmore{display:none}
 .sheet .bar .done{font-weight:600;background:var(--primary);color:var(--on-primary)}
 .sheet .bar .done:hover,.sheet .bar .done:focus-visible{background:var(--primary);filter:brightness(1.08)}
 .sheet label.f{display:block;margin:0 0 14px}
-.sheet label.f>span{display:block;font-size:15px;color:var(--secondary);margin:0 0 4px}
+.sheet label.f>span{display:block;color:var(--secondary);margin:0 0 4px}
 .sheet input,.sheet select,.sheet textarea{width:100%;font:inherit;font-size:17px;color:var(--text);background:var(--field);border:0;border-radius:12px;padding:10px 14px;outline:none;-webkit-appearance:none;appearance:none;min-height:46px}
 .sheet textarea{resize:vertical;min-height:92px;line-height:1.5}
 .sheet input::placeholder,.sheet textarea::placeholder{color:var(--caption)}
 .sheet select{padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B6A64' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:16px} /* stroke-ok: line icon */
 .sheet input:focus,.sheet select:focus,.sheet textarea:focus{background:var(--current)}
 .sheet .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sheet div.two.alone{margin:0 0 14px}
 .sheet .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
-.sheet .chips button{height:36px;padding:0 14px;border-radius:999px;background:var(--field);font-size:15px}
+.sheet .chips button{height:40px;padding:0 14px;border-radius:999px;background:var(--field)}
 .sheet .chips button.taken{color:var(--caption)}
 .sheet .chips button:focus-visible,.sheet .chips button:hover{background:var(--current);outline:none}
-.sheet .meta{margin:4px 0 16px;font-size:15px;color:var(--caption)}
+.sheet .meta{margin:4px 0 16px;color:var(--caption)}
 .sheet .del{width:100%;height:48px;margin-top:8px;border-radius:12px;background:var(--field);color:var(--danger);font-size:17px}
 .sheet .del:hover,.sheet .del:focus-visible{background:var(--current);outline:none}
-.sheet .people h4{margin:16px 0 4px;font-size:15px;font-weight:400;color:var(--secondary)}
+.sheet .people h4{margin:16px 0 4px;font-size:17px;font-weight:400;color:var(--secondary)}
 .sheet .people button{display:flex;width:100%;gap:12px;align-items:baseline;min-height:44px;padding:10px 12px;margin:0 -12px;width:calc(100% + 24px);border-radius:12px;text-align:left}
 .sheet .people button:hover,.sheet .people button:focus-visible{background:var(--current);outline:none}
 .sheet .people button[aria-checked="true"]{background:var(--field)}
 .sheet .people .c{color:var(--secondary);font-variant-numeric:tabular-nums}
-.sheet .hint{font-size:15px;color:var(--secondary);margin:0 0 12px}
+.sheet .hint{color:var(--secondary);margin:0 0 12px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
@@ -1735,9 +1738,35 @@ var CLOUD = {"api":"/api"};
     else if (evSeg === "run") renderRuns(box, e);
     else renderEventScripts(box, e);
   }
-  function itemRow(cls, tm, main, subs, onclick) {
+  // A row opens its sheet; its own ⋯ (or a hold, or a right-click) offers 複製 and 刪除, as on the list.
+  function itemRow(cls, tm, main, subs, onclick, rec) {
     var kids = [el("span", { class: "tm" + (tm ? "" : " none"), text: tm || "未定" }), main].concat(subs.filter(Boolean));
-    return el("li", { class: cls || "" }, [el("button", { type: "button", class: "it", onclick: onclick }, kids)]);
+    var open = el("button", { type: "button", class: "it" }, kids), li = el("li", { class: cls || "" }, [open]);
+    var held = false, timer = null;
+    open.addEventListener("click", function () { if (held) { held = false; return; } onclick(); });
+    if (!rec) return li;
+    var what = rec.kind === "task" ? "Task" : "環節";
+    var more = el("button", { type: "button", class: "rowmore", "aria-label": "更多", title: "更多", "aria-haspopup": "menu", "aria-expanded": "false" }, [icon("more")]);
+    function actions(anchor, side) {
+      li.classList.add("held");
+      openMenu(anchor, side, [
+        menuItem("copy", "複製", function () { copyRec(rec); }),
+        el("div", { class: "gap" }),
+        menuItem("trash", "刪除", function () { setDeleted(rec, true); renderEvent(); toast("已刪除" + what, false, { label: "復原", fn: function () { setDeleted(rec, false); renderEvent(); } }); }, { danger: true })
+      ]);
+    }
+    more.addEventListener("click", function () { actions(more, "right"); });
+    open.addEventListener("contextmenu", function (e) { e.preventDefault(); actions(open, "at"); });
+    open.addEventListener("pointerdown", function (e) { if (e.pointerType === "mouse") return; timer = setTimeout(function () { held = true; actions(open, "at"); }, 500); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (t) { open.addEventListener(t, function () { clearTimeout(timer); }); });
+    li.appendChild(more);
+    return li;
+  }
+  // A copy opens straight away: a Task for another member, or the next Rundown line.
+  function copyRec(rec) {
+    var d = JSON.parse(JSON.stringify(rec.data));
+    if (rec.kind === "task") { d.member = null; openTaskSheet(null, { copy: d }); }
+    else openRunSheet(null, d);
   }
   function renderTasks(box, e) {
     var tasks = eventTasks(evId), duty = dutyGroups(e);
@@ -1757,7 +1786,7 @@ var CLOUD = {"api":"/api"};
         var nextI = nowT ? mine.findIndex(function (t) { var tt = taskTime(t); return !(tt.end || tt.start) || (tt.end || tt.start) >= nowT; }) : 0;
         mine.forEach(function (t, i) {
           var tt = taskTime(t);
-          ul.appendChild(itemRow(i === nextI ? "next" : "", span(tt.start, tt.end), el("span", { class: "main", text: t.data.text }), [t.data.place ? el("span", { class: "sub", text: t.data.place }) : null, changedNote(t)], function () { openTaskSheet(t); }));
+          ul.appendChild(itemRow(i === nextI ? "next" : "", span(tt.start, tt.end), el("span", { class: "main", text: t.data.text }), [t.data.place ? el("span", { class: "sub", text: t.data.place }) : null, changedNote(t)], function () { openTaskSheet(t); }, t));
         });
         box.appendChild(ul);
       }
@@ -1777,7 +1806,7 @@ var CLOUD = {"api":"/api"};
       var ul = el("ul", { "aria-label": g.group });
       gt.forEach(function (t) {
         var tt = taskTime(t);
-        ul.appendChild(itemRow("", span(tt.start, tt.end), el("span", { class: "main", text: t.data.member.name + "　" + t.data.text }), [t.data.place ? el("span", { class: "sub", text: t.data.place }) : null, changedNote(t)], function () { openTaskSheet(t); }));
+        ul.appendChild(itemRow("", span(tt.start, tt.end), el("span", { class: "main", text: t.data.member.name + "　" + t.data.text }), [t.data.place ? el("span", { class: "sub", text: t.data.place }) : null, changedNote(t)], function () { openTaskSheet(t); }, t));
       });
       missing.forEach(function (p) {
         ul.appendChild(itemRow("missing", "—", el("span", { class: "main", text: p.name + "　未有 Task" }), [], function () { openTaskSheet(null, { group: g.group, member: p }); }));
@@ -1792,7 +1821,7 @@ var CLOUD = {"api":"/api"};
     runs.forEach(function (r) {
       var d = r.data;
       var lines = duty.map(function (g) { return d[g.main] ? el("span", { class: "duty" }, [el("b", { text: g.n }), " " + d[g.main]]) : null; });
-      ul.appendChild(itemRow("", span(d.start, d.end), el("span", { class: "main" }, [d.title || "未命名環節"].concat(lines)), [d.note ? el("span", { class: "sub", text: d.note }) : null, changedNote(r)], function () { openRunSheet(r); }));
+      ul.appendChild(itemRow("", span(d.start, d.end), el("span", { class: "main" }, [d.title || "未命名環節"].concat(lines)), [d.note ? el("span", { class: "sub", text: d.note }) : null, changedNote(r)], function () { openRunSheet(r); }, r));
     });
     box.appendChild(ul);
   }
@@ -1875,7 +1904,7 @@ var CLOUD = {"api":"/api"};
 
   function openTaskSheet(t, pre) {
     var e = recs.items[evId].data, duty = dutyGroups(e); pre = pre || {};
-    var d = t ? JSON.parse(JSON.stringify(t.data)) : { group: pre.group || (me && duty.some(function (g) { return g.group === myGroup(); }) ? myGroup() : duty[0] && duty[0].group) || "", member: pre.member || null };
+    var d = t ? JSON.parse(JSON.stringify(t.data)) : pre.copy ? pre.copy : { group: pre.group || (me && duty.some(function (g) { return g.group === myGroup(); }) ? myGroup() : duty[0] && duty[0].group) || "", member: pre.member || null };
     var group = duty.length > 1 ? pick(duty.map(function (g) { return [g.group, g.group]; }), d.group) : null;
     var who = el("div"), person = null, text = inp(d.text, { placeholder: "例：主持頒獎；核對得獎者讀音" }), chips = el("div", { class: "chips" });
     var runs = eventRuns(evId);
@@ -1895,7 +1924,7 @@ var CLOUD = {"api":"/api"};
         var cur = d.member ? ppl.findIndex(function (p) { return samePerson(p, d.member); }) : -1;
         var s = pick(opts, cur >= 0 ? String(cur) : d.member ? "other" : "");
         var nm = inp(d.member && cur < 0 ? d.member.name : "", { placeholder: "姓名" }), cl = inp(d.member && cur < 0 ? d.member.cls : "", { placeholder: "班號，例：3C12", autocapitalize: "characters" });
-        var other = el("div", { class: "two", hidden: s.value !== "other" }, [nm, cl]);
+        var other = el("div", { class: "two alone", hidden: s.value !== "other" }, [nm, cl]);
         s.addEventListener("change", function () { other.hidden = s.value !== "other"; drawChips(); });
         person = function () { return s.value === "other" ? { name: nm.value.trim(), cls: ScriptGen.cls(cl.value) } : s.value ? { name: ppl[+s.value].name, cls: ppl[+s.value].cls } : null; };
         who.appendChild(field("組員", s)); who.appendChild(other);
@@ -1928,11 +1957,12 @@ var CLOUD = {"api":"/api"};
         seg: seg.value, start: seg.value ? "" : start.value, end: seg.value ? "" : end.value, place: place.value.trim() });
       renderEvent();
     }, { focus: t || pre.member ? null : "select,input" });
+    if (pre.copy) toast("已複製，請選擇組員");
   }
   function myGroup() { var p = me && roster().filter(function (x) { return samePerson(x, me); })[0]; return p ? p.group : ""; }
 
-  function openRunSheet(r) {
-    var e = recs.items[evId].data, duty = dutyGroups(e), d = r ? r.data : {};
+  function openRunSheet(r, copy) {
+    var e = recs.items[evId].data, duty = dutyGroups(e), d = r ? r.data : copy || {};
     var start = inp(d.start, { type: "time" }), end = inp(d.end, { type: "time" });
     var title = inp(d.title, { placeholder: "例：正式宣佈" }), note = inp(d.note, { placeholder: "例：頒獎嘉賓：校長" });
     var parts = duty.map(function (g) { return { g: g, i: inp(d[g.main], { placeholder: { mc: "例：宣佈得獎者", bs: "例：遞獎狀予頒獎嘉賓", rc: "例：帶嘉賓入座" }[g.main] }) }; });
@@ -1952,7 +1982,7 @@ var CLOUD = {"api":"/api"};
     var body = [];
     if (!ppl.length) {
       var nm = inp(me ? me.name : "", { placeholder: "姓名" }), cl = inp(me ? me.cls : "", { placeholder: "班號，例：3C12", autocapitalize: "characters" });
-      body.push(el("p", { class: "hint", text: "名單未匯入，請自行輸入。" }), el("div", { class: "two" }, [nm, cl]));
+      body.push(el("p", { class: "hint", text: "名單未匯入，請自行輸入。" }), el("div", { class: "two alone" }, [nm, cl]));
       chosen = function () { return nm.value.trim() ? { name: nm.value.trim(), cls: ScriptGen.cls(cl.value) } : null; };
     } else {
       var box = el("div", { class: "people", role: "radiogroup", "aria-label": "你的名字" }), pickd = me;
