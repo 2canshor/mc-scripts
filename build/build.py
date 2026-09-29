@@ -1,7 +1,7 @@
-"""Build MC Scripts from page.src.html and gen.js.
+"""Build Scripts from page.src.html and gen.js.
 
   python3 build/build.py    writes src/index.html (the page the worker serves)
-                            and build/MC Scripts.html (local-only copy for claude.ai)
+                            and build/Scripts.html (local-only copy for claude.ai)
 """
 import base64, os
 here = os.path.dirname(os.path.abspath(__file__))
@@ -13,13 +13,13 @@ page = p.replace('%%GEN%%', g).replace('%%TPL%%', tpl)
 # The claude.ai copy cannot reach the network, so it keeps scripts on the device only.
 # It starts with its own charset: opened straight from disk, Chromium otherwise guesses the
 # encoding and sometimes shows Chinese as Latin-1 (the cause of the flaky ＋ menu test).
-open(os.path.join(here, 'MC Scripts.html'), 'w', encoding='utf-8').write('<meta charset="utf-8">\n' + page.replace('%%CLOUD%%', 'null'))
+open(os.path.join(here, 'Scripts.html'), 'w', encoding='utf-8').write('<meta charset="utf-8">\n' + page.replace('%%CLOUD%%', 'null'))
 page = page.replace('%%CLOUD%%', '{"api":"/api"}')
 i = page.index('</style>') + len('</style>')
 head = ('<!doctype html>\n<html lang="zh-Hant-HK">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
         '<meta name="apple-mobile-web-app-capable" content="yes">\n'
-        '<meta name="apple-mobile-web-app-title" content="MC Scripts">\n<meta name="robots" content="noindex">\n')
+        '<meta name="apple-mobile-web-app-title" content="Scripts">\n<meta name="robots" content="noindex">\n')
 std = head + page[:i] + '\n</head>\n<body>' + page[i:] + '\n</body>\n</html>\n'
 open(os.path.join(root, 'src', 'index.html'), 'w', encoding='utf-8').write(std)
 names = ['陳加森', '梁穎晞', '何秉諾', '曾崧茵', '鄭校長', '黃詩琦', '王姿曼', 'Carson', '王希澄', '胡尊', '劉桓瑜', '蔡杏兒']

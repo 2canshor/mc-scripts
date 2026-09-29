@@ -3,7 +3,7 @@ const ok=(c,m)=>{console.log(c?'ok':'FAIL',m);if(!c)process.exitCode=1};
 (async()=>{const b=await chromium.launch();const out=process.argv[2]||require('os').tmpdir();
 for (const [w,h,scheme] of [[1440,900,'dark'],[820,1180,'light']]){
  const p=await b.newPage({viewport:{width:w,height:h},colorScheme:scheme});
- await p.goto('file://'+process.cwd()+'/build/MC Scripts.html');await p.waitForTimeout(200);
+ await p.goto('file://'+process.cwd()+'/build/Scripts.html');await p.waitForTimeout(200);
  ok(!(await p.isVisible('#q')),w+' no search while the list is empty');
  await p.evaluate(()=>{const mk=(id,ev,d,mc,txt)=>({id,updated:Date.now(),state:{event:ev,date:d,mcs:[{id:'m'+id,cls:'3C',name:mc}],blocks:[{id:'b'+id,type:'line',mc:'m'+id,text:txt}]}});
   localStorage.setItem('ca-script-builder-v3',JSON.stringify({scripts:[mk('a','早會頒獎','2026-09-28','甲同學','各位早晨'),mk('b','Opening Ceremony','2026-09-01','乙同學','Good morning everyone')],open:null}));});

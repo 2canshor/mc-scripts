@@ -1,4 +1,4 @@
-/* MC Scripts: state -> one layout -> Word document.xml and the on-screen preview.
+/* Scripts: state -> one layout -> Word document.xml and the on-screen preview.
    Word package and styles come from the CA Cantonese Script Template. */
 var ScriptGen = (function () {
   var GAP_BLOCK = 240, GAP_TIGHT = 120, GAP_NONE = 0; // twips after a paragraph

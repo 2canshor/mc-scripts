@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="MC Scripts">
+<meta name="apple-mobile-web-app-title" content="Scripts">
 <meta name="robots" content="noindex">
-<title>MC Scripts</title>
+<title>Scripts</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&display=swap">
@@ -284,7 +284,7 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-/* MC Scripts: state -> one layout -> Word document.xml and the on-screen preview.
+/* Scripts: state -> one layout -> Word document.xml and the on-screen preview.
    Word package and styles come from the CA Cantonese Script Template. */
 var ScriptGen = (function () {
   var GAP_BLOCK = 240, GAP_TIGHT = 120, GAP_NONE = 0; // twips after a paragraph
@@ -1173,7 +1173,7 @@ var CLOUD = {"api":"/api"};
      page's own server, reached with the CA passcode; each iPad keeps its own copy, so writing works
      offline and uploads later. A write names the version it started from; if someone else saved in
      between, the shared copy stays as they left it and this iPad's version is kept as a separate script. */
-  var SPACE_KEY = "mc-scripts-space";
+  var SPACE_KEY = "event-centre-space";
   var cloud = null, sync = { state: "ok", loaded: false, pulling: false, pushing: {}, timer: null };
   function pending(s) { return s.dirty && !(isBlank(s.state) && !s.rev && !s.deleted); }
   function api(path, method, body, code) {

@@ -7,7 +7,7 @@ const seed=()=>{const iso=o=>{const d=new Date(Date.now()+o*864e5);return d.getF
  localStorage.setItem('ca-script-builder-v3',JSON.stringify({scripts,open:null}));};
 for (const [w,h,scheme] of [[1440,900,'dark'],[820,1180,'light']]){
  const p=await b.newPage({viewport:{width:w,height:h},colorScheme:scheme});
- await p.goto('file://'+process.cwd()+'/build/MC Scripts.html');await p.evaluate(seed);await p.reload();await p.waitForTimeout(300);
+ await p.goto('file://'+process.cwd()+'/build/Scripts.html');await p.evaluate(seed);await p.reload();await p.waitForTimeout(300);
  const heads=await p.$$eval('.section ul',x=>x.map(e=>e.getAttribute('aria-label')));console.log(w,JSON.stringify(heads));
  ok(JSON.stringify(heads)==='["即將舉行","未有日期","已舉行"]','coming up, then no date, then held');
  ok((await p.textContent('button.sh')).trim()==='過往講稿','held events folded behind 過往講稿');

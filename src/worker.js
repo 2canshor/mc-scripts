@@ -1,4 +1,4 @@
-// MC Scripts: serves the event tool at "/" and the script editor at "/scripts", and keeps both in one D1 database.
+// Event Centre: serves the event tool at "/" and the script editor at "/scripts", and keeps both in one D1 database.
 // The event tool signs in with an account (see events-api.js). The script editor sends the CA passcode with each request. The passcode is the Worker secret PASSCODE,
 // which the chairs change in the Cloudflare dashboard (Settings > Variables and Secrets).
 // Until that secret exists, the passcode whose SHA-256 is below still works.

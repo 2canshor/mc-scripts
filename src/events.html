@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Events">
+<meta name="apple-mobile-web-app-title" content="Event Centre">
 <meta name="robots" content="noindex">
-<title>Events</title>
+<title>Event Centre</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&display=swap">
 <style>
-/* Tokens are the CA Design System's, as used by MC Scripts */
+/* Tokens are the CA Design System's, as used by Scripts */
 :root{
   --canvas:#FBFAF7; /* tell-ok: CA Design System token */
   --current:#F1EFE8; --field:#EDEBE3; --fill:#6E5916; --primary:#BAA877; --on-primary:#1A1A18; /* tell-ok: CA Design System tokens */
-  /* tell-ok: MC Scripts' tinted glass for the add button */
+  /* tell-ok: Scripts' tinted glass for the add button */
   --primary-glass:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.06) 55%,rgba(255,255,255,0)),color-mix(in srgb,var(--primary) 84%,transparent);
   --text:#1A1A18; /* tell-ok: CA Design System token */
   --secondary:#6B6A64; --caption:#85837C;
@@ -22,7 +22,7 @@
   --glass:rgba(255,255,255,.62); --glass-hi:rgba(255,255,255,.92);
   --glass-shadow:0 1px 1px rgba(26,26,24,.04),0 8px 28px rgba(26,26,24,.12);
   --serif:"Noto Serif TC","Songti TC","PMingLiU",Georgia,serif;
-  --side:max(24px, calc((100vw - 860px) / 2));  /* content column and floating controls share one edge at every width, as in MC Scripts */
+  --side:max(24px, calc((100vw - 860px) / 2));  /* content column and floating controls share one edge at every width, as in Scripts */
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -168,7 +168,7 @@ button.row:focus-visible{background:var(--current);outline:none}
 @media (hover:hover){.row.add:hover{background:var(--current)}}
 
 /* ---------- Fields ----------
-   In a title or a sentence (event date and name, a line's time and place): as MC Scripts' title, as wide as the text;
+   In a title or a sentence (event date and name, a line's time and place): as Scripts' title, as wide as the text;
    empty, its name in grey on a light fill.
    In a list row (tasks, class and name, guests, teachers, roles): the cell is the field; empty, only its name in grey.
    Remarks: always a large box. */
@@ -185,7 +185,7 @@ h3 .fld{font-weight:600}
 .box:focus{background:var(--current)}
 .upper{text-transform:uppercase} /* tell-ok: class codes are capitals, e.g. 3C12 */
 .upper::placeholder{text-transform:none}
-/* A short choice: the value, a small ↕, and the system list on tap (MC Scripts' speaker picker) */
+/* A short choice: the value, a small ↕, and the system list on tap (Scripts' speaker picker) */
 .who{position:relative;display:inline-flex;align-items:center;gap:2px;border-radius:6px;max-width:100%}
 .who>span{min-width:0}
 .who svg.i{width:14px;height:14px;color:var(--caption)}
@@ -193,7 +193,7 @@ h3 .fld{font-weight:600}
 .who select{position:absolute;inset:-9px -10px;width:calc(100% + 20px);height:calc(100% + 18px);opacity:0;font-size:16px;-webkit-appearance:none;appearance:none;cursor:pointer}
 .who:focus-within{background:var(--current)}
 .nwp{white-space:nowrap}
-/* Date and time: the system picker, opened from the value itself (MC Scripts' date) */
+/* Date and time: the system picker, opened from the value itself (Scripts' date) */
 .dt{position:relative;display:inline-flex;align-items:center;gap:2px;border-radius:6px;font-variant-numeric:tabular-nums}
 .dt svg.i{width:14px;height:14px;color:var(--caption)}
 .dt input{position:absolute;inset:-9px -6px;width:calc(100% + 12px);height:calc(100% + 18px);opacity:0;font-size:16px;-webkit-appearance:none;appearance:none;cursor:pointer}
@@ -216,7 +216,7 @@ h3 .fld{font-weight:600}
 .adot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .gone{color:var(--caption);text-decoration:line-through} /* stroke-ok: an absent awardee is struck out, as on the printed list */
 
-/* ---------- Documents: the MC Scripts editor layout ---------- */
+/* ---------- Documents: the Scripts editor layout ---------- */
 .mcline{font-weight:600;margin:10px 0 28px}
 .mcline .sep2{font-weight:400}
 .srow{display:grid;grid-template-columns:5.4em minmax(0,1fr) 32px;column-gap:12px;align-items:start;width:calc(100% + 24px);margin:0 -12px 6px;padding:4px 12px;border-radius:10px}
@@ -235,7 +235,7 @@ h3 .fld{font-weight:600}
 .award:first-child{margin-top:0}
 .award h3{font-size:17px;font-weight:600;margin:0 0 4px;min-height:1.5em}
 
-/* ---------- Sign in and Who Are You: a gate before the app, as MC Scripts' passcode screen ---------- */
+/* ---------- Sign in and Who Are You: a gate before the app, as Scripts' passcode screen ---------- */
 .gate{max-width:480px;min-height:100vh;min-height:100dvh;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding-block:48px}
 .gate > svg.gate-i{width:52px;height:52px;stroke-width:1.4;color:var(--caption);margin-bottom:8px} /* stroke-ok: line icons */
 .gate h2{margin:0;font-size:27px;font-weight:600;line-height:1.3}
@@ -430,10 +430,10 @@ const toMin = t => +t.slice(0, 2) * 60 + +t.slice(3);
 const fromMin = m => String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
 
 /* ---------- Components: one per kind of information; every page calls these and builds no control of its own ----------
-   inline field   text in a title or sentence: as wide as its text; empty, its name in grey on a light fill (MC Scripts' title)
+   inline field   text in a title or sentence: as wide as its text; empty, its name in grey on a light fill (Scripts' title)
    cell field     text in a list row: the cell is the field; empty, its name in grey
    remarks        a large box, on every page that has Remarks
-   choice         the value, a small ↕, the system list (MC Scripts' speaker picker)
+   choice         the value, a small ↕, the system list (Scripts' speaker picker)
    date, time     the value, a small ↕, the system picker; empty, as an inline field
    add row        ⊕ and what it adds, at the end of its list; ＋ at the bottom corner only makes something with a page of its own
    presence       circle before the name: tap for there, again for absent, again to clear (attendance and roll call alike)
@@ -602,7 +602,7 @@ function pLine(ev, id) {
   return {page: 'line', back: true, right: lead ? [['trash', 'ask:delline', 'Delete Line']] : null, body: h};
 }
 
-// Event Details: the title as MC Scripts writes it, then one list of properties (Obsidian's properties), then every document
+// Event Details: the title as Scripts writes it, then one list of properties (Obsidian's properties), then every document
 function dutyPills(ev, lead) {
   const gs = sortGroups(ev.groups).map(g => { const n = openCount(g);
     return `<span class="pill${lead ? '' : ' ro'}${n ? ' unset' : ''}"><button data-act="group:${esc(g.name)}" type="button" aria-label="${esc(g.name)}${n ? `, ${n} ${n > 1 ? 'roles' : 'role'} to fill` : ''}">${esc(g.name)}</button>${lead ? `<button class="px" data-act="dutyask:${esc(g.name)}" type="button" aria-label="Take ${esc(g.name)} off duty">${ic('x')}</button>` : ''}</span>`; }).join('');
@@ -633,10 +633,10 @@ function pDetails(ev) {
     body: h, fab: lead ? ['plus', 'adddoc-menu', 'New Document'] : t ? ['plus', 'adddoc:' + t, 'New ' + DOC_NAME[t]] : null};
 }
 
-// Documents open in the MC Scripts editor: fields for the accounts that own them, plain text for everyone else
+// Documents open in the Scripts editor: fields for the accounts that own them, plain text for everyone else
 function docHead(ev, d, edit) {
   const same = ev.docs.filter(x => x.type === d.type).length > 1, sep = zh(ev.name) ? '｜' : ' | ';
-  // tell-ok: the separators in "YY/MM/DD｜name｜講稿" are the MC Scripts title convention
+  // tell-ok: the separators in "YY/MM/DD｜name｜講稿" are the Scripts title convention
   const type = zh(ev.name) ? DOC_ZH[d.type] : DOC_NAME[d.type];
   return `<div class="titlebar"><h1 class="title doct">${esc(ev.date)}⁠<span class="sep">${sep}</span><wbr>${esc(ev.name)}⁠<span class="sep">${sep}</span><wbr>` +
     (edit && same ? `<span class="nw">${inlineFld('dq:' + d.id, d.q, W(ev, '類別', 'Qualifier'))}${zh(ev.name) ? '' : ' '}${type}</span>` : `<span class="nw">${esc(docTitle(ev, d))}</span>`) + `</h1></div>`;
@@ -644,7 +644,7 @@ function docHead(ev, d, edit) {
 function scriptBody(ev, d, edit) {
   const mc = sortGroups(ev.groups).find(g => role(g, 'Host 1')), holder = r => mc && (role(mc, r) || {}).who;
   const hosts = ['Host 1', 'Host 2'].filter(holder);
-  // The MC line, as in MC Scripts and the Script Template: class number and name of each MC
+  // The MC line, as in Scripts and the Script Template: class number and name of each MC
   let h = `<p class="mcline">${hosts.map(r => esc(`${clsOf(mc.name, holder(r))} ${holder(r)}`.trim())).join('<span class="sep2">．</span>') || `<span class="unset">${W(ev, '未有司儀', 'No MC yet')}</span>`}</p>`;
   h += d.blocks.map(b => {
     const pm = edit ? ibtn('more', `pmenu:${d.id}:${b.id}`, 'Paragraph actions', 'pm') : '<span></span>';
@@ -731,7 +731,7 @@ function render() {
   renderLayer();
   persistSoon();
 }
-// Inline fields are as wide as their text, measured like MC Scripts' fit()
+// Inline fields are as wide as their text, measured like Scripts' fit()
 const measureCtx = document.createElement('canvas').getContext('2d');
 function measure(el, text) { const cs = getComputedStyle(el); measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; return Math.ceil(measureCtx.measureText(text).width + 2); }
 const pad = el => { const cs = getComputedStyle(el); return parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight); };
@@ -801,7 +801,7 @@ function setVal(t, k, v) {
   if (ns === 'ac' || ns === 'an') { const r = item(item(d.awards, p[2]).rows, p[3]); if (r) r[ns === 'ac' ? 'cls' : 'name'] = ns === 'ac' ? v.toUpperCase() : v; return; }
   if (ns === 'gn' || ns === 'gr') { const g = item(d.guests, p[2]); if (g) g[ns === 'gn' ? 'name' : 'role'] = v; }
 }
-// A row emptied of all its text goes, once the cursor has left it (MC Scripts)
+// A row emptied of all its text goes, once the cursor has left it (Scripts)
 function dropIfEmpty(row) {
   if (!row || !row.isConnected || row.contains(document.activeElement) || !S.stack.length) return;
   const [kind, a, b] = row.dataset.row.split(':'), ev = E();
@@ -1126,7 +1126,7 @@ document.addEventListener('click', e => {
       d.blocks.push(blk); logChange(ev, 'Changed ' + docLabel(d), before); S.menu = null;
       if (t !== 'award') S.focusKey = `s:${d.id}:${blk.id}`; render(); break;
     }
-    // A paragraph's own ⋯, as in MC Scripts: its kind, or which award it shows, and Delete
+    // A paragraph's own ⋯, as in Scripts: its kind, or which award it shows, and Delete
     case 'pmenu': {
       const [id, bid] = arg.split(':'), d = doc(ev, id), blk = item(d.blocks, bid);
       const items = blk.type === 'award'
@@ -1152,7 +1152,7 @@ document.addEventListener('click', e => {
   }
 });
 
-/* On-screen keyboard: how much of the page it covers, so ＋, search and toasts stay visible (MC Scripts) */
+/* On-screen keyboard: how much of the page it covers, so ＋, search and toasts stay visible (Scripts) */
 if (window.visualViewport) {
   const vv = window.visualViewport;
   const onViewport = () => {
@@ -1360,7 +1360,7 @@ function signOut() {
 }
 
 // ---- Start: the last account on this device, its copy of the events, then the server ----
-// An MC Scripts join link from before the events page (…/#k=passcode) still opens MC Scripts
+// An Scripts join link from before the events page (…/#k=passcode) still opens Scripts
 if (/^#k=/.test(location.hash)) location.replace('/scripts' + location.hash);
 SYNC.token = store.get('token'); S.acct = store.get('acct'); S.who = store.get('who'); S.seen = store.get('seen') || {};
 if (SYNC.token && S.acct && ACCOUNTS.some(a => a.id === S.acct)) {

@@ -1,4 +1,4 @@
-name = "mc-scripts"
+name = "event-centre"
 main = "src/worker.js"
 compatibility_date = "2026-09-01"
 workers_dev = true
@@ -7,7 +7,8 @@ workers_dev = true
 [assets]
 directory = "./public"
 
+# D1 cannot be renamed, so the database keeps its first name.
 [[d1_databases]]
 binding = "DB"
-database_name = "mc-scripts"
+database_name = "event-centre"
 database_id = "5fee58f6-18e0-4a78-ae54-a996d8be2f36"
