@@ -3,7 +3,7 @@ const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 const ok=(c,m)=>{console.log(c?'ok':'FAIL',m);if(!c)process.exitCode=1};
 (async()=>{const b=await chromium.launch();const out=process.argv[2]||require('os').tmpdir();
 const p=await b.newPage({viewport:{width:820,height:600},colorScheme:'dark'});
-await p.goto('file://'+__dirname+'/MC Scripts.html');await p.click('#insert');
+await p.goto('file://'+__dirname+'/MC Scripts.html');await p.click('#insert');await p.click('.menu >> text=講稿');
 ok(await p.$eval('#undo',x=>x.disabled)&&await p.$eval('#redo',x=>x.disabled),'both off on a fresh script');
 await p.click('#event');await p.keyboard.type('早會');await p.waitForTimeout(900);
 const f=await p.$$('#mcline input');await f[1].click();await p.keyboard.type('甲同學');await p.waitForTimeout(900);

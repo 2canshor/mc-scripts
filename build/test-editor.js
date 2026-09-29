@@ -3,7 +3,7 @@ const assert=(c,m)=>{if(!c){console.log('FAIL',m);process.exitCode=1}else consol
 (async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:820,height:1180},hasTouch:true});const errs=[];
 p.on('pageerror',e=>errs.push(e.message));
 await p.goto('file://'+__dirname+'/MC Scripts.html');await p.waitForTimeout(300);
-await p.click('#insert');
+await p.click('#insert');await p.click('.menu >> text=講稿');
 assert(await p.evaluate(()=>document.activeElement.id)==='event','new script starts at the event name');
 await p.click('#insert',{force:true});await p.waitForTimeout(100);
 assert((await p.textContent('.toast'))==='請先填寫司儀姓名','tap on ＋ before an MC says why');

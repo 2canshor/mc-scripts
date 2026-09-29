@@ -196,12 +196,88 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 .doc{display:flex;flex-direction:column;min-height:calc(100vh - 120px);min-height:calc(100dvh - 120px)}
 .end{text-align:center;font-style:italic;color:var(--secondary);margin:auto 0 0;padding-top:calc(16 * var(--pt))}
 @media (max-width:640px){:root{--pt:1.3636px}body{font-size:15px}}
+
+/* Events: an event page holds its Task list, Rundown and scripts */
+body[data-view="event"] .lib,body[data-view="event"] .doc,body[data-view="event"] #hist,body[data-view="event"] #share,body[data-view="event"] #more{display:none}
+body:not([data-view="event"]) .ev,body:not([data-view="event"]) #evmore{display:none}
+body[data-view="list"] #evmore{display:none}
+.ev{max-width:860px;margin:0 auto;padding-top:var(--top)}
+.ev h1{font-size:34px;font-weight:700;line-height:1.2;margin:0 0 8px}
+.ev h1.untitled{color:var(--caption)}
+.ev .facts{margin:0;color:var(--secondary)}
+.ev .facts span{white-space:nowrap}
+.ev .facts span+span::before{content:"｜"}
+.ev .note{margin:8px 0 0;color:var(--secondary);white-space:pre-line}
+.seg{display:flex;gap:2px;padding:4px;margin:24px 0 8px;width:max-content;max-width:100%}
+.seg button{height:40px;padding:0 20px;border-radius:999px;font-size:15px;color:var(--text)}
+.seg button[aria-selected="true"]{background:var(--glass-sel);color:var(--btn-text)}
+.seg button:focus-visible{background:var(--glass-hi);outline:none}
+.seg button[aria-selected="true"]:focus-visible{background:var(--glass-sel);opacity:.85}
+.ev h2{display:flex;align-items:baseline;gap:12px;margin:28px 0 4px;font-size:17px;font-weight:600}
+.ev h2 .aside{margin-left:auto;font-weight:400;color:var(--secondary)}
+.ev h2 .aside.todo{color:var(--fill)}
+.ev ul{list-style:none;margin:0;padding:0}
+.ev li{margin:0 -12px;border-radius:12px}
+.ev li:hover,.ev li:focus-within{background:var(--current)}
+.ev .it{width:100%;display:grid;grid-template-columns:6.6em minmax(0,1fr);gap:2px 16px;min-height:48px;padding:12px;text-align:left;font-size:17px;line-height:1.4;border-radius:12px;outline:none}
+.ev .it .tm{color:var(--secondary);font-variant-numeric:tabular-nums}
+.ev .it .tm.none{color:var(--caption)}
+.ev .it .main{min-width:0}
+.ev .it .sub{grid-column:2;color:var(--secondary);font-size:15px}
+.ev .it .chg{grid-column:2;color:var(--fill);font-size:15px}
+.ev li.missing .main,.ev li.missing .tm{color:var(--caption)}
+.ev .mine .it{grid-template-columns:6.6em minmax(0,1fr)}
+.ev .mine li.next .main{font-weight:600}
+.ev .ask{display:flex;align-items:center;gap:12px;margin:16px 0 0;padding:12px 16px;border-radius:14px;background:var(--current);color:var(--secondary)}
+.ev .ask span{flex:1}
+.ev .ask button{height:40px;padding:0 14px;border-radius:999px;color:var(--text)}
+.ev .ask button:hover,.ev .ask button:focus-visible{background:var(--field);outline:none}
+.ev .ask button.go{background:var(--primary);color:var(--on-primary);font-weight:600}
+.ev .empty{margin:32px 0 0;color:var(--secondary);text-align:center}
+.ev .linkish{margin-top:8px;height:44px;padding:0 16px;border-radius:999px;background:var(--field);color:var(--text)}
+.ev .linkish:hover,.ev .linkish:focus-visible{background:var(--current);outline:none}
+.ev p.facts.todo{color:var(--fill)}
+.ev .duty{display:block;color:var(--secondary);font-size:15px}
+.ev .duty b{font-weight:600;color:var(--text)}
+
+/* Sheets: forms that slide over the page, with Cancel and Done at the top as on iPhone */
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(26,26,24,.28);display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:700px){.scrim{align-items:center}}
+.sheet{width:100%;max-width:560px;max-height:92vh;max-height:92dvh;overflow:auto;background:var(--canvas);border-radius:22px 22px 0 0;padding:0 20px calc(24px + env(safe-area-inset-bottom,0px));box-shadow:var(--glass-shadow)}
+@media (min-width:700px){.sheet{border-radius:22px}}
+.sheet .bar{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:8px;margin:0 -20px 8px;padding:12px 12px 8px;background:var(--canvas)}
+.sheet .bar h3{flex:1;margin:0;text-align:center;font-size:17px;font-weight:600}
+.sheet .bar button{min-width:64px;height:44px;padding:0 12px;border-radius:999px;font-size:17px}
+.sheet .bar button:hover,.sheet .bar button:focus-visible{background:var(--field);outline:none}
+.sheet .bar .done{font-weight:600;background:var(--primary);color:var(--on-primary)}
+.sheet .bar .done:hover,.sheet .bar .done:focus-visible{background:var(--primary);filter:brightness(1.08)}
+.sheet label.f{display:block;margin:0 0 14px}
+.sheet label.f>span{display:block;font-size:15px;color:var(--secondary);margin:0 0 4px}
+.sheet input,.sheet select,.sheet textarea{width:100%;font:inherit;font-size:17px;color:var(--text);background:var(--field);border:0;border-radius:12px;padding:10px 14px;outline:none;-webkit-appearance:none;appearance:none;min-height:46px}
+.sheet textarea{resize:vertical;min-height:92px;line-height:1.5}
+.sheet input::placeholder,.sheet textarea::placeholder{color:var(--caption)}
+.sheet select{padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B6A64' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:16px} /* stroke-ok: line icon */
+.sheet input:focus,.sheet select:focus,.sheet textarea:focus{background:var(--current)}
+.sheet .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sheet .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
+.sheet .chips button{height:36px;padding:0 14px;border-radius:999px;background:var(--field);font-size:15px}
+.sheet .chips button.taken{color:var(--caption)}
+.sheet .chips button:focus-visible,.sheet .chips button:hover{background:var(--current);outline:none}
+.sheet .meta{margin:4px 0 16px;font-size:15px;color:var(--caption)}
+.sheet .del{width:100%;height:48px;margin-top:8px;border-radius:12px;background:var(--field);color:var(--danger);font-size:17px}
+.sheet .del:hover,.sheet .del:focus-visible{background:var(--current);outline:none}
+.sheet .people h4{margin:16px 0 4px;font-size:15px;font-weight:400;color:var(--secondary)}
+.sheet .people button{display:flex;width:100%;gap:12px;align-items:baseline;min-height:44px;padding:10px 12px;margin:0 -12px;width:calc(100% + 24px);border-radius:12px;text-align:left}
+.sheet .people button:hover,.sheet .people button:focus-visible{background:var(--current);outline:none}
+.sheet .people button[aria-checked="true"]{background:var(--field)}
+.sheet .people .c{color:var(--secondary);font-variant-numeric:tabular-nums}
+.sheet .hint{font-size:15px;color:var(--secondary);margin:0 0 12px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 
 <div class="lead">
-  <button type="button" class="tb glass" id="back" aria-label="講稿列表" title="講稿列表"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg></button>
-  <div class="glass group" role="group" aria-label="還原及重做">
+  <button type="button" class="tb glass" id="back" aria-label="返回" title="返回"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg></button>
+  <div class="glass group" id="hist" role="group" aria-label="還原及重做">
     <button type="button" class="tb" id="undo" aria-label="還原" title="還原" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo"/></svg></button>
     <button type="button" class="tb" id="redo" aria-label="重做" title="重做" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-redo"/></svg></button>
   </div>
@@ -212,20 +288,33 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
     <div class="glass group">
       <button type="button" class="tb" id="share" aria-label="分享講稿" title="分享講稿"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-share"/></svg></button>
       <button type="button" class="tb" id="more" aria-label="更多" title="更多" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more"/></svg></button>
+      <button type="button" class="tb" id="evmore" aria-label="活動選項" title="活動選項" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more"/></svg></button>
     </div>
   </div>
 </div>
 
-<section class="lib" aria-label="講稿列表">
-  <h1>講稿</h1>
+<section class="lib" aria-label="活動列表">
+  <h1>活動</h1>
   <p class="count" id="libcount"></p>
   <div id="liblist"></div>
-  <p class="nomatch" id="nomatch" hidden>沒有相符的講稿</p>
+  <p class="nomatch" id="nomatch" hidden>沒有相符的活動或講稿</p>
   <div class="emptystate" id="libempty" hidden>
     <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg>
-    <h2>未有講稿</h2>
-    <p>按加號新增講稿</p>
+    <h2>未有活動</h2>
+    <p>按加號新增活動或講稿</p>
   </div>
+</section>
+
+<section class="ev" id="ev" aria-label="活動">
+  <h1 id="ev-title"></h1>
+  <p class="facts" id="ev-facts"></p>
+  <p class="note" id="ev-note" hidden></p>
+  <div class="seg glass" role="tablist" aria-label="活動內容">
+    <button type="button" role="tab" id="seg-task" aria-selected="true">Task</button>
+    <button type="button" role="tab" id="seg-run" aria-selected="false">Rundown</button>
+    <button type="button" role="tab" id="seg-script" aria-selected="false">講稿</button>
+  </div>
+  <div id="ev-body" role="tabpanel"></div>
 </section>
 
 <section class="join" aria-label="加入">
@@ -247,7 +336,7 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
   <p class="end">{End of Script}</p>
 </main>
 
-<label class="search glass" id="searchbar"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg><input id="q" type="search" placeholder="搜尋" aria-label="搜尋講稿" autocomplete="off" enterkeyhint="search"></label>
+<label class="search glass" id="searchbar"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg><input id="q" type="search" placeholder="搜尋" aria-label="搜尋活動及講稿" autocomplete="off" enterkeyhint="search"></label>
 
 <button type="button" class="fab glass" id="insert" aria-label="加" title="加" aria-haspopup="menu" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg></button>
 
@@ -269,6 +358,10 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
   <symbol id="i-new" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/></symbol>
   <symbol id="i-line" viewBox="0 0 24 24"><path d="M14 14a2 2 0 0 0 2-2V8h-2"/><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M8 14a2 2 0 0 0 2-2V8H8"/></symbol>
   <symbol id="i-cue" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
   <symbol id="i-award" viewBox="0 0 24 24"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></symbol>
 </svg>
 
@@ -642,9 +735,9 @@ var CLOUD = %%CLOUD%%;
   // Update what depends on neighbouring rows (speaker labels, spacing, highlights) without rebuilding the text areas.
   // Adding is only possible once an MC has a name.
   function updateAdd() {
-    var off = !!entry && !ScriptGen.named(state).length;
+    var v = document.body.getAttribute("data-view"), off = v === "doc" && !!entry && !ScriptGen.named(state).length;
     $("insert").setAttribute("aria-disabled", String(off));
-    $("insert").title = off ? "請先填寫司儀姓名" : entry ? "加" : "新講稿";
+    $("insert").title = off ? "請先填寫司儀姓名" : v === "event" ? { task: "新增 Task", run: "新增環節", script: "新講稿" }[evSeg] : entry ? "加" : "新增";
     $("insert").setAttribute("aria-label", $("insert").title);
     if (off) closeMenu();
   }
@@ -721,6 +814,18 @@ var CLOUD = %%CLOUD%%;
     histBreak(); state.blocks.splice(at, 0, b); current = b.id; renderRows(); save(); histBreak(); focusBlock(b.id);
   }
   $("insert").onclick = function () {
+    var v = document.body.getAttribute("data-view");
+    if (v === "list") {
+      openMenu($("insert"), "up", [menuItem("cal", "活動", function () { openEventSheet(null); }), menuItem("new", "講稿", function () { newScript(); })]);
+      return;
+    }
+    if (v === "event") {
+      var ev = recs.items[evId].data;
+      if (evSeg === "task") { if (!dutyGroups(ev).length) { toast("請先在活動資料選擇當值小組"); openEventSheet(recs.items[evId]); } else openTaskSheet(null); }
+      else if (evSeg === "run") openRunSheet(null);
+      else { docFrom = evId; newScript({ date: ev.date, event: ev.name }); }
+      return;
+    }
     if (!entry) { newScript(); return; }
     if ($("insert").getAttribute("aria-disabled") === "true") {
       toast("請先填寫司儀姓名"); var f = document.querySelector("#mcline input:not(.upper)"); if (f) f.focus(); return;
@@ -780,9 +885,10 @@ var CLOUD = %%CLOUD%%;
     state = entry.state; current = null; showProblems = false; savedJson[entry.id] = JSON.stringify(state); resetHist();
     lib.open = id; persistLib(); showView("doc"); renderAll();
   }
-  function newScript() {
-    var s = { id: uid(), updated: Date.now(), state: blankState() };
-    lib.scripts.unshift(s); openScript(s.id); $("event").focus();
+  function newScript(pre) {
+    var st = blankState(); if (pre) { st.date = pre.date || ""; st.event = pre.event || ""; }
+    var s = { id: uid(), updated: Date.now(), state: st };
+    lib.scripts.unshift(s); openScript(s.id); if (!st.event) $("event").focus();
   }
   // A script others may have is marked deleted, so the deletion reaches them; one only here is removed.
   function markDeleted(s, yes) {
@@ -792,13 +898,17 @@ var CLOUD = %%CLOUD%%;
   }
   function backToList() {
     if (entry && isBlank(state)) markDeleted(entry, true);
-    entry = null; lib.open = null; persistLib(); showView("list"); renderList(); updateAdd();
+    entry = null; lib.open = null; persistLib();
+    var from = docFrom; docFrom = null;
+    if (from && recs.items[from] && !recs.items[from].deleted) { openEvent(from, "script"); pull(); return; }
+    showView("list"); renderList(); updateAdd();
     pull();
   }
   function deleteScript() {
     var gone = entry;
     markDeleted(gone, true); entry = null; lib.open = null; persistLib(); showView("list"); renderList(); updateAdd();
     toast("已刪除講稿", false, { label: "復原", fn: function () { markDeleted(gone, false); persistLib(); renderList(); } });
+    if (docFrom) { var from = docFrom; docFrom = null; if (recs.items[from] && !recs.items[from].deleted) openEvent(from, "script"); }
   }
   function when(t) {
     var d = new Date(t), now = new Date(), pad = function (n) { return (n < 10 ? "0" : "") + n; };
@@ -809,31 +919,69 @@ var CLOUD = %%CLOUD%%;
   // Sections by when the event is: coming up (nearest first), no date yet, and held (latest first, folded away).
   var selected = {};
   function isoToday(offset) { var d = new Date(Date.now() + (offset || 0) * 864e5); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+  // The list: events, and scripts whose date has no event yet (a script on an event's date sits inside
+  // that event). Sections by when: coming up (nearest first), no date yet, and held (latest first, folded away).
+  function listEntries() {
+    var evs = live("event"), dates = {};
+    evs.forEach(function (e) { if (e.data.date) dates[e.data.date] = true; });
+    var out = evs.map(function (e) { return { ev: e, date: e.data.date || "", updated: e.updated }; });
+    shown().forEach(function (s) { if (!(s.state.date && dates[s.state.date])) out.push({ s: s, date: s.state.date, updated: s.updated }); });
+    return out;
+  }
+  function entryText(x) {
+    if (x.s) return searchText(x.s.state);
+    var e = x.ev.data;
+    return [ScriptGen.yymmdd(e.date, "/"), e.name, e.teacher, e.lead].concat(dutyGroups(e).map(function (g) { return g.group; }))
+      .concat(eventScripts(e).map(function (s) { return searchText(s.state); })).join("\n").replace(/\s+/g, "").toLowerCase();
+  }
   function renderList() {
     var box = $("liblist"); box.textContent = "";
-    renderStatus();
+    var all = listEntries();
+    renderStatus(all.length);
     var q = $("q").value.replace(/\s+/g, "").toLowerCase(), hits = 0, today = isoToday(0), tomorrow = isoToday(1);
-    document.body.classList.toggle("noscripts", !shown().length);
+    document.body.classList.toggle("noscripts", !all.length);
     var groups = { soon: [], none: [], past: [] };
-    shown().forEach(function (s) {
-      if (q && searchText(s.state).indexOf(q) < 0) return;
+    all.forEach(function (x) {
+      if (q && entryText(x).indexOf(q) < 0) return;
       hits++;
-      var d = s.state.date;
-      (d ? (d >= today ? groups.soon : groups.past) : groups.none).push(s);
+      (x.date ? (x.date >= today ? groups.soon : groups.past) : groups.none).push(x);
     });
-    groups.soon.sort(function (a, b) { return a.state.date < b.state.date ? -1 : a.state.date > b.state.date ? 1 : b.updated - a.updated; });
+    groups.soon.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : b.updated - a.updated; });
     groups.none.sort(function (a, b) { return b.updated - a.updated; });
-    groups.past.sort(function (a, b) { return a.state.date > b.state.date ? -1 : a.state.date < b.state.date ? 1 : b.updated - a.updated; });
+    groups.past.sort(function (a, b) { return a.date > b.date ? -1 : a.date < b.date ? 1 : b.updated - a.updated; });
     ["soon", "none", "past"].forEach(function (g) {
       var list = groups[g]; if (!list.length) return;
       var folds = g === "past", open = !folds || !!q || !!lib.showPast;
       var ul = el("ul", { hidden: !open, "aria-label": { soon: "即將舉行", none: "未有日期", past: "已舉行" }[g] });
-      list.forEach(function (s) { ul.appendChild(row(s, today, tomorrow)); });
+      list.forEach(function (x) { ul.appendChild(x.s ? row(x.s, today, tomorrow) : eventRow(x.ev, today, tomorrow)); });
       box.appendChild(el("section", { class: "section" }, [
-        folds ? el("button", { type: "button", class: "sh", "aria-expanded": open, onclick: function () { lib.showPast = !lib.showPast; persistLib(); renderList(); } }, ["過往講稿", icon("chevron")]) : null,
+        folds ? el("button", { type: "button", class: "sh", "aria-expanded": open, onclick: function () { lib.showPast = !lib.showPast; persistLib(); renderList(); } }, ["過往活動", icon("chevron")]) : null,
         ul]));
     });
     $("nomatch").hidden = !q || hits > 0;
+  }
+  function eventRow(r, today, tomorrow) {
+    var e = r.data, d = e.date, name = (e.name || "").trim();
+    var when = !d ? "" : d === today ? "今日" : d === tomorrow ? "明日" : ScriptGen.yymmdd(d, "/");
+    var li = el("li");
+    var open = el("button", { type: "button", class: "item" }, [
+      el("span", { class: "when", text: when || "未定" }),
+      el("span", { class: "t" + (name ? "" : " untitled"), text: name || "未命名活動" }),
+      el("span", { class: "mcs", text: dutyGroups(e).map(function (g) { return g.group; }).join("、") })
+    ]);
+    var more = el("button", { type: "button", class: "rowmore", "aria-label": "更多：" + (name || "未命名活動"), title: "更多", "aria-haspopup": "menu", "aria-expanded": "false" }, [icon("more")]);
+    var held = false, timer = null;
+    open.addEventListener("click", function () { if (held) { held = false; return; } openEvent(r.id); });
+    function actions(anchor, side) {
+      li.classList.add("held");
+      openMenu(anchor, side, [menuItem("trash", "刪除", function () { deleteEvent(r); }, { danger: true })]);
+    }
+    more.addEventListener("click", function () { actions(more, "right"); });
+    open.addEventListener("contextmenu", function (ev) { ev.preventDefault(); actions(open, "at"); });
+    open.addEventListener("pointerdown", function (ev) { if (ev.pointerType === "mouse") return; timer = setTimeout(function () { held = true; actions(open, "at"); }, 500); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (t) { open.addEventListener(t, function () { clearTimeout(timer); }); });
+    li.appendChild(open); li.appendChild(more);
+    return li;
   }
   function row(s, today, tomorrow) {
     var st = s.state, d = st.date, name = st.event.trim();
@@ -896,14 +1044,14 @@ var CLOUD = %%CLOUD%%;
   $("q").addEventListener("input", renderList);
   $("q").addEventListener("keydown", function (e) { if (e.key === "Escape") { $("q").value = ""; renderList(); $("q").blur(); } });
   // Under the heading: how many scripts, and any not yet uploaded while offline.
-  function renderStatus() {
-    var n = shown().length, waiting = cloud ? lib.scripts.filter(pending).length : 0;
+  function renderStatus(total) {
+    var n = total == null ? listEntries().length : total, waiting = cloud ? lib.scripts.filter(pending).length : 0;
     var parts = [];
     if (waiting && sync.state !== "ok") parts.push(waiting + " 份未上載");
     $("libcount").textContent = parts.join("．"); $("libcount").hidden = !parts.length;
     $("libempty").hidden = n > 0 || (!!cloud && !sync.loaded);
   }
-  $("back").onclick = backToList;
+  $("back").onclick = function () { if (document.body.getAttribute("data-view") === "event") goList(); else backToList(); };
 
   /* Shared scripts. In the published site every member's scripts sit in one database behind the
      page's own server, reached with the CA passcode; each iPad keeps its own copy, so writing works
@@ -973,7 +1121,7 @@ var CLOUD = %%CLOUD%%;
     finally {
       sync.pulling = false; sync.loaded = true;
       if (document.body.getAttribute("data-view") === "list") renderList();
-      pushAll();
+      pushAll(); pullRecs();
     }
   }
   function merge(d) {
@@ -1162,6 +1310,429 @@ var CLOUD = %%CLOUD%%;
     deliver(ready, state);
   };
 
+  /* Events. An event holds the facts the Event Lead fills in, its Rundown and each member's Tasks;
+     scripts on the same date appear inside it. Each is a small record shared like the scripts,
+     through its own table, so pages from before events existed never see them. */
+  var REC_KEY = "mc-scripts-records", ME_KEY = "mc-scripts-me", LOOK_KEY = "mc-scripts-looked", ASK_KEY = "mc-scripts-noask";
+  var MAIN = [{ k: "mc", n: "司儀" }, { k: "bs", n: "後台" }, { k: "rc", n: "接待" }];
+  // The six 司儀 Tasks filled at every duty (Group Lead SOP 八 › 司儀 › 崗位).
+  var MC_ROLES = ["主持 1", "主持 2", "撰稿", "讀音", "台側提示", "後備司儀"];
+  function readJSON(k, d) { try { return JSON.parse(localStorage.getItem(k) || "null") || d; } catch (e) { return d; } }
+  function writeJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  var recs = readJSON(REC_KEY, null);
+  if (!recs || typeof recs.items !== "object") recs = { items: {}, seen: 0 };
+  var me = readJSON(ME_KEY, null), looked = readJSON(LOOK_KEY, {});
+  function persistRecs() { writeJSON(REC_KEY, recs); }
+  function live(kind) { return Object.keys(recs.items).map(function (k) { return recs.items[k]; }).filter(function (r) { return r.kind === kind && !r.deleted && r.data; }); }
+  function putRec(id, kind, data) {
+    var r = recs.items[id] || (recs.items[id] = { id: id, kind: kind, rev: 0 });
+    data.by = me ? me.name : "";
+    r.data = data; r.updated = Date.now(); r.deleted = false; r.dirty = true; r.edit = (r.edit || 0) + 1;
+    persistRecs(); schedulePushRecs(); return r;
+  }
+  function setDeleted(r, yes) {
+    if (yes && !r.rev) { delete recs.items[r.id]; }
+    else { recs.items[r.id] = r; r.deleted = yes; r.updated = Date.now(); r.dirty = true; r.edit = (r.edit || 0) + 1; }
+    persistRecs(); schedulePushRecs();
+  }
+
+  var rsync = { pushing: {}, timer: null, pulling: false };
+  function schedulePushRecs() { if (!cloud) return; clearTimeout(rsync.timer); rsync.timer = setTimeout(pushRecs, 1200); }
+  function pushRecs() { Object.keys(recs.items).forEach(function (k) { if (recs.items[k].dirty) pushRec(recs.items[k]); }); }
+  async function pushRec(r) {
+    if (!cloud || rsync.pushing[r.id]) return;
+    rsync.pushing[r.id] = true; var sent = r.edit;
+    try {
+      var res = await api("/records/" + r.id, "PUT", { kind: r.kind, data: JSON.stringify(r.data || {}), updated: r.updated, deleted: !!r.deleted, rev: r.rev || 0 });
+      if (res.status === 200) { r.rev = res.body.rev; if (r.edit === sent) r.dirty = false; setSync("ok"); }
+      else if (res.status === 409 && res.body.rev) { r.rev = res.body.rev; r.edit++; } // someone saved in between: this change is sent again on top
+      else if (res.status === 404) { r.rev = 0; r.edit++; }
+      else if (res.status === 403) await checkSpace();
+      else setSync("error");
+    } catch (e) { setSync("offline"); }
+    delete rsync.pushing[r.id]; persistRecs();
+    if (r.dirty && r.edit !== sent) schedulePushRecs();
+  }
+  async function pullRecs() {
+    if (!cloud || rsync.pulling) return;
+    rsync.pulling = true;
+    try {
+      var res = await api("/records?since=" + (recs.seen || 0));
+      if (res.status === 200) {
+        (res.body.rows || []).forEach(function (d) {
+          if (d.rev > (recs.seen || 0)) recs.seen = d.rev;
+          var r = recs.items[d.id];
+          if (r && (r.dirty || r.rev === d.rev)) return;
+          var data = null; try { data = JSON.parse(d.data); } catch (e) {}
+          if (!data && !d.deleted) return;
+          recs.items[d.id] = { id: d.id, kind: d.kind, data: data || (r && r.data) || {}, updated: Number(d.updated) || Date.now(), deleted: !!d.deleted, rev: d.rev };
+        });
+        persistRecs(); refreshView();
+      }
+    } catch (e) {}
+    finally { rsync.pulling = false; pushRecs(); }
+  }
+  function refreshView() {
+    var v = document.body.getAttribute("data-view");
+    if (v === "list") renderList();
+    else if (v === "event") { if (!recs.items[evId] || recs.items[evId].deleted) { toast("此活動已被刪除"); goList(); } else renderEvent(); }
+  }
+
+  /* Members, from List of Members (pasted in by a chair) */
+  function roster() { var r = recs.items.roster; return r && !r.deleted && r.data && Array.isArray(r.data.people) ? r.data.people : []; }
+  function groupPeople(g) {
+    return roster().filter(function (p) { return p.group === g; })
+      .sort(function (a, b) { return (b.role === "組長") - (a.role === "組長") || (a.cls < b.cls ? -1 : a.cls > b.cls ? 1 : 0); });
+  }
+  function groupLead(g) { return groupPeople(g).filter(function (p) { return p.role === "組長"; })[0] || null; }
+  function chairs() { return roster().filter(function (p) { return p.role === "主席"; }); }
+  function samePerson(a, b) {
+    if (!a || !b || (a.name || "").trim() !== (b.name || "").trim()) return false;
+    return !a.cls || !b.cls || ScriptGen.cls(a.cls) === ScriptGen.cls(b.cls);
+  }
+  function personLabel(p) { return p ? ((p.name || "") + (p.cls ? " " + ScriptGen.cls(p.cls) : "")).trim() : ""; }
+  function parseRoster(text) {
+    var out = [], seen = {};
+    String(text || "").split(/\r?\n/).forEach(function (line) {
+      var cells = line.split(/\t/).map(function (c) { return c.trim(); });
+      var ci = cells.findIndex(function (c) { return /^\d[A-Za-z]\d{1,2}$/.test(c); });
+      if (ci < 0) return;
+      var name = cells[ci + 1] || "", role = cells[ci + 2] || "", grp = cells.slice(ci + 3).join(" ");
+      var m = /(司儀|後台|接待)\s*([A-Da-d])/.exec(grp);
+      if (!name) return;
+      var p = { cls: ScriptGen.cls(cells[ci]), name: name, role: /主席/.test(role) ? "主席" : /組長/.test(role) ? "組長" : "組員", group: m ? m[1] + m[2].toUpperCase() : "" };
+      if (p.role !== "主席" && !p.group) return; // only the three main groups run events
+      var key = p.cls + p.name; if (seen[key]) return; seen[key] = true;
+      out.push(p);
+    });
+    return out;
+  }
+
+  /* One event's parts */
+  function dutyGroups(e) {
+    return MAIN.filter(function (m) { return e.duty && e.duty[m.k]; }).map(function (m) { return { main: m.k, n: m.n, group: m.n + e.duty[m.k] }; });
+  }
+  function eventTasks(id) { return live("task").filter(function (t) { return t.data.event === id; }); }
+  function eventRuns(id) {
+    return live("run").filter(function (r) { return r.data.event === id; })
+      .sort(function (a, b) { return (a.data.start || "99") < (b.data.start || "99") ? -1 : (a.data.start || "99") > (b.data.start || "99") ? 1 : a.updated - b.updated; });
+  }
+  function eventScripts(e) { return e.date ? shown().filter(function (s) { return s.state.date === e.date; }) : []; }
+  function span(a, b) { return a && b ? a + "–" + b : a || b || ""; }
+  // A Task tied to a Rundown line takes that line's time, so moving the line moves the Task.
+  function taskTime(t) {
+    var run = t.data.seg && recs.items[t.data.seg];
+    if (run && !run.deleted && run.data) return { start: run.data.start || "", end: run.data.end || "" };
+    return { start: t.data.start || "", end: t.data.end || "" };
+  }
+  function byTime(a, b) {
+    var x = taskTime(a).start || "99", y = taskTime(b).start || "99";
+    return x < y ? -1 : x > y ? 1 : (a.data.member.name || "").localeCompare(b.data.member.name || "", "zh-Hant");
+  }
+  function hhmm(t) { var d = new Date(t), p = function (n) { return (n < 10 ? "0" : "") + n; }; return p(d.getHours()) + ":" + p(d.getMinutes()); }
+  // Changed by someone else since this device last left the event.
+  function changedNote(r) {
+    var since = looked[evId]; if (!since) return null;
+    var run = r.kind === "task" && r.data.seg && recs.items[r.data.seg], src = r;
+    if (run && run.updated > r.updated) src = run;
+    if (src.updated <= since || (me && src.data.by === me.name)) return null;
+    return el("span", { class: "chg", text: "已更改 " + hhmm(src.updated) + (src.data.by ? "（" + src.data.by + "）" : "") });
+  }
+
+  /* The event page */
+  var evId = null, evSeg = "task", docFrom = null;
+  function openEvent(id, seg) {
+    var r = recs.items[id]; if (!r || r.deleted) return;
+    evId = id; if (seg) evSeg = seg;
+    entry = null; lib.open = null; lib.ev = id; persistLib();
+    showView("event"); renderEvent(); updateAdd();
+  }
+  function leaveEvent() {
+    if (evId) { looked[evId] = Date.now(); writeJSON(LOOK_KEY, looked); }
+    evId = null; lib.ev = null; persistLib();
+  }
+  function goList() { leaveEvent(); showView("list"); renderList(); updateAdd(); pull(); }
+  ["task", "run", "script"].forEach(function (k) {
+    $("seg-" + k).onclick = function () { evSeg = k; renderEvent(); updateAdd(); };
+  });
+  function renderEvent() {
+    var r = recs.items[evId]; if (!r || !r.data) return;
+    var e = r.data;
+    $("ev-title").textContent = e.name || "未命名活動"; $("ev-title").className = e.name ? "" : "untitled";
+    var facts = $("ev-facts"); facts.textContent = "";
+    [ScriptGen.yymmdd(e.date, "/"), e.gather || e.gplace ? ("集合 " + (e.gather || "") + " " + (e.gplace || "")).trim() : "",
+      e.start || e.place ? ("活動 " + span(e.start, e.end) + " " + (e.place || "")).trim() : ""]
+      .filter(Boolean).forEach(function (t) { facts.appendChild(el("span", { text: t })); });
+    var who = [e.teacher ? "負責老師 " + e.teacher : "", e.lead ? "Event Lead " + e.lead : ""].filter(Boolean).join("　");
+    $("ev-note").textContent = [who, e.note || ""].filter(Boolean).join("\n"); $("ev-note").hidden = !who && !e.note;
+    ["task", "run", "script"].forEach(function (k) { $("seg-" + k).setAttribute("aria-selected", String(evSeg === k)); });
+    var box = $("ev-body"); box.textContent = "";
+    if (evSeg === "task") renderTasks(box, e);
+    else if (evSeg === "run") renderRuns(box, e);
+    else renderEventScripts(box, e);
+  }
+  function itemRow(cls, tm, main, subs, onclick) {
+    var kids = [el("span", { class: "tm" + (tm ? "" : " none"), text: tm || "未定" }), main].concat(subs.filter(Boolean));
+    return el("li", { class: cls || "" }, [el("button", { type: "button", class: "it", onclick: onclick }, kids)]);
+  }
+  function renderTasks(box, e) {
+    var tasks = eventTasks(evId), duty = dutyGroups(e);
+    if (!me && !readJSON(ASK_KEY, false)) {
+      box.appendChild(el("div", { class: "ask" }, [
+        el("span", { text: "選擇你的名字，就會先看到你的 Task" }),
+        el("button", { type: "button", text: "略過", onclick: function () { writeJSON(ASK_KEY, true); renderEvent(); } }),
+        el("button", { type: "button", class: "go", text: "選擇", onclick: openMeSheet })
+      ]));
+    }
+    if (me) {
+      var mine = tasks.filter(function (t) { return samePerson(t.data.member, me); }).sort(byTime);
+      if (mine.length) {
+        box.appendChild(el("h2", {}, ["我的 Task"]));
+        var ul = el("ul", { class: "mine", "aria-label": "我的 Task" });
+        var nowT = e.date === isoToday(0) ? hhmm(Date.now()) : "";
+        var nextI = nowT ? mine.findIndex(function (t) { var tt = taskTime(t); return !(tt.end || tt.start) || (tt.end || tt.start) >= nowT; }) : 0;
+        mine.forEach(function (t, i) {
+          var tt = taskTime(t);
+          ul.appendChild(itemRow(i === nextI ? "next" : "", span(tt.start, tt.end), el("span", { class: "main", text: t.data.text }), [t.data.place ? el("span", { class: "sub", text: t.data.place }) : null, changedNote(t)], function () { openTaskSheet(t); }));
+        });
+        box.appendChild(ul);
+      }
+    }
+    if (!duty.length) {
+      box.appendChild(el("p", { class: "empty" }, ["未選擇當值小組。", el("br"), el("button", { type: "button", class: "linkish", text: "在活動資料選擇", onclick: function () { openEventSheet(recs.items[evId]); } })]));
+      return;
+    }
+    duty.forEach(function (g) {
+      var gt = tasks.filter(function (t) { return t.data.group === g.group; }).sort(byTime);
+      var people = groupPeople(g.group).filter(function (p) { return p.role !== "組長"; });
+      var missing = people.filter(function (p) { return !gt.some(function (t) { return samePerson(t.data.member, p); }); });
+      var aside = !people.length ? "" : !missing.length ? "全部組員已有 Task" : (people.length - missing.length) + "／" + people.length + " 人已有 Task";
+      var lead = groupLead(g.group);
+      box.appendChild(el("h2", {}, [g.group, lead ? el("span", { class: "aside", text: "Group Lead " + lead.name }) : null]));
+      if (aside) box.appendChild(el("p", { class: "facts" + (missing.length ? " todo" : "") }, [aside]));
+      var ul = el("ul", { "aria-label": g.group });
+      gt.forEach(function (t) {
+        var tt = taskTime(t);
+        ul.appendChild(itemRow("", span(tt.start, tt.end), el("span", { class: "main", text: t.data.member.name + "　" + t.data.text }), [t.data.place ? el("span", { class: "sub", text: t.data.place }) : null, changedNote(t)], function () { openTaskSheet(t); }));
+      });
+      missing.forEach(function (p) {
+        ul.appendChild(itemRow("missing", "—", el("span", { class: "main", text: p.name + "　未有 Task" }), [], function () { openTaskSheet(null, { group: g.group, member: p }); }));
+      });
+      box.appendChild(ul);
+    });
+  }
+  function renderRuns(box, e) {
+    var runs = eventRuns(evId), duty = dutyGroups(e);
+    if (!runs.length) { box.appendChild(el("p", { class: "empty", text: "未有 Rundown。按加號加入第一個環節。" })); return; }
+    var ul = el("ul", { "aria-label": "Rundown" });
+    runs.forEach(function (r) {
+      var d = r.data;
+      var lines = duty.map(function (g) { return d[g.main] ? el("span", { class: "duty" }, [el("b", { text: g.n }), " " + d[g.main]]) : null; });
+      ul.appendChild(itemRow("", span(d.start, d.end), el("span", { class: "main" }, [d.title || "未命名環節"].concat(lines)), [d.note ? el("span", { class: "sub", text: d.note }) : null, changedNote(r)], function () { openRunSheet(r); }));
+    });
+    box.appendChild(ul);
+  }
+  function renderEventScripts(box, e) {
+    var list = eventScripts(e);
+    if (!list.length) { box.appendChild(el("p", { class: "empty", text: e.date ? "未有講稿。按加號新增講稿。" : "先在活動資料填寫日期，講稿會按日期放入活動。" })); return; }
+    var ul = el("ul", { "aria-label": "講稿" });
+    list.forEach(function (s) {
+      var mcs = ScriptGen.named(s.state).map(function (m) { return m.name.trim(); }).join("、");
+      ul.appendChild(itemRow("", "講稿", el("span", { class: "main", text: s.state.event.trim() || "未命名講稿" }), [mcs ? el("span", { class: "sub", text: mcs }) : null], function () { docFrom = evId; openScript(s.id); }));
+    });
+    box.appendChild(ul);
+  }
+
+  /* Sheets */
+  var sheetEl = null;
+  function closeSheet() { if (sheetEl) { sheetEl.remove(); sheetEl = null; } }
+  function openSheet(title, body, onDone, opts) {
+    closeSheet(); closeMenu(); opts = opts || {};
+    var done = el("button", { type: "button", class: "done", text: opts.done || "完成" });
+    var bar = el("div", { class: "bar" }, [el("button", { type: "button", text: "取消", onclick: closeSheet }), el("h3", { text: title }), done]);
+    var panel = el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "aria-label": title }, [bar].concat(body));
+    sheetEl = el("div", { class: "scrim" }, [panel]);
+    sheetEl.addEventListener("pointerdown", function (e) { if (e.target === sheetEl) closeSheet(); });
+    done.onclick = function () { if (onDone() !== false) closeSheet(); };
+    document.body.appendChild(sheetEl);
+    if (opts.focus) setTimeout(function () { var f = panel.querySelector(opts.focus); if (f) f.focus(); }, 60);
+    return panel;
+  }
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && sheetEl) closeSheet(); });
+  function field(label, input, id) { return el("label", { class: "f", id: id || null }, [el("span", { text: label }), input]); }
+  function inp(value, attrs) { var i = el("input", Object.assign({ autocomplete: "off" }, attrs || {})); i.value = value || ""; return i; }
+  function pick(options, value) { var s = el("select", {}, options.map(function (o) { return el("option", { value: o[0], text: o[1] }); })); s.value = value || ""; return s; }
+  function meta(r) { return r && r.data && r.data.by ? el("p", { class: "meta", text: "最後由 " + r.data.by + " 修改　" + ScriptGen.yymmdd(isoOf(r.updated), "/") + " " + hhmm(r.updated) }) : null; }
+  function isoOf(t) { var d = new Date(t); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+  function need(input, msg) {
+    if (input.value.trim()) return true;
+    input.classList.add("needs"); input.placeholder = msg; input.focus(); toast(msg, true);
+    input.addEventListener("input", function () { input.classList.remove("needs"); }, { once: true });
+    return false;
+  }
+
+  function openEventSheet(r) {
+    var e = r ? JSON.parse(JSON.stringify(r.data)) : { duty: {}, lead: me && chairs().some(function (p) { return samePerson(p, me); }) ? me.name : "" };
+    e.duty = e.duty || {};
+    var name = inp(e.name, { placeholder: "例：早會頒獎", enterkeyhint: "next" });
+    var date = inp(e.date, { type: "date" });
+    var gather = inp(e.gather, { type: "time" }), gplace = inp(e.gplace, { placeholder: "例：下禮堂" });
+    var start = inp(e.start, { type: "time" }), end = inp(e.end, { type: "time" }), place = inp(e.place, { placeholder: "例：下禮堂" });
+    var teacher = inp(e.teacher, { placeholder: "例：SMK" });
+    var cs = chairs();
+    var lead = cs.length ? pick([["", "未選擇"]].concat(cs.map(function (p) { return [p.name, p.name]; })), e.lead) : inp(e.lead, { placeholder: "主席姓名" });
+    var note = el("textarea", { placeholder: "老師在申請表或群組提出的要求" }); note.value = e.note || "";
+    var dutyFields = MAIN.map(function (m) {
+      var s = pick([["", "不需要"]].concat(["A", "B", "C", "D"].map(function (x) { return [x, m.n + x]; })), e.duty[m.k]);
+      var hint = el("span", { class: "hint" });
+      function show() { var l = s.value && groupLead(m.n + s.value); hint.textContent = l ? "Group Lead " + personLabel(l) : ""; }
+      s.addEventListener("change", show); show();
+      return { m: m, s: s, node: el("label", { class: "f" }, [el("span", { text: m.n + " 當值小組" }), s, hint]) };
+    });
+    var body = [field("活動名稱", name), field("日期", date),
+      el("div", { class: "two" }, [field("集合時間", gather), field("集合地點", gplace)]),
+      el("div", { class: "two" }, [field("開始", start), field("結束", end)]), field("活動地點", place),
+      field("負責老師", teacher), field("Event Lead", lead)].concat(dutyFields.map(function (d) { return d.node; }))
+      .concat([field("老師備註", note), meta(r)]);
+    if (r) body.push(el("button", { type: "button", class: "del", text: "刪除活動", onclick: function () { closeSheet(); deleteEvent(r); } }));
+    openSheet(r ? "活動資料" : "新活動", body, function () {
+      if (!need(name, "請填寫活動名稱")) return false;
+      var d = { name: name.value.trim(), date: date.value, gather: gather.value, gplace: gplace.value.trim(), start: start.value, end: end.value,
+        place: place.value.trim(), teacher: teacher.value.trim(), lead: lead.value.trim(), note: note.value.trim(), duty: {} };
+      dutyFields.forEach(function (x) { if (x.s.value) d.duty[x.m.k] = x.s.value; });
+      var saved = putRec(r ? r.id : "e" + uid(), "event", d);
+      if (!r) openEvent(saved.id, "task"); else renderEvent();
+    }, { focus: r ? null : "input" });
+  }
+  function deleteEvent(r) {
+    setDeleted(r, true); goList();
+    toast("已刪除活動", false, { label: "復原", fn: function () { setDeleted(r, false); renderList(); } });
+  }
+
+  function openTaskSheet(t, pre) {
+    var e = recs.items[evId].data, duty = dutyGroups(e); pre = pre || {};
+    var d = t ? JSON.parse(JSON.stringify(t.data)) : { group: pre.group || (me && duty.some(function (g) { return g.group === myGroup(); }) ? myGroup() : duty[0] && duty[0].group) || "", member: pre.member || null };
+    var group = duty.length > 1 ? pick(duty.map(function (g) { return [g.group, g.group]; }), d.group) : null;
+    var who = el("div"), person = null, text = inp(d.text, { placeholder: "例：主持頒獎；核對得獎者讀音" }), chips = el("div", { class: "chips" });
+    var runs = eventRuns(evId);
+    var seg = pick([["", "自訂時間"]].concat(runs.map(function (r) { return [r.id, (span(r.data.start, r.data.end) + " " + (r.data.title || "")).trim()]; })), d.seg);
+    var start = inp(d.start, { type: "time" }), end = inp(d.end, { type: "time" }), times = el("div", { class: "two" }, [field("開始", start), field("結束", end)]);
+    var places = {};
+    eventTasks(evId).forEach(function (x) { if (x.data.place) places[x.data.place] = 1; });
+    [e.place, e.gplace].forEach(function (p) { if (p) places[p] = 1; });
+    var list = el("datalist", { id: "places" }, Object.keys(places).map(function (p) { return el("option", { value: p }); }));
+    var place = inp(d.place, { placeholder: "例：台左下方", list: "places" });
+    function curGroup() { return group ? group.value : d.group; }
+    function drawWho() {
+      who.textContent = "";
+      var ppl = groupPeople(curGroup());
+      if (ppl.length) {
+        var opts = [["", "選擇組員"]].concat(ppl.map(function (p, i) { return [String(i), personLabel(p) + (p.role === "組長" ? "（Group Lead）" : "")]; })).concat([["other", "其他（自行輸入）"]]);
+        var cur = d.member ? ppl.findIndex(function (p) { return samePerson(p, d.member); }) : -1;
+        var s = pick(opts, cur >= 0 ? String(cur) : d.member ? "other" : "");
+        var nm = inp(d.member && cur < 0 ? d.member.name : "", { placeholder: "姓名" }), cl = inp(d.member && cur < 0 ? d.member.cls : "", { placeholder: "班號，例：3C12", autocapitalize: "characters" });
+        var other = el("div", { class: "two", hidden: s.value !== "other" }, [nm, cl]);
+        s.addEventListener("change", function () { other.hidden = s.value !== "other"; drawChips(); });
+        person = function () { return s.value === "other" ? { name: nm.value.trim(), cls: ScriptGen.cls(cl.value) } : s.value ? { name: ppl[+s.value].name, cls: ppl[+s.value].cls } : null; };
+        who.appendChild(field("組員", s)); who.appendChild(other);
+      } else {
+        var nm2 = inp(d.member ? d.member.name : "", { placeholder: "姓名" }), cl2 = inp(d.member ? d.member.cls : "", { placeholder: "班號，例：3C12", autocapitalize: "characters" });
+        person = function () { return nm2.value.trim() ? { name: nm2.value.trim(), cls: ScriptGen.cls(cl2.value) } : null; };
+        who.appendChild(el("label", { class: "f" }, [el("span", { text: "組員" }), el("div", { class: "two" }, [nm2, cl2])]));
+      }
+    }
+    function drawChips() {
+      chips.textContent = "";
+      if (!/^司儀/.test(curGroup())) return;
+      var taken = eventTasks(evId).filter(function (x) { return x !== t && x.data.group === curGroup(); }).map(function (x) { return x.data.text; });
+      MC_ROLES.forEach(function (role) {
+        chips.appendChild(el("button", { type: "button", class: taken.indexOf(role) >= 0 ? "taken" : "", text: role, onclick: function () { text.value = role; } }));
+      });
+    }
+    function showTimes() { times.hidden = !!seg.value; }
+    seg.addEventListener("change", showTimes); showTimes();
+    if (group) group.addEventListener("change", function () { d.member = null; drawWho(); drawChips(); });
+    drawWho(); drawChips();
+    var body = [group ? field("小組", group) : null, who, el("label", { class: "f" }, [el("span", { text: "Task" }), text, chips]), field("環節", seg), times, field("位置", place), list, meta(t)];
+    if (t) body.push(el("button", { type: "button", class: "del", text: "刪除 Task", onclick: function () { closeSheet(); setDeleted(t, true); renderEvent(); toast("已刪除 Task", false, { label: "復原", fn: function () { setDeleted(t, false); renderEvent(); } }); } }));
+    openSheet(t ? "Task" : "新增 Task", body, function () {
+      var p = person();
+      if (!p || !p.name) { toast("請選擇組員", true); return false; }
+      if (!need(text, "請填寫 Task")) return false;
+      var main = MAIN.filter(function (m) { return curGroup().indexOf(m.n) === 0; })[0];
+      putRec(t ? t.id : "t" + uid(), "task", { event: evId, group: curGroup(), main: main ? main.k : "", member: p, text: text.value.trim(),
+        seg: seg.value, start: seg.value ? "" : start.value, end: seg.value ? "" : end.value, place: place.value.trim() });
+      renderEvent();
+    }, { focus: t || pre.member ? null : "select,input" });
+  }
+  function myGroup() { var p = me && roster().filter(function (x) { return samePerson(x, me); })[0]; return p ? p.group : ""; }
+
+  function openRunSheet(r) {
+    var e = recs.items[evId].data, duty = dutyGroups(e), d = r ? r.data : {};
+    var start = inp(d.start, { type: "time" }), end = inp(d.end, { type: "time" });
+    var title = inp(d.title, { placeholder: "例：正式宣佈" }), note = inp(d.note, { placeholder: "例：頒獎嘉賓：校長" });
+    var parts = duty.map(function (g) { return { g: g, i: inp(d[g.main], { placeholder: { mc: "例：宣佈得獎者", bs: "例：遞獎狀予頒獎嘉賓", rc: "例：帶嘉賓入座" }[g.main] }) }; });
+    var body = [el("div", { class: "two" }, [field("開始", start), field("結束", end)]), field("環節", title)]
+      .concat(parts.map(function (x) { return field(x.g.n + "要做", x.i); })).concat([field("備註", note), meta(r)]);
+    if (r) body.push(el("button", { type: "button", class: "del", text: "刪除環節", onclick: function () { closeSheet(); setDeleted(r, true); renderEvent(); toast("已刪除環節", false, { label: "復原", fn: function () { setDeleted(r, false); renderEvent(); } }); } }));
+    openSheet(r ? "環節" : "新增環節", body, function () {
+      if (!need(title, "請填寫環節")) return false;
+      var nd = { event: evId, start: start.value, end: end.value, title: title.value.trim(), note: note.value.trim() };
+      parts.forEach(function (x) { if (x.i.value.trim()) nd[x.g.main] = x.i.value.trim(); });
+      putRec(r ? r.id : "r" + uid(), "run", nd); renderEvent();
+    }, { focus: r ? null : "input" });
+  }
+
+  function openMeSheet() {
+    var ppl = roster(), chosen = me;
+    var body = [];
+    if (!ppl.length) {
+      var nm = inp(me ? me.name : "", { placeholder: "姓名" }), cl = inp(me ? me.cls : "", { placeholder: "班號，例：3C12", autocapitalize: "characters" });
+      body.push(el("p", { class: "hint", text: "名單未匯入，請自行輸入。" }), el("div", { class: "two" }, [nm, cl]));
+      chosen = function () { return nm.value.trim() ? { name: nm.value.trim(), cls: ScriptGen.cls(cl.value) } : null; };
+    } else {
+      var box = el("div", { class: "people", role: "radiogroup", "aria-label": "你的名字" }), pickd = me;
+      var groups = {};
+      ppl.forEach(function (p) { var g = p.role === "主席" ? "主席" : p.group; (groups[g] = groups[g] || []).push(p); });
+      ["主席"].concat(MAIN.reduce(function (a, m) { return a.concat(["A", "B", "C", "D"].map(function (x) { return m.n + x; })); }, [])).forEach(function (g) {
+        if (!groups[g]) return;
+        box.appendChild(el("h4", { text: g }));
+        groups[g].forEach(function (p) {
+          var b = el("button", { type: "button", role: "radio", "aria-checked": String(samePerson(p, me)) }, [el("span", { class: "c", text: p.cls }), el("span", { text: p.name + (p.role === "組長" ? "（Group Lead）" : "") })]);
+          b.onclick = function () { pickd = { name: p.name, cls: p.cls }; box.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-checked", String(x === b)); }); };
+          box.appendChild(b);
+        });
+      });
+      body.push(el("p", { class: "hint", text: "只儲存在這部裝置，用來先顯示你的 Task。" }), box);
+      chosen = function () { return pickd; };
+    }
+    openSheet("你是哪位？", body, function () {
+      me = chosen(); writeJSON(ME_KEY, me); refreshView();
+    });
+  }
+
+  function openRosterSheet() {
+    var ta = el("textarea", { placeholder: "在此貼上" }), count = el("p", { class: "hint" });
+    function show() { var p = parseRoster(ta.value); count.textContent = ta.value.trim() ? "讀到 " + p.filter(function (x) { return x.role !== "主席"; }).length + " 位組員及 " + p.filter(function (x) { return x.role === "主席"; }).length + " 位主席" : "現有名單：" + roster().length + " 人"; }
+    ta.addEventListener("input", show); show();
+    openSheet("更新名單", [el("p", { class: "hint", text: "在 List of Members 的 Members 頁，選取 No、Name、Role、Group 四欄，複製後貼在下面。" }), ta, count], function () {
+      var p = parseRoster(ta.value);
+      if (!p.length) { toast("未能讀到名單，請確認已複製四欄", true); return false; }
+      putRec("roster", "roster", { people: p }); refreshView(); toast("名單已更新：" + p.length + " 人");
+    }, { focus: "textarea" });
+  }
+
+  $("evmore").onclick = function () {
+    var r = recs.items[evId];
+    openMenu($("evmore"), "right", [
+      menuItem("pencil", "活動資料", function () { openEventSheet(r); }),
+      menuItem("user", me ? "我是 " + me.name : "我是…", openMeSheet),
+      menuItem("users", "更新名單", openRosterSheet),
+      el("div", { class: "gap" }),
+      menuItem("trash", "刪除活動", function () { deleteEvent(r); }, { danger: true })
+    ]);
+  };
+
   function renderAll() {
     W = WORDS.yue; PH.line = W.line; PH.cue = W.cue; $("event").placeholder = W.event;
     $("event").value = state.event || ""; fit($("event"));
@@ -1176,7 +1747,10 @@ var CLOUD = %%CLOUD%%;
   if (CLOUD && !space) { askSpace(); if (linkCode) { $("code").value = decodeURIComponent(linkCode[1]); join($("code").value); } }
   else {
     if (CLOUD) startCloud(space);
-    if (last && !last.deleted) openScript(last.id); else { showView("list"); renderList(); updateAdd(); }
+    var lastEv = lib.ev && recs.items[lib.ev];
+    if (last && !last.deleted) openScript(last.id);
+    else if (lastEv && !lastEv.deleted) openEvent(lastEv.id);
+    else { showView("list"); renderList(); updateAdd(); }
   }
 })();
 </script>

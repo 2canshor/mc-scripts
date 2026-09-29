@@ -5,7 +5,7 @@ const ok=(c,m)=>{console.log(c?'ok':'FAIL',m);if(!c)process.exitCode=1};
 for (const [w,h,scheme] of [[820,1180,'light'],[1440,900,'dark']]){
  const p=await b.newPage({viewport:{width:w,height:h},colorScheme:scheme});
  await p.goto('file://'+__dirname+'/MC Scripts.html');await p.waitForTimeout(200);
- await p.click('#insert');await p.click('#event');await p.keyboard.type('早會頒獎');
+ await p.click('#insert');await p.click('.menu >> text=講稿');await p.click('#event');await p.keyboard.type('早會頒獎');
  const f=await p.$$('#mcline input');await f[1].click();await p.keyboard.type('甲同學');
  await p.click('#insert');await p.click('.menu >> text=司儀對白');await p.keyboard.type('各位早晨');
  await p.click('#insert');await p.click('.menu >> text=流程提示');await p.keyboard.type('校長上台');

@@ -10,11 +10,11 @@ for (const [w,h,scheme] of [[1440,900,'dark'],[820,1180,'light']]){
  await p.goto('file://'+process.cwd()+'/build/MC Scripts.html');await p.evaluate(seed);await p.reload();await p.waitForTimeout(300);
  const heads=await p.$$eval('.section ul',x=>x.map(e=>e.getAttribute('aria-label')));console.log(w,JSON.stringify(heads));
  ok(JSON.stringify(heads)==='["即將舉行","未有日期","已舉行"]','coming up, then no date, then held');
- ok((await p.textContent('button.sh')).trim()==='過往講稿','held events folded behind 過往講稿');
+ ok((await p.textContent('button.sh')).trim()==='過往活動','held events folded behind 過往活動');
  ok(await p.$eval('.section ul',u=>u.children[0].textContent.includes('早會頒獎')&&u.children[0].textContent.includes('今日')),'nearest event first, labelled 今日');
  ok(!(await p.isVisible('text=畢業禮')),'held events folded away');
  await p.screenshot({path:`${out}/list-${w}.png`});
- await p.click('button.sh');ok(await p.isVisible('text=畢業禮'),'tap 過往講稿 opens it');await p.click('button.sh');
+ await p.click('button.sh');ok(await p.isVisible('text=畢業禮'),'tap 過往活動 opens it');await p.click('button.sh');
  // each row has its own ⋯
  ok(!(await p.isVisible('.edge')),'no page-wide ⋯ on the list');
  ok((await p.$$('li .rowmore')).length===10,'every row has a ⋯');

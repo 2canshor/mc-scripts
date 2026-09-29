@@ -14,7 +14,7 @@ await p1.fill('#code','wrongcode1');await p1.click('.join button');await p1.wait
 assert(await p1.textContent('#joinerr')==='密碼不正確','wrong passcode refused');
 await p1.fill('#code',' '+CODE.toUpperCase()+' ');await p1.click('.join button');await p1.waitForTimeout(800);
 assert(await view(p1)==='list','right passcode opens the list');
-await p1.click('#insert');await p1.fill('#date',new Date(Date.now()+8*36e5).toISOString().slice(0,10));await p1.dispatchEvent('#date','input');
+await p1.click('#insert');await p1.click('.menu >> text=講稿');await p1.fill('#date',new Date(Date.now()+8*36e5).toISOString().slice(0,10));await p1.dispatchEvent('#date','input');
 await p1.click('#event');await p1.keyboard.type(tag);
 let f=await p1.$$('#mcline input');await f[1].click();await p1.keyboard.type('甲同學');
 await p1.click('#insert');await p1.click('.menu >> text=司儀對白');await p1.keyboard.type('各位早晨。');

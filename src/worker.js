@@ -26,12 +26,18 @@ async function privateFont(name, env) {
 
 const PASSCODE_SHA256 = "ce2325ecb6f8053ce8b4a754665425454d7a6cbd0460f64c8daa1155c2116845";
 const MAX_SCRIPT = 500000;
+const MAX_RECORD = 100000;
+const KINDS = new Set(["event", "run", "task", "roster"]);
 
 let tablesReady = null;
 function ensureTables(db) {
   if (!tablesReady) tablesReady = db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS scripts (id TEXT PRIMARY KEY, data TEXT NOT NULL, updated INTEGER NOT NULL, deleted INTEGER NOT NULL DEFAULT 0, seq INTEGER NOT NULL)"),
-    db.prepare("CREATE INDEX IF NOT EXISTS scripts_seq ON scripts (seq)")
+    db.prepare("CREATE INDEX IF NOT EXISTS scripts_seq ON scripts (seq)"),
+    // Events, their Rundown and Tasks, and the member list: one small record each, kept apart from
+    // scripts so that pages from before events existed never receive them.
+    db.prepare("CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY, kind TEXT NOT NULL, data TEXT NOT NULL, updated INTEGER NOT NULL, deleted INTEGER NOT NULL DEFAULT 0, seq INTEGER NOT NULL)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS records_seq ON records (seq)")
   ]).catch((e) => { tablesReady = null; throw e; });
   return tablesReady;
 }
@@ -91,6 +97,28 @@ export default {
       if (!rev) return json({ error: "conflict" }, 409);
       const exists = await env.DB.prepare("SELECT 1 FROM scripts WHERE id = ?").bind(id).first();
       return json({ error: exists ? "conflict" : "missing" }, exists ? 409 : 404);
+    }
+
+    // Records work the same way as scripts: everything since a version, and saves that name the
+    // version they started from.
+    if (path === "records" && request.method === "GET") {
+      const since = Math.max(0, Number(url.searchParams.get("since")) || 0);
+      const { results } = await env.DB.prepare("SELECT id, kind, data, updated, deleted, seq FROM records WHERE seq > ? ORDER BY seq").bind(since).all();
+      return json({ rows: results.map((r) => ({ id: r.id, kind: r.kind, data: r.data, updated: r.updated, deleted: !!r.deleted, rev: r.seq })) });
+    }
+    const rec = /^records\/([A-Za-z0-9_-]{1,40})$/.exec(path);
+    if (rec && request.method === "PUT") {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+      if (typeof body.data !== "string" || body.data.length > MAX_RECORD || !KINDS.has(body.kind) || !Number.isFinite(body.updated)) return json({ error: "bad request" }, 400);
+      const id = rec[1], deleted = body.deleted ? 1 : 0, rev = Number(body.rev) || 0;
+      const next = "(SELECT COALESCE(MAX(seq), 0) + 1 FROM records)";
+      const saved = rev
+        ? await env.DB.prepare("UPDATE records SET data = ?1, updated = ?2, deleted = ?3, seq = " + next + " WHERE id = ?4 AND seq = ?5 RETURNING seq").bind(body.data, body.updated, deleted, id, rev).first()
+        : await env.DB.prepare("INSERT INTO records (id, kind, data, updated, deleted, seq) VALUES (?1, ?2, ?3, ?4, ?5, " + next + ") ON CONFLICT (id) DO NOTHING RETURNING seq").bind(id, body.kind, body.data, body.updated, deleted).first();
+      if (saved) return json({ rev: saved.seq });
+      const now = await env.DB.prepare("SELECT seq FROM records WHERE id = ?").bind(id).first();
+      return now ? json({ error: "conflict", rev: now.seq }, 409) : json({ error: "missing" }, 404);
     }
     return json({ error: "not found" }, 404);
   }
