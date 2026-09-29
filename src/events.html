@@ -137,7 +137,8 @@ button.row:focus-visible{background:var(--current);outline:none}
 /* On a phone the value sits under its name, so pills and long values get the full width */
 @media (max-width:480px){.props .row{grid-template-columns:20px minmax(0,1fr);column-gap:12px;row-gap:4px}.props .row>:nth-child(3){grid-column:2}}
 /* Several values: one pill each, × to remove, type and Return to add (Obsidian's list property) */
-.pills{display:flex;flex-wrap:wrap;align-items:center;gap:6px 6px;min-height:1.5em}
+.pills{display:flex;flex-wrap:wrap;align-items:center;gap:6px 6px;min-height:1.5em;margin-left:-10px}
+.pills>.fld.pin,.pills>.empty,.pills>.who.addg{padding-left:10px}
 .pill{display:inline-flex;align-items:center;gap:2px;max-width:100%;padding:1px 4px 1px 10px;border-radius:999px;background:var(--field);line-height:1.5}
 .pill.ro{padding-right:10px}
 .pill>button:not(.px){text-align:left}
@@ -156,7 +157,7 @@ button.row:focus-visible{background:var(--current);outline:none}
 .sw:not(.open):not(.moving) .swdel{visibility:hidden}
 .swdel{position:absolute;z-index:0;right:0;top:0;bottom:0;width:88px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--danger);color:var(--btn-text);font-size:13px}
 .swdel svg.i{width:18px;height:18px}
-.hdel{position:absolute;z-index:2;right:44px;top:50%;transform:translateY(-50%);margin:0;visibility:hidden}
+.hdel{position:absolute;z-index:2;right:44px;top:0;bottom:0;height:auto;transform:none;margin:0;display:flex;align-items:center;justify-content:center;visibility:hidden}
 @media (hover:hover) and (pointer:fine){.sw:hover .hdel,.hdel:focus-visible{visibility:visible}}
 @media not ((hover:hover) and (pointer:fine)){.hdel{display:none}}
 .sw.open .hdel{display:none}
@@ -180,7 +181,7 @@ button.row:focus-visible{background:var(--current);outline:none}
 textarea.fld{display:block;resize:none;overflow:hidden;line-height:1.5;min-height:1.5em;width:100%}
 .title .fld{font-weight:600}
 h3 .fld{font-weight:600}
-.box{display:block;width:100%;min-height:8.5em;padding:10px 14px;border-radius:14px;background:var(--field);line-height:1.7;resize:vertical;overflow:auto}
+.box{display:block;width:100%;min-height:8.5em;padding:10px 14px;border-radius:14px;background:var(--field);line-height:1.7;resize:none;overflow:hidden}
 .box:focus{background:var(--current)}
 .upper{text-transform:uppercase} /* tell-ok: class codes are capitals, e.g. 3C12 */
 .upper::placeholder{text-transform:none}
@@ -439,6 +440,7 @@ const fromMin = m => String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + St
    delete row     a bin on the row being edited, with Undo; deleting a whole thing asks in an alert in the middle of the screen
    menu           symbol first, then words; only for two or more actions */
 const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const nb = h => String(h).replace(/ Group ([A-D])(?![A-Za-z])/g, ' Group&nbsp;$1');  // display text only, never attribute values
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const head = (title, sub, trail = '') => `<div class="titlebar"><h1 class="title">${title}</h1>${trail}</div>${sub ? `<p class="sub">${sub}</p>` : ''}`;
 const bar = (...xs) => xs.filter(Boolean).join('<span class="sep2">｜</span>');
@@ -451,7 +453,7 @@ const cellFld = (k, v, ph, cls = '', label) => fld(k, v, ph, 'cell ' + cls, labe
 const cellArea = (k, v, ph, label) => `<textarea class="fld cell" data-k="${k}" rows="1" placeholder="${esc(ph)}" aria-label="${esc(label || ph)}" enterkeyhint="next">${esc(v)}</textarea>`;
 const remarks = (k, v, edit) => `<section class="sec"><p class="sh">Remarks</p>${edit ? `<textarea class="fld box" data-k="${k}" rows="4" aria-label="Remarks">${esc(v)}</textarea>` : `<p class="para">${esc(v)}</p>`}</section>`;
 const optHtml = (o, val) => `<option value="${esc(o[0])}"${o[0] === val ? ' selected' : ''}${o[2] ? ' disabled' : ''}>${esc(o[1])}</option>`;
-const picker = (k, val, shown, opts, unsetText, label, quiet) => `<label class="who${val ? '' : quiet ? ' empty' : ' unset'}"><span>${esc(val ? shown : unsetText)}</span>${ic('updown')}<select data-k="${k}" aria-label="${esc(label || unsetText)}">${val ? '' : '<option value="" selected disabled></option>'}${opts.map(o => o.group ? `<optgroup label="${esc(o.group)}">${o.items.map(x => optHtml(x, val)).join('')}</optgroup>` : optHtml(o, val)).join('')}</select></label>`;
+const picker = (k, val, shown, opts, unsetText, label, quiet) => `<label class="who${val ? '' : quiet ? ' empty' : ' unset'}"><span>${nb(esc(val ? shown : unsetText))}</span>${ic('updown')}<select data-k="${k}" aria-label="${esc(label || unsetText)}">${val ? '' : '<option value="" selected disabled></option>'}${opts.map(o => o.group ? `<optgroup label="${esc(o.group)}">${o.items.map(x => optHtml(x, val)).join('')}</optgroup>` : optHtml(o, val)).join('')}</select></label>`;
 const timeCtl = (k, v, label) => `<label class="dt${v ? '' : ' none'}"><span>${esc(v || label)}</span><input type="time" step="300" data-k="${k}" value="${esc(v)}" aria-label="${esc(label)}"></label>`;
 const toIso = d => /^\d\d\/\d\d\/\d\d$/.test(d) ? '20' + d.replace(/\//g, '-') : '';
 const fromIso = s => s ? s.slice(2).replace(/-/g, '/') : '';
@@ -467,7 +469,7 @@ const absent = (d, r) => called(d) && r.here !== 'Present';
 // Several values as pills (Obsidian's list property). key names the list; values are strings.
 const pills = (key, values, ph, edit) => `<span class="pills">${values.map((v, i) => `<span class="pill${edit ? '' : ' ro'}"><span>${esc(v)}</span>${edit ? `<button class="px" data-act="unpill:${key}:${i}" type="button" aria-label="Remove ${esc(v)}">${ic('x')}</button>` : ''}</span>`).join('')}${edit ? `<input class="fld cell pin" data-pill="${key}" placeholder="${esc(ph)}" aria-label="Add ${esc(ph)}" autocomplete="off" enterkeyhint="done">` : ''}</span>`;
 const chev = ic('chev-r', 'go');
-const namesHtml = (ev, t) => resolve(ev, t).map(x => `<span class="nm${x.open ? ' unset' : ''}${x.name && x.name === me() ? ' me' : ''}">${esc(x.txt)}</span>`).join('');
+const namesHtml = (ev, t) => resolve(ev, t).map(x => `<span class="nm${x.open ? ' unset' : ''}${x.name && x.name === me() ? ' me' : ''}">${nb(esc(x.txt))}</span>`).join('');
 const faces = (names, act) => `<div class="faces">${names.map(n => `<button class="face" data-act="${act}:${esc(n)}" type="button" aria-pressed="${n === S.who}"><span class="av">${esc([...n][0] || '')}</span><span>${esc(n)}</span></button>`).join('')}</div>`;
 
 /* ---------- Pages: one job, one kind of thing each ---------- */
@@ -515,7 +517,7 @@ function taskRows(ev, name, dots) {
 }
 function roleText(ev, n) {
   const g = ev.groups.find(x => x.lead === n || membersOf(x.name).includes(n)); if (!g) return '';
-  if (g.lead === n) return esc(g.name) + ' Lead';
+  if (g.lead === n) return nb(esc(g.name)) + ' Lead';
   const rs = g.roles.filter(r => r.who === n).map(r => r.name);
   return rs.length ? esc(rs.join(', ')) : g.roles.length ? '<span class="unset">No role yet</span>' : esc(g.name);
 }
@@ -539,7 +541,7 @@ function pGroup(ev, name, first) {
   if (!g) return {page: 'group', back: true, body: head(esc(name), 'Not on duty for this event')};
   const edit = can.roles(g.name), att = can.attendance(g.name);
   const at = att ? (((ev.attendance = ev.attendance || {})[g.name] = ev.attendance[g.name] || {})) : {};
-  let body = head(esc(g.name), evSub(ev));
+  let body = head(nb(esc(g.name)), evSub(ev));
   const pillsHtml = g.roles.map(r => `<span class="pill${edit ? '' : ' ro'}${r.who ? '' : ' unset'}"><span>${esc(r.name)}</span>${edit ? `<button class="px" data-act="unrole:${esc(r.id)}" type="button" aria-label="Remove ${esc(r.name)}">${ic('x')}</button>` : ''}</span>`).join('');
   body += `<section class="sec"><p class="sh">Roles</p><span class="pills">${pillsHtml}${edit ? `<input class="fld cell pin" data-pill="role" placeholder="Role" aria-label="Add a role" autocomplete="off" enterkeyhint="done">` : ''}${!pillsHtml && !edit ? '<span class="empty">No roles yet</span>' : ''}</span></section>`;
   const members = [g.lead, ...membersOf(g.name).filter(n => n !== g.lead)].filter(Boolean);
@@ -692,7 +694,7 @@ function pRosterGroup(g) {
 function pPasswords() {
   const row = a => `<div class="row"><span>${esc(a.name)}</span><input class="fld cell" type="password" placeholder="New Password" data-pw="${esc(a.id)}" aria-label="New password for ${esc(a.name)}" autocomplete="new-password"><span class="det" data-set="${esc(a.id)}">${PASSWORDS[a.id] ? ic('check') : ''}</span></div>`;
   const sec = (sh, list) => listSec('pwl', list.map(row).join(''), sh);
-  return {page: 'passwords', back: true, body: head('Passwords', '15 characters or more') +
+  return {page: 'passwords', back: true, body: head('Passwords', '8 characters or more') +
     sec('Event Lead and Teacher', ACCOUNTS.filter(a => a.type === 'lead' || a.type === 'teacher')) + sec('Small Groups', ACCOUNTS.filter(a => a.type === 'group')) + sec('Group Leads', ACCOUNTS.filter(a => a.type === 'gl'))};
 }
 function pHistory(ev) {
@@ -734,7 +736,7 @@ const measureCtx = document.createElement('canvas').getContext('2d');
 function measure(el, text) { const cs = getComputedStyle(el); measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; return Math.ceil(measureCtx.measureText(text).width + 2); }
 const pad = el => { const cs = getComputedStyle(el); return parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight); };
 function fit(inp) { const text = inp.value || inp.placeholder.trim(); inp.style.width = text ? measure(inp, text) + pad(inp) + 'px' : '3em'; }
-function grow(t) { if (t.classList.contains('box')) return; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+function grow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + (t.classList.contains('box') ? 2 : 0) + 'px'; }
 function prep(root) { root.querySelectorAll('input.fld.inl').forEach(fit); root.querySelectorAll('textarea.fld').forEach(grow); }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => prep(app));
 window.addEventListener('resize', () => prep(app));
@@ -901,7 +903,7 @@ document.addEventListener('change', e => {
   const t = e.target, pwId = t.dataset && t.dataset.pw;
   if (pwId) {
     const v = t.value; if (!v) return;
-    if ([...v.trim()].length < 15) { toast('Use 15 characters or more'); return; }
+    if ([...v.replace(/\s+/g, '')].length < 8) { toast('Use 8 characters or more'); return; }
     t.value = '';
     api('password', {method: 'POST', body: JSON.stringify({account: pwId, password: v})}).then(r => {
       if (!r.ok) { toast('Password not changed'); return; }

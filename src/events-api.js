@@ -13,7 +13,9 @@ export const ACCOUNTS = [
 ];
 const DOC_OF = { MC: "script", Backstage: "awardees", Reception: "guests" };
 const kindOf = (g) => g.split(" ")[0];
-const MAX_EVENT = 900000, SESSION_DAYS = 180, ROUNDS = 100000;
+const MAX_EVENT = 900000, SESSION_DAYS = 180, ROUNDS = 100000, MIN_PASSWORD = 8, MAX_FAILS = 5, LOCK_MS = 15 * 60000;
+// Passwords ignore capitals and spaces, so a phone keyboard that capitalises or adds a space does not lock anyone out.
+const normal = (pw) => String(pw || "").toLowerCase().replace(/\s+/g, "");
 
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 const unhex = (s) => new Uint8Array(s.match(/../g).map((h) => parseInt(h, 16)));
@@ -32,7 +34,8 @@ export function ensureEventTables(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, account TEXT NOT NULL, created INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, data TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0, updated INTEGER NOT NULL, seq INTEGER NOT NULL)"),
     db.prepare("CREATE INDEX IF NOT EXISTS events_seq ON events (seq)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL)")
+    db.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS login_fail (account TEXT PRIMARY KEY, n INTEGER NOT NULL, since INTEGER NOT NULL)")
   ]).catch((e) => { ready = null; throw e; });
   return ready;
 }
@@ -58,12 +61,18 @@ async function login(request, env) {
   let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
   const typed = String(body.account || "").trim().toLowerCase().replace(/\s+/g, " ");
   const acct = ACCOUNTS.find((a) => a.id.toLowerCase() === typed);
-  const stored = acct && await hashOf(env, acct.id);
-  const pw = String(body.password || "").trim();
+  if (!acct) { await new Promise((r) => setTimeout(r, 400)); return json({ error: "Wrong account or password" }, 401); }
+  // Short passwords are safe because guessing is slow: five wrong tries lock the account for 15 minutes.
+  const fail = await env.DB.prepare("SELECT n, since FROM login_fail WHERE account = ?").bind(acct.id).first();
+  const now = Date.now(), fresh = fail && now - fail.since < LOCK_MS;
+  if (fresh && fail.n >= MAX_FAILS) return json({ error: "Too many tries. Wait 15 minutes, or ask a chair to set a new password." }, 429);
+  const stored = await hashOf(env, acct.id), pw = normal(body.password);
   if (!stored || !pw || !same(await pbkdf2(pw, stored.split(":")[0]), stored.split(":")[1])) {
+    await env.DB.prepare("INSERT INTO login_fail (account, n, since) VALUES (?1, 1, ?2) ON CONFLICT (account) DO UPDATE SET n = CASE WHEN ?2 - since < ?3 THEN n + 1 ELSE 1 END, since = CASE WHEN ?2 - since < ?3 THEN since ELSE ?2 END").bind(acct.id, now, LOCK_MS).run();
     await new Promise((r) => setTimeout(r, 400));
     return json({ error: "Wrong account or password" }, 401);
   }
+  if (fail) await env.DB.prepare("DELETE FROM login_fail WHERE account = ?").bind(acct.id).run();
   const token = hex(crypto.getRandomValues(new Uint8Array(24)));
   await env.DB.prepare("INSERT INTO sessions (token, account, created) VALUES (?, ?, ?)").bind(await sha(token), acct.id, Date.now()).run();
   return json({ token, account: acct });
@@ -210,7 +219,7 @@ export async function handleEvents(request, env, url, path) {
     return json({ ok: true });
   }
 
-  // Passwords: the Event Lead sets any account's password (15 characters or more, no other rule: NIST SP 800-63B).
+  // Passwords: the Event Lead sets any account's password (8 characters or more; Carson 26/09/30: long ones were too hard to type).
   if (path === "accounts" && request.method === "GET") {
     if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
     const { results } = await env.DB.prepare("SELECT id, changed FROM accounts").all();
@@ -220,11 +229,12 @@ export async function handleEvents(request, env, url, path) {
   if (path === "password" && request.method === "POST") {
     if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
     let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
-    const target = ACCOUNTS.find((a) => a.id === body.account), pw = String(body.password || "").trim();
-    if (!target || [...pw].length < 15 || pw.length > 200) return json({ error: "bad request" }, 400);
+    const target = ACCOUNTS.find((a) => a.id === body.account), pw = normal(body.password);
+    if (!target || [...pw].length < MIN_PASSWORD || pw.length > 200) return json({ error: "bad request" }, 400);
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
     await env.DB.prepare("INSERT INTO accounts (id, hash, changed) VALUES (?1, ?2, ?3) ON CONFLICT (id) DO UPDATE SET hash = ?2, changed = ?3").bind(target.id, salt + ":" + await pbkdf2(pw, salt), Date.now()).run();
     await env.DB.prepare("DELETE FROM sessions WHERE account = ?").bind(target.id).run();  // everyone on the old password signs in again
+    await env.DB.prepare("DELETE FROM login_fail WHERE account = ?").bind(target.id).run();
     return json({ ok: true });
   }
   return json({ error: "not found" }, 404);

@@ -1,6 +1,6 @@
-// Initial password hashes for the 26 event-tool accounts (PBKDF2-SHA256, 100,000 rounds, salt:hash).
-// Only hashes are here; the passwords were given to the chairs. A password the Event Lead sets in the tool
-// is stored in D1 and replaces the one below.
+// The first passwords of the 26 event-tool accounts (PBKDF2-SHA256, 100,000 rounds, salt:hash), 26/09/30.
+// The same day the Event Lead replaced every one with a shorter password, stored only in D1; a row in D1 always wins,
+// so these hashes are used only by an account that has no password in D1.
 export const SEED = {
   "Event Lead": "3e76a410ec418ee02bf4c01fb55f7134:04a9c741096b71b49908e8093751e4a0939c55176eb637ec8a4cc728d96682f8",
   "Teacher": "ff6d8c189ff03ba44cf53999166be401:5cf139d3cff9ccc6145f537b559d8a8784dbbc7374880b2728a5d8ccdfdf3728",
