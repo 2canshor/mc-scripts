@@ -149,19 +149,30 @@ var ScriptGen = (function () {
     var x = "";
     x += '<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:rPr><w:sz w:val="48"/><w:szCs w:val="48"/></w:rPr></w:pPr><w:r><w:rPr><w:sz w:val="48"/><w:szCs w:val="48"/></w:rPr>' + t(d.title) + "</w:r></w:p>";
     x += '<w:p><w:pPr><w:pStyle w:val="Heading3"/><w:spacing w:after="480"/></w:pPr><w:r>' + t(d.heading) + "</w:r></w:p>";
+    // The script body is one borderless table, like the Script Template: MC name | class | text.
+    // Tab stops were dropped because viewers other than Word (the iPad preview, Pages) ignore them.
+    var TEXT_W = 9026, CLS_W = awardTab - ind, REST_W = TEXT_W - awardTab;
+    function cell(w, span, inner) {
+      return "<w:tc><w:tcPr><w:tcW w:w=\"" + w + "\" w:type=\"dxa\"/>" + (span > 1 ? "<w:gridSpan w:val=\"" + span + "\"/>" : "") + "</w:tcPr>" + inner + "</w:tc>";
+    }
+    function para(p, style, runs) { return "<w:p>" + ppr(p, { style: style, ind: "" }) + runs + "</w:p>"; }
+    var rows = "";
     L.paras.forEach(function (p) {
-      if (p.kind === "line" && p.label) {
-        x += "<w:p>" + ppr(p, { tabs: ind, ind: '<w:ind w:left="' + ind + '" w:hanging="' + ind + '"/>' }) +
-          "<w:r>" + LABEL_RPR + t(p.label) + "</w:r><w:r><w:tab/>" + t(p.text) + "</w:r></w:p>";
-      } else if (p.kind === "line") {
-        x += "<w:p>" + ppr(p, { ind: '<w:ind w:left="' + ind + '"/>' }) + "<w:r>" + t(p.text) + "</w:r></w:p>";
+      if (p.kind === "line") {
+        rows += "<w:tr>" + cell(ind, 1, para(p, null, p.label ? "<w:r>" + LABEL_RPR + t(p.label) + "</w:r>" : "")) +
+          cell(TEXT_W - ind, 2, para(p, null, "<w:r>" + t(p.text) + "</w:r>")) + "</w:tr>";
       } else if (p.kind === "cue") {
-        x += "<w:p>" + ppr(p, { style: "Caption", ind: '<w:ind w:left="' + ind + '"/>' }) + "<w:r>" + t(p.text) + "</w:r></w:p>";
+        rows += "<w:tr>" + cell(ind, 1, para(p, "Caption", "")) + cell(TEXT_W - ind, 2, para(p, "Caption", "<w:r>" + t(p.text) + "</w:r>")) + "</w:tr>";
       } else {
-        x += "<w:p>" + ppr(p, { tabs: awardTab, ind: '<w:ind w:left="' + ind + '"/>' }) +
-          (p.cls ? "<w:r>" + t(p.cls) + "</w:r>" : "") + "<w:r><w:tab/>" + t(p.name) + "</w:r></w:p>";
+        rows += "<w:tr><w:trPr><w:cantSplit/></w:trPr>" + cell(ind, 1, para(p, null, "")) + cell(CLS_W, 1, para(p, null, p.cls ? "<w:r>" + t(p.cls) + "</w:r>" : "")) +
+          cell(REST_W, 1, para(p, null, "<w:r>" + t(p.name) + "</w:r>")) + "</w:tr>";
       }
     });
+    var none = "<w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/><w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/>";
+    if (rows) x += "<w:tbl><w:tblPr><w:tblW w:w=\"" + TEXT_W + "\" w:type=\"dxa\"/><w:tblBorders>" + none + "</w:tblBorders><w:tblLayout w:type=\"fixed\"/>" +
+      "<w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"0\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"0\" w:type=\"dxa\"/></w:tblCellMar>" +
+      "<w:tblLook w:val=\"0000\" w:firstRow=\"0\" w:lastRow=\"0\" w:firstColumn=\"0\" w:lastColumn=\"0\" w:noHBand=\"1\" w:noVBand=\"1\"/></w:tblPr>" +
+      "<w:tblGrid><w:gridCol w:w=\"" + ind + "\"/><w:gridCol w:w=\"" + CLS_W + "\"/><w:gridCol w:w=\"" + REST_W + "\"/></w:tblGrid>" + rows + "</w:tbl>";
     var em = '<w:rPr><w:rStyle w:val="Emphasis"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>';
     // {End of Script} sits at the foot of the last page: a frame anchored to the bottom margin.
     x += '<w:p><w:pPr><w:framePr w:wrap="around" w:vAnchor="margin" w:hAnchor="margin" w:xAlign="center" w:yAlign="bottom"/><w:jc w:val="center"/>' + em + "</w:pPr><w:r>" + em + t("{End of Script}") + "</w:r></w:p>";
