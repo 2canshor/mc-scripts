@@ -287,7 +287,66 @@ h3 .fld{font-weight:600}
 .toast .msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .toast.plain{padding-right:16px;min-height:44px}
 .toast .tb{height:36px;font-weight:600}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+/* ---------- Deleting is always red ---------- */
+.rdel,.hdel,.tb.danger,.ib.danger{color:var(--danger)}
+/* ---------- Events: one heading per date; on a day with several events, a bar per event shows when it runs ---------- */
+.dh{margin:28px 0 6px;font-size:15px;color:var(--secondary)}
+.dh:first-child{margin-top:0}
+.dh .dt span{color:var(--secondary)}
+.tl.ev .row{grid-template-columns:6.4em minmax(0,1fr) 32px}
+.evn .fld{max-width:100%}
+.span-bar{position:relative;display:block;height:6px;margin-top:8px;border-radius:3px;background:var(--field)}
+.span-bar i{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--primary)}
+.onduty{color:var(--fill)}
+/* ---------- Rundown: every line with its tasks under it; a line with a Script shows every paragraph with the tasks it triggers ---------- */
+.rd .ln{margin:0 0 22px}
+.rd .lh{grid-template-columns:6.8em minmax(0,1fr) 32px;align-items:baseline}
+.rd .lh .lt{font-weight:600}
+.rd .lh .fld.inl{font-weight:600}
+.rd .lh .cap .fld.inl{font-weight:400}
+.rd .tr{white-space:nowrap}
+.rd .dash{margin:0 .1em;color:var(--secondary)}
+.rd .ln>.tasks,.rd .acts{padding-left:6.8em}
+@media (max-width:480px){.rd .ln>.tasks,.rd .acts{padding-left:0}}
+.rd .ln:not(.sel)>.tasks>.add,.rd .blk:not(.sel) .add{display:none}
+.rd .scr{margin:8px 0 0}
+.rd .blk{display:grid;grid-template-columns:minmax(0,1fr);column-gap:24px;margin:0 -12px;padding:6px 12px;border-radius:12px}
+.rd .blk.sel{background:var(--current)}
+.rd .blk .acts{padding-left:0}
+@media (min-width:900px){.rd .blk{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}
+.rd .say{line-height:1.7}
+.rd .say .spk{font-weight:600;margin-right:.5em}
+.rd .say .cue{color:var(--secondary);font-size:15px}
+.rd .say .aw2{color:var(--secondary);font-size:15px}
+.when{font-size:15px;margin-top:2px}
+.when.quiet{color:var(--caption)}
+.mh{padding:10px 14px 4px;font-size:13px;color:var(--secondary)}
+.hl{animation:hl 1.6s ease}
+@keyframes hl{0%{background:var(--field)}100%{background:transparent}}
+/* ---------- Account and Members ---------- */
+.mebox{display:flex;align-items:center;gap:16px;margin-top:8px}
+.mebox .av{width:72px;height:72px;border-radius:50%;background:var(--field);display:grid;place-items:center;font-size:27px;font-weight:600;flex:none}
+.mebox .nm{margin:0;font-size:20px;font-weight:600}
+.mebox .cap{margin:0}
+.pav{width:32px;height:32px;border-radius:50%;overflow:hidden;background:var(--field);display:grid;place-items:center;font-size:15px;font-weight:600;flex:none}
+.switch .row{grid-template-columns:32px minmax(0,1fr);align-items:center}
+.pwl .row{grid-template-columns:minmax(0,1fr) 8.5em 32px;align-items:center}
+.pwl .row .fld{font-variant-numeric:tabular-nums}
+.pwl .row .fld.ok{color:var(--present)}
+.roster .row{grid-template-columns:32px 4.2em minmax(0,1fr) 32px;align-items:center}
+.roster.gl .row{grid-template-columns:32px 4.2em minmax(0,1fr) 8.5em}
+.row.add select{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;cursor:pointer;-webkit-appearance:none;appearance:none}
+.row.add{position:relative}
+/* ---------- Print: the Rundown as the teacher's two-column run sheet, without controls ---------- */
+@media print{
+  .ctl,.fab,.edge,.search,.add,.rdel,.ib,#layer{display:none!important}
+  body{padding:0;font-size:11pt}
+  .page{max-width:none;padding-bottom:0}
+  .titlebar{padding-top:0}
+  .rd .blk{grid-template-columns:1.15fr 1fr;break-inside:avoid}
+  .rd .ln>.tasks,.rd .acts{padding-left:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -325,6 +384,12 @@ h3 .fld{font-weight:600}
   <symbol id="i-award" viewBox="0 0 24 24"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12"/><path d="M9 12h12"/><path d="M9 18h12"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></symbol>
+  <symbol id="i-login" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></symbol>
+  <symbol id="i-status" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
   <symbol id="i-cue" viewBox="0 0 24 24"><path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/></symbol>
 </svg>
 
@@ -364,11 +429,13 @@ const kindOf = g => g.split(' ')[0];
 const DEFAULT_ROLES = {MC: MC_ROLES, Backstage: ['Roll Call', 'Props', 'Stage Reset', 'Photo Positions', 'IG Footage'], Reception: ['Check-in', 'Seating', 'Handoff', 'Send-off']};
 const rolesFor = g => DEFAULT_ROLES[kindOf(g)].map(r => ({id: r, name: r, who: null}));
 
-const blank = (id, date, name) => ({id, date, name, start: '', end: '', venue: '', leading: [], support: [], lead: '', remarks: '', groups: [], lines: [], docs: [], log: []});
+const blank = (id, date, name) => ({id, date, name, start: '', end: '', asmTime: '', asmPlace: '', venue: '', leading: [], support: [], lead: '', status: '', remarks: '', groups: [], lines: [], docs: [], log: []});
+const newLine = () => ({id: 'n' + uid().slice(1), time: '', end: '', title: '', place: '', v: 1, remarks: '', tasks: []});
+const beforeLine = () => ({id: 'before', before: true, time: '', end: '', title: '', place: '', v: 0, remarks: '', tasks: []});
 let EVENTS = [];
 
 /* ---------- Session ---------- */
-const S = {acct: null, who: null, stack: [], q: '', menu: null, alert: null, toast: null, undo: null, focusKey: null, before: null, seen: {}};
+const S = {acct: null, who: null, stack: [], q: '', menu: null, alert: null, toast: null, undo: null, focusKey: null, before: null, seen: {}, fresh: new Set()};
 let toastTimer = 0, lastKey = '', navAt = 0, downEl = null;
 const A = () => ACCOUNTS.find(a => a.id === S.acct);
 const cur = () => S.stack[S.stack.length - 1];
@@ -388,25 +455,34 @@ const can = {
   attendance: g => A().type === 'lead' || glOf(E()) === g,
   // Two-level allocation (A1): the Event Lead gives work to groups; a Group Lead gives it to the group's roles and members
   addTask: ev => A().type === 'lead' || !!glOf(ev),
-  task: (ev, t) => A().type === 'lead' || (!!glOf(ev) && !!t.to && /^[rp]:/.test(t.to) && t.to.split(':')[1] === glOf(ev)),
-  export: () => A().type === 'lead'
+  // A Group Lead's task: every target is its own group, one of its roles or one of its members (the server checks the same)
+  task: (ev, t) => A().type === 'lead' || (!!glOf(ev) && targets(t.to).length > 0 && targets(t.to).every(x => /^[grp]:/.test(x) && x.split(':')[1] === glOf(ev)))
 };
 
 /* ---------- Derived data ---------- */
 const group = (ev, n) => ev.groups.find(g => g.name === n);
-// Rotation (replaces the Rotation Log): each main group takes turns A→B→C→D. The group with the fewest duties comes
-// first; among equals, the one after the group that served most recently. A group that covered for another has one
-// duty more, so the covered group comes first next time: the swap back needs no record of its own.
-const ROTATION_START = [{date: '26/09/28', groups: ['MC Group B', 'Backstage Group B']}];  // the last duty before Event Centre
-const overlaps = (a, b) => !!a.date && a.date === b.date && (!a.start || !a.end || !b.start || !b.end || (a.start < b.end && b.start < a.end));
+// Rotation (replaces the Rotation Log): each main group takes turns A→B→C→D. The group with the fewest duties this
+// school year (from 1 September) comes first; among equals, the one after the group that served most recently. Several
+// events on one day count as one duty. A group that covered for another has one duty more, so the covered group comes
+// first next time: the swap back needs no record of its own. The first duty is the real 26/09/28 event, not a constant.
+const TODAY = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/');
+const yearStart = d => { const [y, m] = d.split('/'); return (+m >= 9 ? y : String(+y - 1).padStart(2, '0')) + '/09/01'; };
+const validTime = e => !!e.start && !!e.end && e.end > e.start;
+const overlaps = (a, b) => !!a.date && a.date === b.date && (!validTime(a) || !validTime(b) || (a.start < b.end && b.start < a.end));
 function rotation(ev, kind) {
   const all = ALL_GROUPS.filter(g => kindOf(g) === kind), count = Object.fromEntries(all.map(g => [g, 0]));
-  let last = null, lastDate = '';
-  [...ROTATION_START, ...EVENTS.filter(e => e.id !== ev.id && e.date).map(e => ({date: e.date, groups: e.groups.map(g => g.name)}))]
-    .forEach(e => e.groups.filter(g => g in count).forEach(g => { count[g]++; if (e.date >= lastDate) { lastDate = e.date; last = g; } }));
+  const from = yearStart(ev.date || TODAY()), days = new Set();
+  let last = null, lastKey = '';
+  EVENTS.filter(e => e.id !== ev.id && e.date && e.date >= from).forEach(e => e.groups.forEach(g => {
+    if (!(g.name in count)) return;
+    if (!days.has(g.name + e.date)) { days.add(g.name + e.date); count[g.name]++; }
+    const key = e.date + (e.start || '');
+    if (key >= lastKey) { lastKey = key; last = g.name; }
+  }));
   const start = last ? all.indexOf(last) + 1 : 0, dist = g => (all.indexOf(g) - start + 4) % 4;
-  const busy = new Set(EVENTS.filter(e => e.id !== ev.id && overlaps(e, ev)).flatMap(e => e.groups.map(g => g.name)));
-  return all.sort((a, b) => count[a] - count[b] || dist(a) - dist(b)).map(g => ({g, busy: busy.has(g)}));
+  // Also on duty at an event that overlaps this one: shown, not blocked; the Event Lead judges whether there are enough people
+  const also = g => EVENTS.filter(e => e.id !== ev.id && overlaps(e, ev) && onDuty(e, g)).map(e => e.name || 'another event');
+  return all.sort((a, b) => count[a] - count[b] || dist(a) - dist(b)).map(g => ({g, also: also(g)}));
 }
 const onLeave = (ev, g, n) => !!(((ev.leave || {})[g] || {})[n]);
 const covered = ev => ev.groups.map(g => g.covers).filter(Boolean);  // groups whose turn another group took
@@ -416,36 +492,67 @@ const zh = x => /[㐀-鿿]/.test(x || '');
 const W = (ev, z, e) => zh(ev.name) ? z : e;  // only document titles and document content follow the event's language
 const docLabel = d => (d.q ? d.q + ' ' : '') + DOC_NAME[d.type];                       // interface
 const docTitle = (ev, d) => zh(ev.name) ? (d.q || '') + DOC_ZH[d.type] : docLabel(d);   // the document's own title
-const sorted = ev => ev.lines.map((l, i) => [l, i]).sort((a, b) => a[0].time.localeCompare(b[0].time) || a[1] - b[1]).map(x => x[0]);
-const endOf = (ev, l) => sorted(ev).map(x => x.time).filter(t => t > l.time).sort()[0] || '';
+// Lines run in the order the Event Lead puts them (Before the Event first); a time is a label, not the order
+const sorted = ev => [...ev.lines.filter(l => l.before), ...ev.lines.filter(l => !l.before)];
+const timeRange = l => l.time ? l.time + (l.end ? '–' + l.end : '') : '';
+const scriptOf = (ev, l) => ev.docs.find(d => d.type === 'script' && d.line === l.id);
+// Everything in the order it happens: each line's own tasks, then the tasks under each paragraph of its Script.
+// A task whose paragraph was deleted stays with its line, marked for someone to choose its place again.
+function runOrder(ev) {
+  const out = [];
+  sorted(ev).forEach(l => {
+    const d = scriptOf(ev, l), blocks = d ? d.blocks : [];
+    l.tasks.map((t, k) => { const i = t.at ? blocks.findIndex(b => b.id === t.at) : -1; return {t, i, k}; })
+      .sort((a, b) => a.i - b.i || a.k - b.k)
+      .forEach(({t, i}) => out.push({l, t, b: i >= 0 ? blocks[i] : null, lost: !!t.at && i < 0, d}));
+  });
+  return out;
+}
+// The words a member listens for: the last sentence of the paragraph, without "A:" or "B:"
+function lastSentence(text) {
+  const s = String(text || '').replace(/^[A-Za-z]\s*[:：]\s*/, '').trim();
+  const parts = s.split(/(?<=[。！？!?])/).map(x => x.trim()).filter(Boolean);
+  const last = parts.length ? parts[parts.length - 1] : s;
+  return last.length > 40 ? '…' + last.slice(-40) : last;
+}
+const blockName = (ev, b) => { if (b.name) return b.name; const mc = sortGroups(ev.groups).find(g => role(g, 'Host 1')); return mc ? (role(mc, b.sp) || {}).who || '' : ''; };
 const role = (g, id) => g && g.roles.find(r => r.id === id);
 const hostsOf = g => ['Host 1', 'Host 2'].map(r => (role(g, r) || {}).who).filter(Boolean);
 const taskAt = (ev, id) => { for (const l of ev.lines) { const t = item(l.tasks, id); if (t) return [l, t]; } return [null, null]; };
-// Who a task is for: everyone, one group, one role, both Hosts, or one member. One owner per task (Decision Record §2).
-function includes(ev, t, n) {
+// Who a task is for: everyone, groups, roles, both Hosts or members; a task may have several (the teacher's
+// "禮儀大使(甲, 乙, 丙)"). Targets are kept as one comma-separated string: all, g:Group, r:Group:Role, p:Group:Name.
+const targets = t => (t || '').split(',').filter(Boolean);
+function includes1(ev, t, n) {
   if (t === 'all') return ev.groups.some(g => g.lead === n || membersOf(g.name).includes(n));
-  if (!t) return false;
   const [k, gn, r] = t.split(':'); const g = group(ev, gn); if (!g) return false;
   if (k === 'g') return g.lead === n || membersOf(gn).includes(n);
   if (k === 'p') return r === n;
   return r === 'Hosts' ? hostsOf(g).includes(n) : (role(g, r) || {}).who === n;
 }
-function resolve(ev, t) {
+const includes = (ev, t, n) => targets(t).some(x => includes1(ev, x, n));
+function resolve1(ev, t) {
   if (t === 'all') return [{txt: 'All'}];
-  if (!t) return [{txt: 'Unassigned', open: true}];
   const [k, gn, r] = t.split(':'); const g = group(ev, gn);
-  if (!g) return [{txt: tlabel(ev, t), open: true}];  // its group is no longer on duty
+  if (!g) return [{txt: tlabel1(ev, t), open: true}];  // its group is no longer on duty
   if (k === 'g') return [{txt: gn}];
-  if (k === 'p') return [{txt: r, name: r}];
+  const off = n => onLeave(ev, gn, n);                  // only the Event Lead and the Group Lead receive leave, so only they see it
+  if (k === 'p') return [{txt: r, name: r, open: off(r)}];
   const ns = r === 'Hosts' ? hostsOf(g) : [(role(g, r) || {}).who].filter(Boolean);
-  return ns.length ? ns.map(n => ({txt: n, name: n})) : [{txt: tlabel(ev, t), open: true}];
+  return ns.length ? ns.map(n => ({txt: n, name: n, open: off(n)})) : [{txt: tlabel1(ev, t), open: true}];
 }
-function tlabel(ev, t) {
-  if (!t) return 'Unassigned'; if (t === 'all') return 'All';
+function resolve(ev, t) {
+  const xs = targets(t); if (!xs.length) return [{txt: 'Unassigned', open: true}];
+  const out = [], seen = new Set();
+  xs.flatMap(x => resolve1(ev, x)).forEach(x => { if (!seen.has(x.txt)) { seen.add(x.txt); out.push(x); } });
+  return out;
+}
+function tlabel1(ev, t) {
+  if (t === 'all') return 'All';
   const [k, gn, r] = t.split(':');
   if (k === 'g') return gn; if (k === 'p' || r === 'Hosts') return r;
   return (role(group(ev, gn), r) || {}).name || 'Removed role';
 }
+const tlabel = (ev, t) => targets(t).map(x => tlabel1(ev, x)).join('、') || 'Unassigned';
 const openCount = g => g.roles.filter(r => !r.who).length;
 const snap = ev => JSON.parse(JSON.stringify({...ev, log: []}));
 const now = () => new Date().toTimeString().slice(0, 5);
@@ -513,15 +620,15 @@ function pWho() {
   const a = A();
   return {page: 'who', body: `<div class="gate"><h2>Who Are You?</h2><p class="gsub">${esc(a.name)}</p>${faces(peopleOf(a), 'be')}</div>`};
 }
+// Account: who you are (tap the circle to change your photo), the others on this account, then the Event Lead's tools
 function pAccount() {
-  const a = A();
-  let h = head(esc(a.name), peopleOf(a) ? '' : me() ? esc(me()) : '');
-  const pn = photoName();
-  if (pn) h += `<section class="sec"><div class="faces"><button class="face" data-act="photo" type="button" aria-label="${PHOTOS[pn] ? 'Edit Photo' : 'Add Photo'}"><span class="av">${avatar(pn)}</span><span>${esc(pn)}</span><span class="edit">${PHOTOS[pn] ? 'Edit' : 'Add Photo'}</span></button></div></section>`;
-  // The person shown above is you; Switch Person lists everyone else on this account
-  const others = (peopleOf(a) || []).filter(n => n !== (pn || S.who));
-  if (others.length) h += `<section class="sec"><p class="sh">Switch Person</p>${faces(others, 'be')}</section>`;
-  if (a.type === 'lead') h += listSec('nav icons', `<button class="row" data-act="roster">${ic('users', 'ic')}<span>Roster</span><span></span>${chev}</button><button class="row" data-act="passwords">${ic('key', 'ic')}<span>Passwords</span><span></span>${chev}</button><button class="row" data-act="photos">${ic('photo', 'ic')}<span>Photos</span><span></span>${chev}</button><button class="row" data-act="yearexport">${ic('download', 'ic')}<span>Export Attendance</span><span></span><span></span></button>`);
+  const a = A(), pn = photoName(), n = me() || a.name;
+  let h = head('Account');
+  const circle = pn ? `<button class="av" data-act="photo" type="button" aria-label="${PHOTOS[pn] ? 'Change or remove photo' : 'Add photo'}">${avatar(pn)}</button>` : `<span class="av">${n === a.name ? ic('person') : avatar(n)}</span>`;
+  h += `<section class="sec"><div class="mebox">${circle}<div><p class="nm">${esc(n)}</p>${n !== a.name ? `<p class="cap">${nb(esc(a.name))}</p>` : ''}</div></div></section>`;
+  const others = (peopleOf(a) || []).filter(x => x !== (pn || S.who));
+  if (others.length) h += listSec('switch', others.map(x => `<button class="row" data-act="be:${esc(x)}" type="button"><span class="pav">${avatar(x)}</span><span>${esc(x)}</span></button>`).join(''), 'Switch Person');
+  if (a.type === 'lead') h += listSec('nav icons', `<button class="row" data-act="members">${ic('users', 'ic')}<span>Members</span><span></span>${chev}</button><button class="row" data-act="yearexport">${ic('download', 'ic')}<span>Export Attendance</span><span></span><span></span></button>`);
   h += listSec('nav icons', `<button class="row danger" data-act="signout">${ic('logout')}<span>Sign Out</span><span></span><span></span></button>`);
   return {page: 'account', back: true, body: h};
 }
@@ -531,21 +638,42 @@ function pEvents() {
   return {page: 'events', search: true, fab: can.event() ? ['plus', 'newevent', 'New Event'] : null,
     body: head('Events', '', av) + `<section class="sec"><div class="list tl ev" id="evlist">${evRows()}</div></section>`};
 }
+// Events by date. On a day with several events, a bar under each shows when it runs within that day, so events
+// at the same time line up. The Event Lead changes a name in the list, and a day's date in its heading.
+const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+const weekday = d => { const iso = toIso(d); return iso ? '（' + WEEK[new Date(iso + 'T12:00:00').getDay()] + '）' : ''; };
 function evRows() {
-  const q = S.q.trim().toLowerCase();
-  const rows = EVENTS.filter(e => !q || (e.date + ' ' + e.name).toLowerCase().includes(q));
-  return rows.length ? rows.map(e => swRow(`<button class="row" data-act="open:${e.id}"><span class="t">${esc(e.date) || '<span class="empty">No date</span>'}</span><span>${esc(e.name) || '<span class="empty">New Event</span>'}</span>${chev}</button>`, can.event() ? 'askev:' + e.id : '', 'Delete Event')).join('') : emptyRow('No results');
+  const q = S.q.trim().toLowerCase(), lead = can.event(), a = A();
+  const list = EVENTS.filter(e => !q || (e.date + ' ' + e.name).toLowerCase().includes(q));
+  if (!list.length) return emptyRow(q ? 'No results' : 'No events yet');
+  const days = []; list.forEach(e => { const d = days.find(x => x.date === e.date); if (d) d.evs.push(e); else days.push({date: e.date, evs: [e]}); });
+  return days.map(({date, evs}) => {
+    evs.sort((x, y) => (x.start || '99').localeCompare(y.start || '99'));
+    const timed = evs.filter(validTime), lo = timed.length > 1 ? Math.min(...timed.map(e => toMin(e.start))) : 0, hi = timed.length > 1 ? Math.max(...timed.map(e => toMin(e.end))) : 0;
+    const bar = e => timed.length > 1 && validTime(e) ? `<span class="span-bar" aria-hidden="true"><i style="left:${(toMin(e.start) - lo) / (hi - lo) * 100}%;width:${(toMin(e.end) - toMin(e.start)) / (hi - lo) * 100}%"></i></span>` : '';
+    const hd = `<p class="dh">${date ? (lead ? dateCtl('dd:' + date, date) : esc(date)) + esc(weekday(date)) : '<span class="empty">No date</span>'}</p>`;
+    return hd + evs.map(e => {
+      const duty = (a.type === 'group' || a.type === 'gl') && onDuty(e, a.group) ? '<span class="cap onduty">On Duty</span>' : '';
+      const t = `<span class="t${e.start && e.end && e.end <= e.start ? ' danger' : ''}">${esc(timeRange({time: e.start, end: e.end}))}</span>`;
+      const row = lead
+        ? `<div class="row" data-row="ev:${e.id}">${t}<span class="evn">${inlineFld('en:' + e.id, e.name, 'Event Name')}${bar(e)}</span>${ibtn('chev-r', 'open:' + e.id, 'Open ' + (e.name || 'event'))}</div>`
+        : `<button class="row" data-act="open:${e.id}">${t}<span>${esc(e.name) || '<span class="empty">New Event</span>'}${duty}${bar(e)}</span>${chev}</button>`;
+      return swRow(row, lead ? 'askev:' + e.id : '', 'Delete Event');
+    }).join('');
+  }).join('');
 }
 
-// A person's tasks: time | task, place below. Tasks given to this person alone can be written here by their Group Lead or the Event Lead.
+// One task in someone's list: when (a time, Before, or On Cue with the words to listen for), what, and where or with whom.
+// Tapping it opens the Rundown at that line or paragraph.
+function whenOf(x) { return x.l.before ? 'Before' : x.b ? 'On Cue' : timeRange(x.l); }
+function taskItem(ev, x, name, dot, who) {
+  const others = resolve(ev, x.t.to).map(r => r.name).filter(n => n && n !== name);
+  const cap = [x.b ? '「' + esc(lastSentence(x.b.text)) + '」' : '', who || '', x.l.before ? '' : esc(x.l.title), esc(x.l.place), others.length && name ? 'With ' + esc(others.join('、')) : ''].filter(Boolean);
+  return `<button class="row" data-act="goto:${x.l.id}:${x.b ? x.b.id : ''}"><span class="t">${dot ? '<span class="dot" aria-label="Changed"></span>' : ''}${whenOf(x)}</span><span>${esc(x.t.text) || '<span class="empty">Task</span>'}${cap.length ? `<span class="cap">${cap.join('<span class="sep2">｜</span>')}</span>` : ''}</span>${chev}</button>`;
+}
 function taskRows(ev, name, dots) {
-  const seen = dots && S.seen[name] && S.seen[name][ev.id], rows = [];
-  sorted(ev).forEach(l => l.tasks.forEach(t => { if (includes(ev, t.to, name)) rows.push([l, t]); }));
-  const lineOpts = sorted(ev).map(l => [l.id, `${l.time} ${l.title}`]);
-  const out = rows.map(([l, t]) => {
-    if (t.to && t.to.startsWith('p:') && can.task(ev, t)) return `<div class="row" data-row="task:${t.id}"><span class="t">${picker('tl:' + t.id, l.id, l.time, lineOpts, 'Time', 'When')}</span><span>${cellArea('t:' + t.id, t.text, 'Task')}<span class="cap">${esc(l.place)}</span></span>${rdel('rm:task:' + t.id, 'Delete Task')}</div>`;
-    return `<button class="row" data-act="line:${l.id}"><span class="t">${seen && l.v > (seen[l.id] ?? -1) ? '<span class="dot" aria-label="Changed"></span>' : ''}${l.time}</span><span>${esc(t.text)}<span class="cap">${esc(l.place)}</span></span>${chev}</button>`;
-  }).join('');
+  const seen = dots && S.seen[name] && S.seen[name][ev.id];
+  const out = runOrder(ev).filter(x => includes(ev, x.t.to, name)).map(x => taskItem(ev, x, name, seen && x.l.v > (seen[x.l.id] ?? -1))).join('');
   return out || emptyRow('No tasks yet');
 }
 function roleText(ev, n) {
@@ -554,32 +682,37 @@ function roleText(ev, n) {
   const rs = g.roles.filter(r => r.who === n).map(r => r.name);
   return rs.length ? esc(rs.join(', ')) : g.roles.length ? '<span class="unset">No role yet</span>' : esc(g.name);
 }
+// What every member needs before the first task: whether the plan is final, and when and where to report
+function headNotes(ev, name) {
+  const seen = name && S.seen[name] && S.seen[name][ev.id], dot = seen && (seen._hv ?? 0) < (ev.hv || 0) ? '<span class="dot hd" aria-label="Changed"></span>' : '';
+  const asm = ev.asmTime || ev.asmPlace ? 'Assembly ' + bar(esc(ev.asmTime), esc(ev.asmPlace)) : '';
+  return dot + bar(ev.status === 'Final' ? 'Final' : 'Draft', asm);
+}
 function pMyTasks(ev) {
   return {page: 'mytasks', back: true, right: [['info', 'details', 'Event Details']],
-    body: head('My Tasks', bar(evSub(ev), roleText(ev, me())) + '<br>' + (ev.confirmed ? 'Confirmed' : 'Not Confirmed')) + listSec('tl', taskRows(ev, me(), true))};
+    body: head('My Tasks', bar(evSub(ev), roleText(ev, me())) + '<br>' + headNotes(ev, me())) + listSec('tl mt', taskRows(ev, me(), true))};
 }
 function pPerson(ev, name) {
   const g = ev.groups.find(x => x.lead === name || membersOf(x.name).includes(name));
-  const add = g && ev.lines.length && (A().type === 'lead' || glOf(ev) === g.name) ? addRow(`addptask:${g.name}:${esc(name)}`, 'Add Task') : '';
   let props = '';
   if (g && g.lead !== name && can.roles(g.name)) { const mine = g.roles.find(r => r.who === name);
     props += `<div class="row">${ic('flag', 'ic')}<span class="k">Role</span><span>${picker(`pr:${esc(name)}`, mine ? mine.id : '', mine ? mine.name : '', [['', 'No role'], ...g.roles.map(r => [r.id, r.name + (r.who && r.who !== name ? ` (${r.who})` : '')])], 'No role', 'Role', true)}</span></div>`; }
   if (g && can.attendance(g.name)) { const on = onLeave(ev, g.name, name);
     props += `<div class="row">${ic('clock', 'ic')}<span class="k">On Leave</span><span><button class="ib ckb${on ? ' on' : ''}" data-act="leave:${esc(g.name)}:${esc(name)}" type="button" aria-pressed="${on}" aria-label="On Leave">${ic(on ? 'check-fill' : 'circle')}</button></span></div>`; }
-  return {page: 'person', back: true, body: head(esc(name), bar(evSub(ev), roleText(ev, name))) + (props ? listSec('props', props) : '') + listSec('tl', taskRows(ev, name, false) + add, 'Tasks')};
+  return {page: 'person', back: true, body: head(esc(name), bar(evSub(ev), roleText(ev, name))) + (props ? listSec('props', props) : '') + listSec('tl mt', taskRows(ev, name, false), 'Tasks')};
 }
 
-// A group on duty: its roles as pills (unfilled ones in red), then one list of members:
-// ○ attendance | name (opens their tasks) | role ↕. No other buttons on a row.
+// A group on duty: first every task given to the group, its roles or its members (tap to open it in the Rundown);
+// then its roles as pills (unfilled ones in red), then one list of members: ○ attendance | name | role ↕
 function pGroup(ev, name, first) {
   const g = group(ev, name);
   if (!g) return {page: 'group', back: true, body: head(esc(name), 'Not on duty for this event')};
   const edit = can.roles(g.name), att = can.attendance(g.name);
   const at = att ? (((ev.attendance = ev.attendance || {})[g.name] = ev.attendance[g.name] || {})) : {};
-  let body = head(nb(esc(g.name)), evSub(ev));
-  // First: the tasks the Event Lead gave to this group, which the Group Lead shares out among the members
-  const given = sorted(ev).flatMap(l => l.tasks.filter(t => t.to === 'g:' + g.name).map(t => `<button class="row" data-act="line:${l.id}"><span class="t">${l.time}</span><span>${esc(t.text) || '<span class="empty">Task</span>'}${l.place ? `<span class="cap">${esc(l.place)}</span>` : ''}</span>${chev}</button>`)).join('');
-  if (given) body += listSec('tl', given, 'Tasks');
+  let body = head(nb(esc(g.name)), evSub(ev) + (ev.asmTime || ev.asmPlace ? '<br>' + headNotes(ev, '') : ''));
+  const mineT = x => targets(x.t.to).some(y => y.split(':')[1] === g.name);
+  const given = runOrder(ev).filter(mineT).map(x => taskItem(ev, x, '', false, resolve(ev, x.t.to).map(r => `<span class="${r.open ? 'unset' : 'me'}">${nb(esc(r.txt))}</span>`).join('、'))).join('');
+  if (given) body += listSec('tl mt', given, 'Tasks');
   const pillsHtml = g.roles.map(r => `<span class="pill${edit ? '' : ' ro'}${r.who ? '' : ' unset'}"><span>${esc(r.name)}</span>${edit ? `<button class="px" data-act="unrole:${esc(r.id)}" type="button" aria-label="Remove ${esc(r.name)}">${ic('x')}</button>` : ''}</span>`).join('');
   body += `<section class="sec"><p class="sh">Roles</p><span class="pills">${pillsHtml}${edit ? `<input class="fld cell pin" data-pill="role" placeholder="Role" aria-label="Add a role" autocomplete="off" enterkeyhint="done">` : ''}${!pillsHtml && !edit ? '<span class="empty">No roles yet</span>' : ''}</span></section>`;
   const members = [g.lead, ...membersOf(g.name).filter(n => n !== g.lead)].filter(Boolean);
@@ -588,29 +721,68 @@ function pGroup(ev, name, first) {
     const shown = n === g.lead ? 'Group Lead' : mine ? mine.name : '';
     const opts = [['', 'No role'], ...g.roles.map(r => [r.id, r.name + (r.who && r.who !== n ? ` (${r.who})` : '')])];
     const roleCtl = n === g.lead ? `<span>Group Lead</span>` : edit ? `<span class="nwp">${picker(`pr:${esc(n)}`, mine ? mine.id : '', shown, opts, 'No role', 'Role of ' + n, true)}</span>` : `<span>${esc(shown)}</span>`;
-    // Attendance: the tick is the record; the system keeps the time it was ticked (the chairs: no other status to choose)
     const t = s === 'Attended' && ((ev.attTime || {})[g.name] || {})[n], off = att && onLeave(ev, g.name, n);
     const st = t ? `<span class="tm">${t}</span>` : off ? '<span class="tm">On Leave</span>' : '';
     return `<div class="row">${att ? (off && s !== 'Attended' ? '<span></span>' : presence(`here:${esc(g.name)}:${esc(n)}`, s === 'Attended', n)) : ''}<button class="nmb" data-act="person:${esc(n)}" type="button">${esc(n)}${st}</button>${roleCtl}</div>`;
   }).join('');
   body += listSec(att ? 'people' : 'people plain', rows || emptyRow('No members yet'), 'Members');
-  // Acting Group Lead (leads the group on site when the Group Lead cannot) and, for the Event Lead, Covering For:
-  // this group takes another group's turn; the rotation gives the turn back by itself. One list, as on Event Details.
   const others = membersOf(g.name).filter(n => n !== g.lead), lead = A().type === 'lead';
   const same = ALL_GROUPS.filter(x => kindOf(x) === kindOf(g.name) && x !== g.name && !onDuty(ev, x));
   let props = '';
   if (edit && A().type !== 'group') props += `<div class="row">${ic('flag', 'ic')}<span class="k">Acting Group Lead</span><span>${picker('ag', g.acting || '', g.acting || '', [['', 'None'], ...others.map(n => [n, n])], 'None', 'Acting Group Lead', true)}</span></div>`;
   else if (g.acting) props += `<div class="row">${ic('flag', 'ic')}<span class="k">Acting Group Lead</span><span>${esc(g.acting)}</span></div>`;
-  if (lead) props += `<div class="row">${ic('layers', 'ic')}<span class="k">Covering For</span><span>${picker('cv', g.covers || '', g.covers || '', [['', 'None'], ...same.map(x => [x, x])], 'None', 'Covering For', true)}</span></div>`;
-  else if (g.covers) props += `<div class="row">${ic('layers', 'ic')}<span class="k">Covering For</span><span>${nb(esc(g.covers))}</span></div>`;
+  if (lead) props += `<div class="row">${ic('swap', 'ic')}<span class="k">Covering For</span><span>${picker('cv', g.covers || '', g.covers || '', [['', 'None'], ...same.map(x => [x, x])], 'None', 'Covering For', true)}</span></div>`;
+  else if (g.covers) props += `<div class="row">${ic('swap', 'ic')}<span class="k">Covering For</span><span>${nb(esc(g.covers))}</span></div>`;
   if (props) body += listSec('props', props);
   return {page: 'group', back: true, right: first ? [['info', 'details', 'Event Details']] : null, body};
 }
 
+// ---------- Rundown: the run sheet on one page, changed where it is shown ----------
+// Each line: time, what happens, place; its tasks right under it. A line with a Script shows every paragraph, with the
+// tasks that paragraph triggers beside it (wide screens) or under it (phones): the teacher's 司儀稿和後台備忘.
 function pRundown(ev, first) {
-  const rows = sorted(ev).map(l => swRow(`<button class="row" data-act="line:${l.id}"><span class="t">${l.time}</span><span>${esc(l.title) || '<span class="empty">New Line</span>'}${l.place ? `<span class="cap">${esc(l.place)}</span>` : ''}</span>${chev}</button>`, can.event() ? 'askline:' + l.id : '', 'Delete Line')).join('');
+  const lead = can.event(), scripts = ev.docs.filter(d => d.type === 'script');
+  let prev = '';
+  const body = sorted(ev).map(l => { const late = !l.before && l.time && prev && l.time < prev; if (!l.before && l.time) prev = l.time; return lineBlock(ev, l, lead, scripts, late); }).join('');
   return {page: 'rundown', back: true, right: first ? [['info', 'details', 'Event Details']] : null,
-    body: head('Rundown', evSub(ev)) + listSec('tl', rows || emptyRow('No lines yet')), fab: can.event() ? ['plus', 'newline', 'New Line'] : null};
+    body: head('Rundown', evSub(ev)) + `<section class="sec rd">${body || emptyRow('No lines yet')}</section>`, fab: lead ? ['plus', 'newline', 'New Line'] : null};
+}
+function lineBlock(ev, l, lead, scripts, late) {
+  const d = scriptOf(ev, l), all = runOrder(ev).filter(x => x.l === l), own = all.filter(x => !x.b && !x.lost);
+  let h;
+  if (l.before) h = `<div class="row lh"><span class="t">Before</span><span class="lt">Before the Event</span><span></span></div>`;
+  else if (lead) {
+    const sp = scripts.length ? ' ' + picker('sd:' + l.id, d ? d.id : '', d ? docLabel(d) : '', [['', 'No Script'], ...scripts.map(x => [x.id, docLabel(x) + (x.line && x.line !== l.id ? ' (moves here)' : '')])], 'No Script', 'Script for this line', true) : '';
+    h = `<div class="row lh" data-row="ln:${l.id}"><span class="t tr${late ? ' danger' : ''}">${timeCtl('lt:' + l.id, l.time, 'Time')}<span class="dash">–</span>${timeCtl('le:' + l.id, l.end || '', 'End')}</span><span>${inlineFld('ln:' + l.id, l.title, 'What Happens')}<span class="cap">${inlineFld('lp:' + l.id, l.place, 'Place')}${sp ? '<span class="sep2">｜</span>' + sp.trim() : ''}</span></span>${ibtn('more', 'lmenu:' + l.id, 'Line actions')}</div>`;
+  } else h = `<div class="row lh"><span class="t${late ? ' danger' : ''}">${esc(timeRange(l))}</span><span class="lt">${esc(l.title) || '<span class="empty">Line</span>'}${l.place || d ? `<span class="cap">${bar(esc(l.place), d ? esc(docLabel(d)) : '')}</span>` : ''}</span><span></span></div>`;
+  h += `<div class="list tasks">${own.map(x => taskRow(ev, x)).join('')}${addTaskRow(ev, l, '')}</div>`;
+  if (d) h += `<div class="scr">${scriptRows(ev, d, l, all)}</div>`;
+  return `<div class="ln" data-anchor="l:${l.id}" data-line="${l.id}">${h}</div>`;
+}
+function scriptRows(ev, d, l, all) {
+  const lost = all.filter(x => x.lost);
+  let h = lost.length ? `<div class="blk"><div class="say"><span class="danger">Paragraph removed</span></div><div class="acts list tasks">${lost.map(x => taskRow(ev, x)).join('')}</div></div>` : '';
+  h += d.blocks.map(b => `<div class="blk" data-anchor="b:${b.id}" data-blk="${b.id}"><div class="say">${blockSay(ev, d, b)}</div><div class="acts list tasks">${all.filter(x => x.b === b).map(x => taskRow(ev, x)).join('')}${addTaskRow(ev, l, b.id)}</div></div>`).join('');
+  return h;
+}
+function blockSay(ev, d, b) {
+  if (b.type === 'cue') return `<span class="cue">${esc(b.text) || '&nbsp;'}</span>`;
+  if (b.type === 'award') { const list = doc(ev, b.list), aw = list && item(list.awards, b.award); return `<span class="aw2">${W(ev, '得獎名單', 'Awardee List')}${aw ? '：' + esc(aw.award) : ''}</span>`; }
+  const n = blockName(ev, b);
+  return `<span class="spk${n ? '' : ' unset'}">${esc(n || W(ev, '未有司儀', 'No MC yet'))}</span>${esc(b.text)}`;
+}
+const addTaskRow = (ev, l, at) => can.addTask(ev) ? addRow(`addtask:${l.id}:${at}`, 'Add Task') : '';
+// Who does a task: a button that opens a checklist (several may be ticked); for others, the names
+function taskRow(ev, x) {
+  const t = x.t;
+  if (!can.task(ev, t)) return `<div class="row"><span class="names">${namesHtml(ev, t.to)}</span><span>${esc(t.text)}</span><span></span></div>`;
+  const who = resolve(ev, t.to), open = who.some(r => r.open);
+  const btn = `<button class="who${open ? ' unset' : ''}" data-act="assign:${t.id}" type="button"><span>${who.map(r => nb(esc(r.txt))).join('、')}</span>${ic('updown')}</button>`;
+  let when = '';
+  if (x.d) { const opts = [['', 'With the line'], ...x.d.blocks.map(b => [b.id, (b.type === 'line' ? (blockName(ev, b) ? blockName(ev, b) + '：' : '') : '') + (lastSentence(b.text) || (b.type === 'award' ? 'Awardee List' : '…'))])];
+    const bad = t.chk || x.lost;
+    when = `<span class="when">${picker('at:' + t.id, bad ? '' : (t.at || ''), bad ? '' : (t.at ? 'When: 「' + lastSentence((x.b || {}).text) + '」' : 'When: with the line'), opts, 'Check When', 'When this happens', !bad).replace('class="who', 'class="who' + (bad ? '' : ' quiet'))}</span>`; }
+  return `<div class="row" data-row="task:${t.id}"><span>${btn}</span><span>${cellArea('t:' + t.id, t.text, 'Task')}${when}</span>${rdel('rm:task:' + t.id, 'Delete Task')}</div>`;
 }
 function pEvent(ev) {
   const a = A();
@@ -618,44 +790,32 @@ function pEvent(ev) {
   return pDetails(ev);
 }
 
-// Who does a task: the Event Lead chooses from every group on duty; a Group Lead from its own group's roles and members
-function assignOpts(ev, t) {
-  const own = A().type === 'lead' ? null : glOf(ev), o = own ? [] : [['all', 'All']];
+// Who a task can be given to: the Event Lead chooses from everyone on duty; a Group Lead from its own group
+function assignOpts(ev) {
+  const own = A().type === 'lead' ? null : glOf(ev), o = [];
+  if (!own) o.push({group: '', items: [['all', 'All']]});
   sortGroups(ev.groups).filter(g => !own || g.name === own).forEach(g => o.push({group: g.name, items: [
-    ...(own ? [] : [['g:' + g.name, g.name]]),
+    ['g:' + g.name, g.name],
     ...(role(g, 'Host 1') ? [['r:' + g.name + ':Hosts', 'Hosts']] : []),
     ...g.roles.map(r => ['r:' + g.name + ':' + r.id, r.name || 'Role']),
-    ...membersOf(g.name).map(n => ['p:' + g.name + ':' + n, n])]}));
-  if (t.to && !JSON.stringify(o).includes(JSON.stringify(t.to))) o.push([t.to, tlabel(ev, t.to)]);
+    ...[g.lead, ...membersOf(g.name).filter(n => n !== g.lead)].filter(Boolean).map(n => ['p:' + g.name + ':' + n, n])]}));
   return o;
 }
-const assignPicker = (ev, t) => { const gone = t.to && t.to !== 'all' && !group(ev, t.to.split(':')[1]);
-  return picker('to:' + t.id, t.to, tlabel(ev, t.to), assignOpts(ev, t), 'Unassigned', 'Who does this').replace('class="who"', `class="who${gone ? ' unset' : ''}"`); };
-const taskRow = (ev, t) => can.task(ev, t)
-  ? `<div class="row" data-row="task:${t.id}"><span>${assignPicker(ev, t)}</span>${cellArea('t:' + t.id, t.text, 'Task')}${rdel('rm:task:' + t.id, 'Delete Task')}</div>`
-  : `<div class="row"><span class="names">${namesHtml(ev, t.to)}</span><span>${esc(t.text)}</span><span></span></div>`;
-function pLine(ev, id) {
-  const l = ev.lines.find(x => x.id === id);
-  if (!l) return {page: 'line', back: true, body: head('Deleted')};
-  const end = endOf(ev, l), lead = can.event();
-  let h = lead ? `<div class="titlebar"><h1 class="title">${inlineFld('l:title', l.title, 'Name')}</h1></div>` +
-    `<p class="sub">${bar(`<span class="v">${timeCtl('l:time', l.time, 'Time')}</span>${end ? '–' + end : ''}`, `<span class="v">${inlineFld('l:place', l.place, 'Place')}</span>`)}</p>`
-    : head(esc(l.title), bar(`${l.time}${end ? '–' + end : ''}`, esc(l.place)));
-  h += listSec('tasks', l.tasks.map(t => taskRow(ev, t)).join('') + (can.addTask(ev) ? addRow('addtask', 'Add Task') : '') || emptyRow('No tasks yet'), 'Tasks');
-  if (lead || l.remarks) h += remarks('l:remarks', l.remarks, lead);
-  return {page: 'line', back: true, right: lead ? [['trash', 'ask:delline', 'Delete Line']] : null, body: h};
+function assignMenu(el, ev, t) {
+  const on = new Set(targets(t.to)), items = [];
+  assignOpts(ev).forEach(o => { if (o.group) items.push(['hdr', o.group]); o.items.forEach(x => items.push(['tgl:' + t.id + ':' + x[0], x[1], ic('check', 'ck'), on.has(x[0]) ? 'on' : ''])); });
+  if (el) menu(el, items); else if (S.menu) { const top = (layer.querySelector('.menu') || {}).style; S.menu.items = items; renderLayer(); const m = layer.querySelector('.menu'); if (m && top && top.top) { m.style.bottom = ''; m.style.top = top.top; } }
 }
 
-// Event Details: the title as Scripts writes it, then one list of properties (Obsidian's properties), then every document
-function dutyPills(ev, lead) {
-  const gs = sortGroups(ev.groups).map(g => { const n = openCount(g);
-    return `<span class="pill${lead ? '' : ' ro'}${n && lead ? ' unset' : ''}"><button data-act="group:${esc(g.name)}" type="button" aria-label="${esc(g.name)}${n ? `, ${n} ${n > 1 ? 'roles' : 'role'} to fill` : ''}">${esc(g.name)}</button>${lead ? `<button class="px" data-act="dutyask:${esc(g.name)}" type="button" aria-label="Take ${esc(g.name)} off duty">${ic('x')}</button>` : ''}</span>`; }).join('');
-  const free = ['MC', 'Backstage', 'Reception'].map(k => {
-    const list = rotation(ev, k).filter(x => !onDuty(ev, x.g)), next = list.find(x => !x.busy);
-    return {group: k, items: list.map(x => [x.g, x.g + (x.busy ? ' (On Duty Elsewhere)' : x === next ? ' (Next)' : ''), x.busy])};
-  }).filter(o => o.items.length);
-  const add = lead && free.length ? `<label class="who addg"><span>Group</span>${ic('updown')}<select data-k="addgroup" aria-label="Add a duty group"><option value="" selected disabled></option>${free.map(o => `<optgroup label="${o.group}">${o.items.map(x => optHtml(x, '')).join('')}</optgroup>`).join('')}</select></label>` : '';
-  return `<span class="pills">${gs}${add}${!gs && !add ? '<span class="empty">None yet</span>' : ''}</span>`;
+// Event Details: the title as Scripts writes it, then one list of properties (each symbol once), duty groups, documents
+function dutyRows(ev, lead) {
+  const gl = glOf(ev);
+  const rows = sortGroups(ev.groups).map(g => { const n = openCount(g), red = n && (lead || gl === g.name);
+    return swRow(`<button class="row" data-act="group:${esc(g.name)}"><span>${nb(esc(g.name))}${g.covers ? `<span class="cap">Covering For ${nb(esc(g.covers))}</span>` : ''}</span><span class="det${red ? ' danger' : ''}">${red ? `${n} to fill` : ''}</span>${chev}</button>`, lead ? 'dutyask:' + g.name : '', 'Take Off Duty'); }).join('');
+  const opts = ['MC', 'Backstage', 'Reception'].map(k => { const list = rotation(ev, k).filter(x => !onDuty(ev, x.g));
+    return {group: k, items: list.map((x, i) => [x.g, x.g + (i === 0 ? ' (Next)' : '') + (x.also.length ? ` (Also ${x.also.join('、')})` : '')])}; }).filter(o => o.items.length);
+  const add = lead && opts.length ? `<label class="row add">${ic('plus-c')}<span>Add Duty Group</span><select data-k="addgroup" aria-label="Add a duty group"><option value="" selected disabled></option>${opts.map(o => `<optgroup label="${o.group}">${o.items.map(x => optHtml(x, '')).join('')}</optgroup>`).join('')}</select></label>` : '';
+  return rows + add || emptyRow('None yet');
 }
 function pDetails(ev) {
   const lead = can.event();
@@ -663,23 +823,22 @@ function pDetails(ev) {
     ? `<div class="titlebar"><h1 class="title">${dateCtl('d:date', ev.date)}<span class="sep">｜</span>${inlineFld('d:name', ev.name, 'Event Name')}</h1></div>`
     : head(evSub(ev) || 'Event');
   const prop = (icon, label, v, show) => show ? `<div class="row">${ic(icon, 'ic')}<span class="k">${label}</span><span>${v}</span></div>` : '';
-  let rows = prop('clock', 'Start', lead ? timeCtl('d:start', ev.start, 'Time') : ev.start, lead || ev.start);
-  rows += prop('clock', 'End', lead ? timeCtl('d:end', ev.end, 'Time') : ev.end, lead || ev.end);
+  const badTime = ev.start && ev.end && ev.end <= ev.start;
+  let rows = prop('clock', 'Time', lead ? `<span class="${badTime ? 'danger' : ''}">${timeCtl('d:start', ev.start, 'Start')}<span class="sep2">–</span>${timeCtl('d:end', ev.end, 'End')}</span>` : `<span class="${badTime ? 'danger' : ''}">${esc(timeRange({time: ev.start, end: ev.end}))}</span>`, lead || ev.start);
+  rows += prop('login', 'Assembly', lead ? `${timeCtl('d:asmTime', ev.asmTime || '', 'Time')}<span class="sep2">｜</span>${inlineFld('d:asmPlace', ev.asmPlace || '', 'Place')}` : bar(esc(ev.asmTime), esc(ev.asmPlace)), lead || ev.asmTime || ev.asmPlace);
   rows += prop('pin', 'Venue', lead ? cellFld('d:venue', ev.venue, 'Place', '', 'Venue') : esc(ev.venue), lead || ev.venue);
   rows += prop('person', 'Leading Teacher', pills('leading', ev.leading, 'Name', lead), lead || ev.leading.length);
   rows += prop('users', 'Supporting Teachers', pills('support', ev.support, 'Name', lead), lead || ev.support.length);
   rows += prop('flag', 'Event Lead', lead ? picker('d:lead', ev.lead, ev.lead, CHAIRS.map(n => [n, n]), 'None', 'Event Lead') : esc(ev.lead), lead || ev.lead);
-  const helpers = [...new Set([...CHAIRS, ...sortGroups(ev.groups).flatMap(g => membersOf(g.name))])].filter(n => n !== ev.lead);
-  rows += prop('flag', 'Acting Event Lead', lead ? picker('d:actingLead', ev.actingLead || '', ev.actingLead || '', [['', 'None'], ...helpers.map(n => [n, n])], 'None', 'Acting Event Lead', true) : esc(ev.actingLead), lead || ev.actingLead);
-  rows += prop('check', 'Confirmed', lead ? `<button class="ib ckb${ev.confirmed ? ' on' : ''}" data-act="confirm" type="button" aria-pressed="${!!ev.confirmed}" aria-label="Confirmed">${ic(ev.confirmed ? 'check-fill' : 'circle')}</button>` : ev.confirmed ? 'Yes' : 'Not Yet', true);
-  rows += prop('layers', 'Duty Groups', dutyPills(ev, lead), true);
+  rows += prop('status', 'Status', lead ? picker('d:status', ev.status || 'Draft', ev.status || 'Draft', [['Draft', 'Draft'], ['Final', 'Final']], 'Draft', 'Status') : esc(ev.status || 'Draft'), true);
   h += listSec('props', rows);
+  h += listSec('nav', dutyRows(ev, lead), 'Duty Groups');
   if (lead || ev.remarks) h += remarks('d:remarks', ev.remarks, lead);
-  const docs = `<button class="row" data-act="rundown">${ic('clock', 'ic')}<span>Rundown</span><span></span>${chev}</button>` +
+  const docs = `<button class="row" data-act="rundown">${ic('list', 'ic')}<span>Rundown</span><span></span>${chev}</button>` +
     [...ev.docs].sort((x, y) => Object.keys(DOC_NAME).indexOf(x.type) - Object.keys(DOC_NAME).indexOf(y.type)).map(d => swRow(`<button class="row" data-act="doc:${d.id}">${ic(DOC_ICON[d.type], 'ic')}<span>${esc(docLabel(d))}</span><span></span>${chev}</button>`, can.doc(ev, d) ? 'askdoc:' + d.id : '', 'Delete ' + DOC_NAME[d.type])).join('');
   h += listSec('nav icons', docs, 'Documents');
   const t = myDocType(ev);
-  return {page: 'details', back: true, right: lead ? [['history', 'history', 'History'], ['download', 'export', 'Export Attendance'], ['trash', 'ask:delevent', 'Delete Event']] : null,
+  return {page: 'details', back: true, right: lead ? [['history', 'history', 'History']] : null,
     body: h, fab: lead ? ['plus', 'adddoc-menu', 'New Document'] : t ? ['plus', 'adddoc:' + t, 'New ' + DOC_NAME[t]] : null};
 }
 
@@ -692,10 +851,12 @@ function docHead(ev, d, edit) {
     (edit && same ? `<span class="nw">${inlineFld('dq:' + d.id, d.q, W(ev, '類別', 'Qualifier'))}${zh(ev.name) ? '' : ' '}${type}</span>` : `<span class="nw">${esc(docTitle(ev, d))}</span>`) + `</h1></div>`;
 }
 function scriptBody(ev, d, edit) {
-  const mc = sortGroups(ev.groups).find(g => role(g, 'Host 1')), holder = r => mc && (role(mc, r) || {}).who;
-  const hosts = ['Host 1', 'Host 2'].filter(holder);
+  const mcs = sortGroups(ev.groups).filter(g => role(g, 'Host 1')), mc = mcs[0], holder = (g, r) => g && (role(g, r) || {}).who;
+  const hostOpts = mcs.flatMap(g => ['Host 1', 'Host 2'].filter(r => holder(g, r)).map(r => [r, holder(g, r) + (mcs.length > 1 ? ` (${g.name})` : '')]));
   // The MC line, as in Scripts and the Script Template: class number and name of each MC
-  let h = `<p class="mcline">${hosts.map(r => esc(`${clsOf(mc.name, holder(r))} ${holder(r)}`.trim())).join('<span class="sep2">．</span>') || `<span class="unset">${W(ev, '未有司儀', 'No MC yet')}</span>`}</p>`;
+  const named = [...new Set(d.blocks.filter(b => b.type === 'line').map(b => blockName(ev, b)).filter(Boolean))];
+  const mcLine = mc && hostOpts.length ? ['Host 1', 'Host 2'].filter(r => holder(mc, r)).map(r => esc(`${clsOf(mc.name, holder(mc, r))} ${holder(mc, r)}`.trim())).join('<span class="sep2">．</span>') : named.map(esc).join('<span class="sep2">．</span>');
+  let h = `<p class="mcline">${mcLine || `<span class="unset">${W(ev, '未有司儀', 'No MC yet')}</span>`}</p>`;
   h += d.blocks.map(b => {
     const pm = edit ? ibtn('more', `pmenu:${d.id}:${b.id}`, 'Paragraph actions', 'pm') : '<span></span>';
     if (b.type === 'cue') return `<div class="srow cue" data-row="blk:${b.id}"><span></span><span class="body">${edit ? cellArea(`s:${d.id}:${b.id}`, b.text, W(ev, '流程提示', 'Stage Direction')) : esc(b.text)}</span>${pm}</div>`;
@@ -704,17 +865,20 @@ function scriptBody(ev, d, edit) {
       const rows = aw ? aw.rows.filter(r => r.cls || r.name).map(r => `<span class="c${absent(l, r) ? ' gone' : ''}">${esc(r.cls)}</span><span class="${absent(l, r) ? 'gone' : ''}">${esc(r.name)}</span>`).join('') : '';
       return `<div class="srow" data-row="blk:${b.id}"><span></span><div class="aws">${rows || `<span></span><span class="empty">${aw ? esc(aw.award) : W(ev, '得獎名單', 'Awardee List')}</span>`}</div>${pm}</div>`;
     }
-    const n = holder(b.sp);
-    const who = edit ? picker(`sp:${d.id}:${b.id}`, n ? b.sp : '', n, hosts.map(r => [r, holder(r)]), W(ev, '選擇司儀', 'Choose MC'), W(ev, '選擇司儀', 'Choose MC')) : `<span class="${n ? '' : 'unset'}">${esc(n || W(ev, '未有司儀', 'No MC yet'))}</span>`;
+    const n = blockName(ev, b);
+    const who = edit && !b.name ? picker(`sp:${d.id}:${b.id}`, n ? b.sp : '', n, hostOpts, W(ev, '選擇司儀', 'Choose MC'), W(ev, '選擇司儀', 'Choose MC')) : `<span class="${n ? '' : 'unset'}">${esc(n || W(ev, '未有司儀', 'No MC yet'))}</span>`;
     return `<div class="srow" data-row="blk:${b.id}"><span class="sp">${who}</span><span class="body">${edit ? cellArea(`s:${d.id}:${b.id}`, b.text, W(ev, '司儀對白', 'MC Line')) : esc(b.text)}</span>${pm}</div>`;
   }).join('') + `<p class="end">{End of Script}</p>`;
   return h;
 }
+// Awardee List: each award's heading, its awardees, and a blank row at its end; a blank heading at the end adds an award.
+// No add buttons: typing into the blank row or heading adds it.
 const awRow = (ev, d, aw, r) => `<div class="row" data-row="aw:${aw.id}:${r.id}">${presence(`call:${d.id}:${aw.id}:${r.id}`, r.here === 'Present', r.name || 'Awardee')}` +
   `<span>${cellFld(`ac:${d.id}:${aw.id}:${r.id}`, r.cls, W(ev, '班別', 'Class'), 'upper')}</span><span>${cellFld(`an:${d.id}:${aw.id}:${r.id}`, r.name, W(ev, '得獎者姓名', 'Name'))}</span>` +
   `<span></span>${rdel(`rm:aw:${d.id}:${aw.id}:${r.id}`, 'Delete Awardee')}</div>`;
+const awNew = (ev, d, aw) => `<div class="row"><span></span><span>${cellFld(`acn:${d.id}:${aw.id}`, '', W(ev, '班別', 'Class'), 'upper')}</span><span>${cellFld(`anw:${d.id}:${aw.id}`, '', W(ev, '得獎者姓名', 'Name'))}</span><span></span><span></span></div>`;
 function awardeeBody(ev, d, edit) {
-  if (edit) return `<section class="sec awards">${d.awards.map(aw => `<div class="award" data-award="${aw.id}"><h3 class="row" data-row="awh:${aw.id}">${cellFld(`aw:${d.id}:${aw.id}`, aw.award, W(ev, '獎項', 'Award'))}${rdel(`rm:award:${d.id}:${aw.id}`, 'Delete Award')}</h3><div class="list aw edit">${aw.rows.map(r => awRow(ev, d, aw, r)).join('')}${addRow(`addawardee:${aw.id}`, 'Add Awardee')}</div></div>`).join('')}<div class="list">${addRow('addaward', 'Add Award')}</div></section>`;
+  if (edit) return `<section class="sec awards">${d.awards.map(aw => `<div class="award" data-award="${aw.id}"><h3 class="row" data-row="awh:${aw.id}">${cellFld(`aw:${d.id}:${aw.id}`, aw.award, W(ev, '獎項', 'Award'))}${rdel(`rm:award:${d.id}:${aw.id}`, 'Delete Award')}</h3><div class="list aw edit">${aw.rows.map(r => awRow(ev, d, aw, r)).join('')}${awNew(ev, d, aw)}</div></div>`).join('')}<div class="award"><h3 class="row">${cellFld(`awn:${d.id}`, '', W(ev, '獎項', 'Award'))}<span></span></h3></div></section>`;
   const blocks = d.awards.filter(aw => aw.award || aw.rows.length).map(aw => `<div class="award"><h3>${esc(aw.award)}</h3><div class="list aw">${aw.rows.filter(r => r.cls || r.name).map(r =>
     `<div class="row"><span class="t${absent(d, r) ? ' gone' : ''}">${esc(r.cls)}</span><span class="${absent(d, r) ? 'gone' : ''}">${esc(r.name)}</span><span class="st${absent(d, r) ? ' unset' : ''}">${absent(d, r) ? 'Absent' : r.here === 'Present' ? 'Present' : ''}</span></div>`).join('')}</div></div>`).join('');
   return `<section class="sec awards">${blocks || '<p class="empty">No awards yet</p>'}</section>`;
@@ -731,28 +895,21 @@ function pDoc(ev, id) {
   return {page: 'doc-guests', back: true, right, body: h + listSec('gu', rows)};
 }
 
-// Roster: the chairs keep each small group's members, with class numbers, from List of Members
-function pRoster() {
-  return {page: 'roster', back: true, body: head('Roster') + listSec('nav', ALL_GROUPS.map(g => `<button class="row" data-act="rostergroup:${g}"><span>${g}</span><span class="det">${membersOf(g).length || ''}</span>${chev}</button>`).join(''))};
+// Members (Event Lead): every account with its password on the right, waiting to be changed; a group opens its roster
+const pwField = id => `<input class="fld cell pwf${PASSWORDS[id] ? ' ok' : ''}" type="text" data-pw="${esc(id)}" value="${esc(PASSWORDS[id] || '')}" placeholder="New Password" aria-label="New password for ${esc(id)}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">`;
+function pMembers() {
+  const acc = ['Event Lead', 'Teacher'].map(id => `<div class="row"><span>${id}</span>${pwField(id)}<span></span></div>`).join('');
+  const groups = ALL_GROUPS.map(g => `<div class="row"><button class="nmb" data-act="rostergroup:${g}" type="button">${nb(g)}</button>${pwField(g)}${ibtn('chev-r', 'rostergroup:' + g, 'Open ' + g)}</div>`).join('');
+  return {page: 'members', back: true, body: head('Members', '8 characters or more') + listSec('pwl', acc, 'Accounts') + listSec('pwl', groups, 'Groups')};
 }
+// A group's roster: the Group Lead (with the Group Lead account's password) and the members, with class numbers.
+// The Event Lead can remove a photo that should not be there by tapping it.
+const pav = n => PHOTOS[n] && PHOTOS[n].d ? `<button class="pav" data-act="askphoto:${esc(n)}" type="button" aria-label="Remove photo of ${esc(n)}">${avatar(n)}</button>` : `<span class="pav">${avatar(n)}</span>`;
 function pRosterGroup(g) {
   const r = roster(g);
-  const lead = `<div class="row"><span>${cellFld(`rl:${g}:cls`, r.lead.cls, 'Class', 'upper')}</span><span>${cellFld(`rl:${g}:name`, r.lead.name, 'Name', '', 'Group Lead')}</span><span></span></div>`;
-  const people = r.people.map(p => `<div class="row" data-row="rp:${p.id}"><span>${cellFld(`rc:${g}:${p.id}`, p.cls, 'Class', 'upper')}</span><span>${cellFld(`rp:${g}:${p.id}`, p.name, 'Name')}</span>${rdel(`rm:rp:${g}:${p.id}`, 'Remove ' + p.name)}</div>`).join('');
-  return {page: 'rostergroup', back: true, body: head(esc(g), 'Roster') + listSec('roster', lead, 'Group Lead') + listSec('roster', people + addRow('addmember', 'Add Member'), 'Members')};
-}
-function pPasswords() {
-  const row = a => `<div class="row"><span>${esc(a.name)}</span><input class="fld cell" type="password" placeholder="New Password" data-pw="${esc(a.id)}" aria-label="New password for ${esc(a.name)}" autocomplete="new-password"><span class="det" data-set="${esc(a.id)}">${PASSWORDS[a.id] ? ic('check') : ''}</span></div>`;
-  const sec = (sh, list) => listSec('pwl', list.map(row).join(''), sh);
-  return {page: 'passwords', back: true, body: head('Passwords', '8 characters or more') +
-    sec('Event Lead and Teacher', ACCOUNTS.filter(a => a.type === 'lead' || a.type === 'teacher')) + sec('Small Groups', ACCOUNTS.filter(a => a.type === 'group')) + sec('Group Leads', ACCOUNTS.filter(a => a.type === 'gl'))};
-}
-// Every photo in use, so the Event Lead can remove one that should not be there
-function pPhotos() {
-  const groupOf = n => CHAIRS.includes(n) ? 'Chair' : ALL_GROUPS.find(g => membersOf(g).includes(n)) || '';
-  const names = Object.keys(PHOTOS).filter(n => PHOTOS[n] && PHOTOS[n].d).sort((a, b) => ALL_GROUPS.indexOf(groupOf(a)) - ALL_GROUPS.indexOf(groupOf(b)) || a.localeCompare(b));
-  const rows = names.map(n => swRow(`<div class="row"><span class="pav"><img src="${PHOTOS[n].d}" alt=""></span><span>${esc(n)}</span><span class="det">${nb(esc(groupOf(n)))}</span></div>`, 'askphoto:' + n, 'Remove Photo')).join('');
-  return {page: 'photos', back: true, body: head('Photos') + listSec('photos', rows || emptyRow('No photos yet'))};
+  const lead = `<div class="row"><span>${r.lead.name ? pav(r.lead.name) : ''}</span><span>${cellFld(`rl:${g}:cls`, r.lead.cls, 'Class', 'upper')}</span><span>${cellFld(`rl:${g}:name`, r.lead.name, 'Name', '', 'Group Lead')}</span>${pwField(g + ' Lead')}</div>`;
+  const people = r.people.map(p => `<div class="row" data-row="rp:${p.id}"><span>${p.name ? pav(p.name) : ''}</span><span>${cellFld(`rc:${g}:${p.id}`, p.cls, 'Class', 'upper')}</span><span>${cellFld(`rp:${g}:${p.id}`, p.name, 'Name')}</span>${rdel(`rm:rp:${g}:${p.id}`, 'Remove ' + p.name)}</div>`).join('');
+  return {page: 'rostergroup', back: true, body: head(nb(esc(g)), 'Members') + listSec('roster gl pwl', lead, 'Group Lead') + listSec('roster', people + addRow('addmember', 'Add Member'), 'Members')};
 }
 function pHistory(ev) {
   const rows = ev.log.length ? ev.log.map((e, i) => `<div class="row"><span class="t">${e.at}</span><span>${esc(e.what)}<span class="cap">${bar(esc(e.who), esc(e.acct))}</span></span>${e.snap && can.event() ? ibtn('undo', 'restore:' + i, 'Restore to before this change') : '<span></span>'}</div>`).join('') : emptyRow('No changes yet');
@@ -760,9 +917,8 @@ function pHistory(ev) {
 }
 
 const PAGES = {events: pEvents, account: pAccount, event: () => pEvent(E()), rundown: () => pRundown(E(), false), person: p => pPerson(E(), p.name),
-  line: p => pLine(E(), p.id), group: p => pGroup(E(), p.name, false),
-  details: () => pDetails(E()), doc: p => pDoc(E(), p.id), history: () => pHistory(E()),
-  roster: pRoster, rostergroup: p => pRosterGroup(p.name), passwords: pPasswords, photos: pPhotos};
+  group: p => pGroup(E(), p.name, false), details: () => pDetails(E()), doc: p => pDoc(E(), p.id), history: () => pHistory(E()),
+  members: pMembers, rostergroup: p => pRosterGroup(p.name)};
 
 /* ---------- Render: the whole page is built only when the page changes or after a finished tap; typing never rebuilds it ---------- */
 const app = document.getElementById('app'), layer = document.getElementById('layer');
@@ -778,7 +934,7 @@ function render() {
   const gate = cfg.page === 'signin' || cfg.page === 'who' || cfg.page === 'loading';
   let h = gate ? cfg.body : `<main class="page">${cfg.body}</main><div class="edge"></div>${cfg.search ? '<div class="edge b"></div>' : ''}`;
   if (cfg.back) h += `<div class="ctl l"><button class="tb glass round" data-act="back" type="button" aria-label="Back">${ic('back')}</button></div>`;
-  if (cfg.right && cfg.right.length) h += `<div class="ctl r"><div class="glass grp">${cfg.right.map(b => `<button class="tb" data-act="${b[1]}" type="button" aria-label="${b[2]}">${ic(b[0])}</button>`).join('')}</div></div>`;
+  if (cfg.right && cfg.right.length) h += `<div class="ctl r"><div class="glass grp">${cfg.right.map(b => `<button class="tb${b[0] === 'trash' ? ' danger' : ''}" data-act="${b[1]}" type="button" aria-label="${b[2]}">${ic(b[0])}</button>`).join('')}</div></div>`;
   if (cfg.search) h += `<label class="search glass${cfg.fab ? ' withfab' : ''}">${ic('search')}<input data-k="q" type="search" value="${esc(S.q)}" placeholder="Search" aria-label="Search events" autocomplete="off"></label>`;
   if (cfg.fab) h += `<button class="fab" data-act="${cfg.fab[1]}" type="button" aria-label="${cfg.fab[2]}">${ic(cfg.fab[0])}</button>`;
   app.innerHTML = h;
@@ -803,7 +959,7 @@ const item2 = (act, label, icon = '', cls = '') => `<button class="${cls}" data-
 function renderLayer() {
   let h = '';
   if (S.toast) h += `<div class="toast glass${S.toast.act ? '' : ' plain'}" role="status"><span class="msg">${esc(S.toast.msg)}</span>${S.toast.act ? `<button class="tb" data-act="toastact" type="button">${esc(S.toast.label)}</button>` : ''}</div>`;
-  if (S.menu) h += `<div class="scrim" data-act="closemenu"></div><div class="menu" role="menu" style="left:${S.menu.x}px;${S.menu.up ? 'bottom' : 'top'}:${S.menu.y}px">${S.menu.items.map(x => x === 'gap' ? '<div class="gap"></div>' : item2(x[0], esc(x[1]), x[2] || '', x[3] || '')).join('')}</div>`;
+  if (S.menu) h += `<div class="scrim" data-act="closemenu"></div><div class="menu" role="menu" style="left:${S.menu.x}px;${S.menu.up ? 'bottom' : 'top'}:${S.menu.y}px">${S.menu.items.map(x => x === 'gap' ? '<div class="gap"></div>' : x[0] === 'hdr' ? `<div class="mh">${nb(esc(x[1]))}</div>` : item2(x[0], esc(x[1]), x[2] || '', x[3] || '')).join('')}</div>`;
   if (S.alert) h += `<div class="dim" data-act="closealert"><div class="alert" role="alertdialog" aria-modal="true" aria-labelledby="al-t"><h2 id="al-t">${esc(S.alert.title)}</h2>${S.alert.msg ? `<p>${esc(S.alert.msg)}</p>` : ''}<div class="btns"><button data-act="closealert" type="button">Cancel</button><button class="danger" data-act="${S.alert.yes}" type="button">${esc(S.alert.verb)}</button></div></div></div>`;
   layer.innerHTML = h;
   if (S.alert) { const c = layer.querySelector('.alert [data-act="closealert"]'); if (c) c.focus({preventScroll: true}); }
@@ -812,17 +968,32 @@ function toast(msg, act, label) { S.toast = {msg, act, label, at: lastKey}; clea
 function menu(el, items) {
   const r = el.getBoundingClientRect(), Wd = window.innerWidth, H = window.innerHeight, up = r.top > H * .55;
   S.menu = {items, up, x: Math.max(16, Math.min(r.right - 240, Wd - 256)), y: up ? H - r.top + 8 : r.bottom + 8};
-  renderLayer();
+  renderLayer(); fitMenu();
+}
+// A long menu (a checklist of a whole group) is moved up until it fits on the screen
+function fitMenu() {
+  const m = layer.querySelector('.menu'); if (!m) return;
+  const r = m.getBoundingClientRect(), H = window.innerHeight;
+  if (r.bottom > H - 16 || r.top < 16) { m.style.bottom = ''; m.style.top = Math.max(16, Math.min(r.top, H - 16 - r.height)) + 'px'; }
 }
 const ask = (title, msg, verb, yes) => { S.menu = null; S.alert = {title, msg, verb, yes}; renderLayer(); };
 const closeLayer = () => { S.menu = null; S.alert = null; renderLayer(); };
 
 /* ---------- Navigation ---------- */
+// What a member has seen of an event: each line's version and the event's own (Assembly, Status, time, place)
+const seenOf = ev => ({...Object.fromEntries(ev.lines.map(l => [l.id, l.v])), _hv: ev.hv || 0});
 function leaving() {
   const p = cur(); if (!p || !S.acct) return;
-  const ev = E();
-  if (p.p === 'event' && A().type === 'group') { S.seen[me()] = S.seen[me()] || {}; S.seen[me()][ev.id] = Object.fromEntries(ev.lines.map(l => [l.id, l.v])); }
-  if (p.p === 'line') { const l = ev.lines.find(x => x.id === p.id); if (l && !l.title.trim() && !l.tasks.some(t => t.text.trim())) ev.lines = ev.lines.filter(x => x !== l); }  // an untouched new line is not kept
+  const ev = p.ev && E();
+  S.before = null;
+  if (p.p === 'event' && A().type === 'group' && ev) { S.seen[me()] = S.seen[me()] || {}; S.seen[me()][ev.id] = seenOf(ev); }
+  // An untouched new line is not kept
+  // An untouched new line or task is not kept
+  if (p.p === 'rundown' && ev) {
+    ev.lines.forEach(l => { l.tasks = l.tasks.filter(t => t.text.trim() || !S.fresh.has(t.id)); });
+    if (can.event()) ev.lines = ev.lines.filter(l => l.before || l.title.trim() || l.time || l.place || l.tasks.length || scriptOf(ev, l) || !S.fresh.has(l.id));
+    S.fresh.clear();
+  }
 }
 function go(p) { if (document.activeElement) document.activeElement.blur(); leaving(); S.stack.push({ev: cur() ? cur().ev : undefined, ...p}); S.menu = null; S.alert = null; render(); }
 function back() {
@@ -830,14 +1001,20 @@ function back() {
   leaving();
   const was = cur(), ev = was && was.ev && E();
   S.stack.pop(); S.menu = null; S.alert = null;
-  if (was && was.p === 'event' && ev && !ev.name.trim() && !ev.date && !ev.lines.length && !ev.groups.length && !ev.docs.length) EVENTS = EVENTS.filter(e => e !== ev);  // an untouched new event is not kept
+  if (was && was.p === 'event' && ev && isBlank(ev)) EVENTS = EVENTS.filter(e => e !== ev);  // an untouched new event is not kept
   if (!S.stack.length) S.stack = [{p: 'events'}];
   render();
 }
 function land() {
-  if (A().type === 'group' && S.who) { S.seen[S.who] = S.seen[S.who] || {}; EVENTS.forEach(ev => { if (!S.seen[S.who][ev.id]) S.seen[S.who][ev.id] = Object.fromEntries(ev.lines.map(l => [l.id, l.v])); }); }
+  if (A().type === 'group' && S.who) { S.seen[S.who] = S.seen[S.who] || {}; EVENTS.forEach(ev => { if (!S.seen[S.who][ev.id]) S.seen[S.who][ev.id] = seenOf(ev); }); }
   S.stack = [{p: 'events'}];  // signing in always shows the list of events (the chairs)
   render();
+}
+// Open the Rundown at a line or paragraph and show where it is
+function gotoRun(lineId, blkId) {
+  go({p: 'rundown'});
+  const el = app.querySelector(`[data-anchor="${blkId ? 'b:' + blkId : 'l:' + lineId}"]`);
+  if (el) { el.scrollIntoView({block: 'center'}); el.classList.add('hl'); }
 }
 
 /* ---------- Editing in place: every change saves at once and goes into History ---------- */
@@ -846,9 +1023,10 @@ function setVal(t, k, v) {
   if (k === 'q') { S.q = v; document.getElementById('evlist').innerHTML = evRows(); return; }
   if (ns === 'rl') { roster(p[1]).lead[p[2]] = p[2] === 'cls' ? v.toUpperCase() : v; return; }
   if (ns === 'rp' || ns === 'rc') { const x = item(roster(p[1]).people, p[2]); if (x) x[ns === 'rc' ? 'cls' : 'name'] = ns === 'rc' ? v.toUpperCase() : v; return; }
+  if (ns === 'en') { const e = EVENTS.find(x => x.id === p[1]); if (e) e.name = v; return; }
   const ev = E();
   if (ns === 'd') { ev[p[1]] = v; return; }
-  if (ns === 'l') { const l = ev.lines.find(x => x.id === cur().id); l[p[1]] = v; return; }
+  if (ns === 'ln' || ns === 'lp') { const l = ev.lines.find(x => x.id === p[1]); if (l) l[ns === 'ln' ? 'title' : 'place'] = v; return; }
   if (ns === 't') { const [, x] = taskAt(ev, p[1]); if (x) x.text = v; return; }
   if (ns === 'rn') { const g = group(ev, cur().p === 'group' ? cur().name : A().group), r = role(g, p[1]); if (r) r.name = v; return; }
   if (ns === 'dq') { doc(ev, p[1]).q = v; return; }
@@ -863,7 +1041,6 @@ function dropIfEmpty(row) {
   if (!row || !row.isConnected || row.contains(document.activeElement) || !S.stack.length) return;
   const [kind, a, b] = row.dataset.row.split(':'), ev = E();
   const gone = () => { row.remove(); };
-  if (kind === 'task') { const [l, t] = taskAt(ev, a); if (t && !t.text.trim() && !t.to) { l.tasks = l.tasks.filter(x => x !== t); gone(); } }
   if (kind === 'aw') { const d = doc(ev, cur().id), aw = d && item(d.awards, a), r = aw && item(aw.rows, b); if (r && !r.cls.trim() && !r.name.trim()) { aw.rows = aw.rows.filter(x => x !== r); gone(); } }
   if (kind === 'gu') { const d = doc(ev, cur().id), g = d && item(d.guests, a); if (g && !g.name.trim() && !g.role.trim()) { d.guests = d.guests.filter(x => x !== g); gone(); } }
   if (kind === 'rp') { const r = roster(cur().name), x = item(r.people, a); if (x && !x.name.trim() && !x.cls.trim()) { r.people = r.people.filter(y => y !== x); gone(); } }
@@ -874,19 +1051,77 @@ function dropAwardIfEmpty(box) {
   const d = doc(E(), cur().id), aw = d && item(d.awards, box.dataset.award);
   if (aw && !aw.award.trim() && !aw.rows.length) { d.awards = d.awards.filter(x => x !== aw); box.remove(); }
 }
+// Pasting the teacher's 司儀稿和後台備忘 (a two-column Word table) into a Script. Left column: each paragraph becomes an
+// MC line (A: → Host 1, B: → Host 2) or, in brackets, a stage direction. Right column (Event Lead only): each line is placed
+// at the paragraph on the same line of the table, as the teacher aligns them; a line naming 禮儀大使 becomes a task for
+// those members (one per group), marked Check When; any other line (lights, sound) becomes a stage direction.
+// A cell's lines: each paragraph, and each line break inside one (Word pastes a Shift-Return as <br>)
+function cellLines(td) {
+  td.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+  const ps = [...td.querySelectorAll('p')];
+  return (ps.length ? ps.flatMap(p => p.textContent.split('\n')) : td.textContent.split('\n')).map(x => x.replace(/\u00a0/g, ' ').trim());
+}
+// The members a line names: anyone on duty whose name appears in it; one task per group
+function splitByGroup(ev, txt, at) {
+  const by = {};
+  sortGroups(ev.groups).forEach(g => [g.lead, ...membersOf(g.name)].filter(Boolean).forEach(n => { if (txt.includes(n)) (by[g.name] = by[g.name] || []).push('p:' + g.name + ':' + n); }));
+  const gs = Object.keys(by);
+  return gs.length ? gs.map(g => ({id: uid(), text: txt, to: by[g].join(','), at, chk: true})) : [{id: uid(), text: txt, to: '', at, chk: true}];
+}
+function importTable(t, html) {
+  const [, did, bid] = t.dataset.k.split(':'), ev = E(), d = doc(ev, did); if (!d) return false;
+  const rows = [...new DOMParser().parseFromString(html, 'text/html').querySelectorAll('tr')].map(tr => [...tr.children].map(cellLines));
+  if (!rows.length) return false;
+  const lead = can.event(), before = snap(ev), blocks = [], tasks = [];
+  let sp = 'Host 1';
+  // A heading row (e.g. 司儀稿 | 後台 / 禮儀大使工作): every cell one short line with no sentence in it
+  if (rows[0].every(c => c.filter(Boolean).length <= 1 && (c.find(Boolean) || '').length <= 14 && !/[。，:：！？]/.test(c.find(Boolean) || ''))) rows.shift();
+  rows.forEach(cells => {
+    const left = cells[0] || [], right = lead ? (cells[1] || []) : [], ids = [];
+    left.forEach(txt => {
+      if (!txt) { ids.push(null); return; }
+      const m = /^([A-Za-z])\s*[:：]\s*(.*)$/.exec(txt); let b;
+      if (m) { sp = m[1].toUpperCase() === 'B' ? 'Host 2' : 'Host 1'; b = {id: uid(), type: 'line', sp, text: m[2]}; }
+      else if (/^[（(]/.test(txt)) b = {id: uid(), type: 'cue', text: txt};
+      else b = {id: uid(), type: 'line', sp, text: txt};
+      blocks.push(b); ids.push(b.id);
+      if (lead && b.type === 'cue' && /禮儀大使/.test(txt)) tasks.push(...splitByGroup(ev, txt, b.id));
+    });
+    right.forEach((txt, i) => {
+      if (!txt) return;
+      const at = ids.slice(0, i + 1).filter(Boolean).pop() || ids.find(Boolean); if (!at) return;
+      if (/禮儀大使/.test(txt)) { tasks.push(...splitByGroup(ev, txt, at)); return; }
+      let j = blocks.findIndex(x => x.id === at) + 1; while (j < blocks.length && blocks[j].after === at) j++;
+      blocks.splice(j, 0, {id: uid(), type: 'cue', text: txt, after: at});
+    });
+  });
+  blocks.forEach(b => delete b.after);
+  if (!blocks.length) return false;
+  const i = d.blocks.findIndex(x => x.id === bid), empty = i >= 0 && !(d.blocks[i].text || '').trim();
+  d.blocks.splice(i < 0 ? d.blocks.length : empty ? i : i + 1, empty ? 1 : 0, ...blocks);
+  if (tasks.length) {
+    let l = ev.lines.find(x => x.id === d.line);
+    if (!l) { l = newLine(); l.title = ev.name; ev.lines.push(l); d.line = l.id; }
+    l.tasks.push(...tasks); l.v++;
+  }
+  logChange(ev, 'Pasted into ' + docLabel(d), before); S.undo = {ev: ev.id, snap: before};
+  render(); toast(`Added ${blocks.length} paragraphs${tasks.length ? ` and ${tasks.length} tasks` : ''}`, 'undo', 'Undo');
+  return true;
+}
 // Pasting several lines adds several rows. "3C12 吳子晴" lines are awardees; in an Award heading, a line without a class starts a new award.
 const CLS = /^(\d[A-Za-z]\d{0,2})\s*(.*)$/;
 function pasteRows(t, text) {
   const k = t.dataset.k || '', p = k.split(':'), ns = p[0], lines = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
   if (lines.length < 2) return false;
   const ev = E(), before = snap(ev);
-  if (ns === 'aw' || ns === 'ac' || ns === 'an') {
-    const d = doc(ev, p[1]); let aw = item(d.awards, p[2]);
-    const here = ns !== 'aw' ? aw.rows.findIndex(r => r.id === p[3]) : -1;
+  if (['aw', 'ac', 'an', 'acn', 'anw', 'awn'].includes(ns)) {
+    const d = doc(ev, p[1]); let aw = ns === 'awn' ? null : item(d.awards, p[2]);
+    if (!aw) { aw = {id: uid(), award: '', rows: []}; d.awards.push(aw); }
+    const head = ns === 'aw' || ns === 'awn', here = ns === 'ac' || ns === 'an' ? aw.rows.findIndex(r => r.id === p[3]) : -1;
     let at = here, first = true;
     lines.forEach(l => {
       const m = CLS.exec(l);
-      if (m || ns !== 'aw') {
+      if (m || !head) {
         const r = m ? {id: uid(), cls: m[1].toUpperCase(), name: m[2].trim(), here: ''} : {id: uid(), cls: '', name: l, here: ''};
         if (first && at >= 0 && !aw.rows[at].cls && !aw.rows[at].name) aw.rows.splice(at, 1, r); else if (at >= 0) aw.rows.splice(++at, 0, r); else aw.rows.push(r);
       } else if (first && !aw.award) aw.award = l;
@@ -915,8 +1150,20 @@ document.addEventListener('focusin', e => {
   const t = e.target, k = t.dataset && t.dataset.k;
   const row = t.closest && t.closest('[data-row]');
   if (row) { app.querySelectorAll('.current').forEach(x => x !== row && x.classList.remove('current')); row.classList.add('current'); }
-  if (k && k !== 'q' && !/^r[lpc]:/.test(k) && S.stack.length && !S.before) S.before = snap(E());
+  selectIn(t);
+  if (k && /^en:/.test(k) && !S.before) { const x = EVENTS.find(y => y.id === k.slice(3)); if (x) S.before = snap(x); }
+  else if (k && k !== 'q' && !/^(r[lpc]|en|dd):/.test(k) && S.stack.length && cur().ev && !S.before) S.before = snap(E());
 });
+// In the Rundown, the line or paragraph being worked on shows its "Add Task"
+function selectIn(t) {
+  if (!t.closest) return;
+  const ln = t.closest('.rd .ln'), blk = t.closest('.rd .blk');
+  if (!ln) return;
+  const on = blk || ln;
+  app.querySelectorAll('.rd .sel').forEach(x => x !== on && x.classList.remove('sel'));
+  on.classList.add('sel');
+}
+app.addEventListener('click', e => { if (!e.target.closest('.menu')) selectIn(e.target); });
 document.addEventListener('focusout', e => {
   const row = e.target.closest && e.target.closest('[data-row]'), box = e.target.closest && e.target.closest('.award');
   setTimeout(() => { dropIfEmpty(row); dropAwardIfEmpty(box); }, 0);
@@ -931,7 +1178,9 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('paste', e => {
   const t = e.target; if (!t.dataset || !t.dataset.k || t.classList.contains('box')) return;
-  const text = (e.clipboardData || window.clipboardData).getData('text');
+  const cd = e.clipboardData || window.clipboardData, html = cd.getData('text/html');
+  if (/^s:/.test(t.dataset.k) && /<table/i.test(html) && importTable(t, html)) { e.preventDefault(); return; }
+  const text = cd.getData('text');
   if (pasteRows(t, text)) e.preventDefault();
 });
 document.addEventListener('keydown', e => {
@@ -958,27 +1207,33 @@ document.addEventListener('click', e => { const t = e.target; if (t.matches && t
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && (S.menu || S.alert)) closeLayer(); });
 document.addEventListener('change', e => {
   const t = e.target, pwId = t.dataset && t.dataset.pw;
+  // A password: at least 8 characters, then a question, because everyone on that account is signed out
   if (pwId) {
-    const v = t.value; if (!v) return;
-    if ([...v.replace(/\s+/g, '')].length < 8) { toast('Use 8 characters or more'); return; }
-    t.value = '';
-    api('password', {method: 'POST', body: JSON.stringify({account: pwId, password: v})}).then(r => {
-      if (!r.ok) { toast('Password not changed'); return; }
-      PASSWORDS[pwId] = true; const m = app.querySelector(`[data-set="${CSS.escape(pwId)}"]`); if (m) m.innerHTML = ic('check'); toast('Password set for ' + pwId);
-      if (pwId === S.acct) setTimeout(() => signedOut('Sign in with the new password'), 1200);
-    }).catch(() => toast('No connection. Password not changed.'));
+    const v = t.value.trim(); if (!v || v === PASSWORDS[pwId]) return;
+    if ([...v.replace(/\s+/g, '')].length < 8) { toast('At least 8 characters'); return; }
+    S.pw = {id: pwId, v};
+    ask('Set This Password?', `Everyone signed in to ${pwId} will be signed out${pwId === S.acct ? ', including this device' : ''}.`, 'Set', 'setpw');
     return;
   }
   const k = t.dataset && t.dataset.k; if (!k || k === 'q' || /^r[lpc]:/.test(k)) return;
-  const ev = E(), before = S.before || snap(ev), p = k.split(':'); S.before = null;
+  const p = k.split(':'), v = t.value;
+  // Events list: a day's date moves every event on that day; a name is changed in place
+  if (p[0] === 'dd') { const nd = fromIso(v); if (!nd) return; EVENTS.filter(x => x.date === p[1]).forEach(x => { const b = snap(x); x.date = nd; x.hv = (x.hv || 0) + 1; logChange(x, 'Date: ' + nd, b); }); sortEvents(); render(); return; }
+  if (p[0] === 'en') { const x = EVENTS.find(y => y.id === p[1]); if (x) { const b = S.before && S.before.id === x.id ? S.before : snap(x); S.before = null; logChange(x, 'Name: ' + x.name, b); } return; }
+  const ev = E(), before = S.before && S.before.id === ev.id ? S.before : snap(ev); S.before = null;
+  // What members see at the top of My Tasks: a change there gives them a dot
+  if (['d:asmTime', 'd:asmPlace', 'd:status', 'd:date', 'd:start', 'd:end', 'd:venue'].includes(k)) ev.hv = (ev.hv || 0) + 1;
   if (!discrete(t)) {
-    const [tl] = p[0] === 't' ? taskAt(ev, p[1]) : [null];
-    if (tl) tl.v++; else if (p[0] === 'l') { const l = ev.lines.find(x => x.id === cur().id); if (l) l.v++; }
-    const what = tl ? (tl.title || 'a Rundown line') : p[0] === 'l' ? 'a Rundown line' : p[0] === 'd' ? 'Event Details' : p[0] === 'rn' ? 'a role' : docLabel(doc(ev, p[1]));
+    if (['acn', 'anw', 'awn'].includes(p[0])) { newAwardRow(ev, t, p); return; }
+    let what;
+    if (p[0] === 't') { const [tl] = taskAt(ev, p[1]); if (tl) { tl.v++; what = tl.before ? 'Before the Event' : (tl.title || 'a Rundown line'); } }
+    else if (p[0] === 'ln' || p[0] === 'lp') { const l = ev.lines.find(x => x.id === p[1]); if (l) { l.v++; what = l.title || 'a Rundown line'; } }
+    else if (p[0] === 'd') what = 'Event Details';
+    else if (p[0] === 'rn') what = 'a role';
+    else what = doc(ev, p[1]) ? docLabel(doc(ev, p[1])) : 'the event';
     logChange(ev, 'Changed ' + what, before); return;
   }
   // A choice is a finished action: the page is rebuilt once, after the system picker has closed
-  const v = t.value;
   if (p[0] === 'r') {
     const g = group(ev, cur().p === 'group' ? cur().name : A().group);
     if (p[1] === 'lead') { g.lead = v; logChange(ev, `Group Lead of ${g.name}: ${v}`, before); render(); return; }
@@ -987,7 +1242,7 @@ document.addEventListener('change', e => {
     const other = v && g.roles.find(x => x !== r && x.who === v);
     if (other) other.who = null;
     r.who = v || null;
-    ev.lines.forEach(l => { if (l.tasks.some(x => x.to === 'r:' + g.name + ':' + r.id || (x.to === 'r:' + g.name + ':Hosts' && r.id.startsWith('Host')))) l.v++; });  // whoever now holds the role sees the change
+    ev.lines.forEach(l => { if (l.tasks.some(x => targets(x.to).some(y => y.startsWith('r:' + g.name + ':')))) l.v++; });  // whoever now holds the role sees the change
     logChange(ev, `${r.name} in ${g.name}: ${v || 'None'}`, before);
     render();
     if (other) { S.undo = {ev: ev.id, snap: before}; toast(`${v} moved from ${other.name}`, 'undo', 'Undo'); }
@@ -997,30 +1252,34 @@ document.addEventListener('change', e => {
     const g = group(ev, cur().p === 'group' ? cur().name : ev.groups.find(x => membersOf(x.name).includes(p[1])).name), n = p[1];
     g.roles.forEach(r => { if (r.who === n) r.who = null; });
     const r = role(g, v), was = r && r.who; if (r) r.who = n;
-    ev.lines.forEach(l => { if (l.tasks.some(x => x.to && x.to.startsWith('r:' + g.name + ':'))) l.v++; });
+    ev.lines.forEach(l => { if (l.tasks.some(x => targets(x.to).some(y => y.startsWith('r:' + g.name + ':')))) l.v++; });
     logChange(ev, `${n} in ${g.name}: ${r ? r.name : 'No role'}`, before); render();
     if (was && was !== n) { S.undo = {ev: ev.id, snap: before}; toast(`${r.name} moved from ${was}`, 'undo', 'Undo'); }
     return;
   }
   if (k === 'cv') { const g = group(ev, cur().name); g.covers = v || null; logChange(ev, `${g.name} covering for ${v || 'no group'}`, before); render(); return; }
   if (k === 'ag') { const g = group(ev, cur().p === 'group' ? cur().name : A().group); g.acting = v || null; logChange(ev, `Acting Group Lead of ${g.name}: ${v || 'None'}`, before); render(); return; }
-  if (p[0] === 'at') { setAttend(ev, p[1], p[2], v === 'Absent' ? '' : v); render(); return; }
   if (k === 'addgroup') { ev.groups.push({name: v, lead: roster(v).lead.name || null, roles: rolesFor(v)}); logChange(ev, 'Added ' + v, before); render(); return; }
-  if (p[0] === 'to') { const [l, tk] = taskAt(ev, p[1]); tk.to = v; l.v++; logChange(ev, `${tk.text || 'A task'}: ${tlabel(ev, v)}`, before); }
-  else if (p[0] === 'tl') { const [l, tk] = taskAt(ev, p[1]), to = ev.lines.find(x => x.id === v); l.tasks = l.tasks.filter(x => x !== tk); to.tasks.push(tk); l.v++; to.v++; logChange(ev, `${tk.text || 'A task'} moved to ${to.time}`, before); }
+  if (p[0] === 'at') { const [l, tk] = taskAt(ev, p[1]); tk.at = v; delete tk.chk; l.v++; logChange(ev, `${tk.text || 'A task'}: when changed`, before); }
+  else if (p[0] === 'sd') { const l = ev.lines.find(x => x.id === p[1]); ev.docs.forEach(d => { if (d.type === 'script' && d.line === l.id) d.line = ''; }); if (v) doc(ev, v).line = l.id; l.v++; logChange(ev, `Script for ${l.title || 'a line'}: ${v ? docLabel(doc(ev, v)) : 'None'}`, before); }
+  else if (p[0] === 'lt' || p[0] === 'le') { const l = ev.lines.find(x => x.id === p[1]); l[p[0] === 'lt' ? 'time' : 'end'] = v; l.v++; logChange(ev, `${l.title || 'A line'}: ${timeRange(l) || 'no time'}`, before); }
   else if (p[0] === 'sp') { item(doc(ev, p[1]).blocks, p[2]).sp = v; logChange(ev, 'Changed ' + docLabel(doc(ev, p[1])), before); }
   else if (k === 'd:lead') { ev.lead = v; logChange(ev, 'Event Lead: ' + v, before); }
-  else if (k === 'd:actingLead') { ev.actingLead = v; logChange(ev, 'Acting Event Lead: ' + (v || 'None'), before); }
+  else if (k === 'd:status') { ev.status = v === 'Final' ? 'Final' : ''; logChange(ev, 'Status: ' + (ev.status || 'Draft'), before); }
   else if (k === 'd:date') { ev.date = fromIso(v); logChange(ev, 'Date: ' + ev.date, before); }
-  else if (k === 'd:start' || k === 'd:end') { ev[p[1]] = v; logChange(ev, 'Time: ' + (ev.start || '') + '–' + (ev.end || ''), before); }
-  else if (k === 'l:time' && v) {
-    const l = ev.lines.find(x => x.id === cur().id), old = l.time, delta = toMin(v) - toMin(old);
-    const later = sorted(ev).filter(x => x !== l && x.time >= old && (x.time > old || ev.lines.indexOf(x) > ev.lines.indexOf(l))).map(x => x.id);
-    l.time = v; l.v++; logChange(ev, `Moved ${l.title || 'a line'} to ${v}`, before);
-    if (delta > 0 && later.length) { S.shift = {ids: later, delta}; setTimeout(() => toast(`Moved ${delta} min later`, 'shift', 'Shift Later Lines')); }
-  }
+  else if (k === 'd:start' || k === 'd:end') { ev[p[1]] = v; logChange(ev, 'Time: ' + timeRange({time: ev.start, end: ev.end}), before); }
+  else if (k === 'd:asmTime') { ev.asmTime = v; logChange(ev, 'Assembly: ' + v, before); }
   render();
 });
+// Typing into the blank row at the end of an award, or the blank heading at the end, adds it
+function newAwardRow(ev, t, p) {
+  const v = t.value.trim(); if (!v) return;
+  const before = snap(ev), d = doc(ev, p[1]);
+  if (p[0] === 'awn') { const aw = {id: uid(), award: v, rows: []}; d.awards.push(aw); logChange(ev, `Added ${v} to ${docLabel(d)}`, before); S.focusKey = `acn:${d.id}:${aw.id}`; render(); return; }
+  const aw = item(d.awards, p[2]), r = {id: uid(), cls: p[0] === 'acn' ? v.toUpperCase() : '', name: p[0] === 'anw' ? v : '', here: ''};
+  aw.rows.push(r); logChange(ev, 'Changed ' + docLabel(d), before);
+  S.focusKey = p[0] === 'acn' ? `an:${d.id}:${aw.id}:${r.id}` : `acn:${d.id}:${aw.id}`; render();
+}
 document.addEventListener('submit', async e => {
   e.preventDefault();
   const err = app.querySelector('.err'), btn = app.querySelector('#signin button');
@@ -1051,8 +1310,11 @@ const addAndFocus = key => { S.focusKey = key; render(); };
 // Status of one member at one event: ticked, On Leave, covering for another group, or the covered group
 function statusOf(ev, g, n) {
   if (!onDuty(ev, g)) return covered(ev).includes(g) ? 'Excluded' : '';
-  if (((ev.attendance || {})[g] || {})[n] === 'Attended') return group(ev, g).covers ? 'Covering' : 'Attended';
-  return onLeave(ev, g, n) ? 'Off' : 'Absent';
+  const gr = group(ev, g);
+  if (((ev.attendance || {})[g] || {})[n] === 'Attended') return gr.covers ? 'Covering' : 'Attended';
+  if (onLeave(ev, g, n)) return 'Off';
+  // Expected only with a role in this event (or as its Group Lead): a member who works at the other event that day is not Absent here
+  return gr.lead === n || gr.roles.some(r => r.who === n) ? 'Absent' : '';
 }
 const people = g => [roster(g).lead.name, ...peopleNames(g)].filter(Boolean);
 async function saveCsv(name, rows) {
@@ -1121,36 +1383,52 @@ document.addEventListener('click', e => {
     case 'be': { const first = !S.who; S.who = arg; store.set('who', arg); if (first) land(); else back(); break; }
     case 'signout': signOut(); break;
     case 'open': go({p: 'event', ev: arg}); break;
-    case 'rundown': go({p: 'rundown'}); break;
-    case 'line': go({p: 'line', id: arg}); break;
+    case 'rundown': if (can.event() && !ev.lines.some(l => l.before)) ev.lines.unshift(beforeLine()); go({p: 'rundown'}); break;
+    case 'goto': { const [l, b2] = arg.split(':'); gotoRun(l, b2); break; }
     case 'group': go({p: 'group', name: arg}); break;
     case 'person': go({p: 'person', name: arg}); break;
     case 'details': go({p: 'details'}); break;
     case 'history': go({p: 'history'}); break;
     case 'doc': go({p: 'doc', id: arg}); break;
-    case 'roster': go({p: 'roster'}); break;
+    case 'members': go({p: 'members'}); break;
     case 'rostergroup': go({p: 'rostergroup', name: arg}); break;
-    case 'passwords': go({p: 'passwords'}); loadAccounts(); break;
-    case 'photos': go({p: 'photos'}); break;
+    case 'setpw': { const {id, v} = S.pw || {}; closeLayer(); if (!id) break;
+      api('password', {method: 'POST', body: JSON.stringify({account: id, password: v})}).then(r => {
+        if (!r.ok) { toast('Password not changed'); return; }
+        PASSWORDS[id] = v; refresh(); toast('Password set for ' + id);
+        if (id === S.acct) setTimeout(() => signedOut('Sign in with the new password'), 1500);
+      }).catch(() => toast('No connection. Password not changed.'));
+      break; }
     case 'photo': if (PHOTOS[photoName()]) menu(b, [['pickphoto', 'Choose Photo', ic('photo')], ['rmphoto', 'Remove Photo', ic('trash'), 'danger']]); else pickPhoto(); break;
     case 'pickphoto': closeLayer(); pickPhoto(); break;
     case 'rmphoto': closeLayer(); savePhoto(photoName(), null); break;
     case 'askphoto': ask('Remove This Photo?', arg + ' will show the first character of their name again.', 'Remove', 'delphoto:' + arg); break;
     case 'delphoto': closeLayer(); savePhoto(arg, null); break;
-    case 'export': exportAttendance(ev); break;
     case 'newevent': {
-      const n = blank('e' + uid().slice(1), '', ''); n.lead = me(); EVENTS.unshift(n);
+      const n = blank('e' + uid().slice(1), '', ''); n.lead = me(); n.lines.push(beforeLine()); EVENTS.unshift(n);
       if (document.activeElement) document.activeElement.blur();
       S.stack.push({p: 'event', ev: n.id}); if (!touch) S.focusKey = 'd:name'; render(); break;
     }
-    case 'newline': {
-      const ls = sorted(ev), t = ls.length ? fromMin(toMin(ls[ls.length - 1].time) + 5) : (ev.start || '07:45'), id = 'n' + Date.now();
-      const before = snap(ev); ev.lines.push({id, time: t, title: '', place: '', v: 1, remarks: '', tasks: []});
-      logChange(ev, 'Added a Rundown line', before); if (!touch) S.focusKey = 'l:title'; go({p: 'line', id}); break;
+    // A new line at the end of the Rundown (＋); in between, from a line's ⋯
+    case 'newline': case 'lins': {
+      const before = snap(ev), l = newLine(), at = cmd === 'lins' ? ev.lines.findIndex(x => x.id === arg) + 1 : ev.lines.length;
+      ev.lines.splice(at, 0, l); S.fresh.add(l.id); logChange(ev, 'Added a Rundown line', before); S.menu = null; addAndFocus('ln:' + l.id); break;
     }
-    // Adding rows: ⊕ at the end of the list
-    case 'addtask': { const l = L(), t = {id: uid(), text: '', to: glOf(ev) ? 'g:' + glOf(ev) : ''}; if (glOf(ev)) t.to = ''; l.tasks.push(t); addAndFocus('t:' + t.id); break; }
-    case 'addptask': { const [g, n] = [arg.split(':')[0], arg.split(':').slice(1).join(':')], l = sorted(ev)[0], t = {id: uid(), text: '', to: `p:${g}:${n}`}; l.tasks.push(t); addAndFocus('t:' + t.id); break; }
+    case 'lmenu': { const i = ev.lines.findIndex(x => x.id === arg), first = !ev.lines[i - 1] || ev.lines[i - 1].before, last = i === ev.lines.length - 1;
+      menu(b, [...(first ? [] : [['lup:' + arg, 'Move Up', ic('up')]]), ...(last ? [] : [['ldown:' + arg, 'Move Down', ic('down')]]), ['lins:' + arg, 'Insert Line Below', ic('plus')], 'gap', ['askline:' + arg, 'Delete Line', ic('trash'), 'danger']]); break; }
+    case 'lup': case 'ldown': { const i = ev.lines.findIndex(x => x.id === arg), j = cmd === 'lup' ? i - 1 : i + 1, before = snap(ev);
+      if (j < 0 || j >= ev.lines.length || ev.lines[j].before) { closeLayer(); break; }
+      [ev.lines[i], ev.lines[j]] = [ev.lines[j], ev.lines[i]]; logChange(ev, `Moved ${ev.lines[j].title || 'a line'}`, before); S.menu = null; render(); break; }
+    // Adding a task under a line or a paragraph; a Group Lead's new task starts as its own group's
+    case 'addtask': { const [lid, at] = arg.split(':'), l = ev.lines.find(x => x.id === lid), t = {id: uid(), text: '', to: glOf(ev) && A().type !== 'lead' ? 'g:' + glOf(ev) : ''};
+      if (at) t.at = at; l.tasks.push(t); S.fresh.add(t.id); addAndFocus('t:' + t.id); break; }
+    case 'assign': { const [, tk] = taskAt(ev, arg); if (tk) assignMenu(b, ev, tk); break; }
+    case 'tgl': { const [tid, ...vv] = arg.split(':'), val = vv.join(':'), [l, tk] = taskAt(ev, tid), before = snap(ev);
+      let xs = targets(tk.to);
+      if (val === 'all') xs = xs.includes('all') ? [] : ['all'];
+      else { xs = xs.filter(x => x !== 'all'); xs = xs.includes(val) ? xs.filter(x => x !== val) : [...xs, val]; }
+      if (!xs.length && A().type !== 'lead') { toast('A task needs someone'); break; }
+      tk.to = xs.join(','); l.v++; logChange(ev, `${tk.text || 'A task'}: ${tlabel(ev, tk.to)}`, before); render(); assignMenu(null, ev, tk); break; }
     case 'unrole': { const g = group(ev, cur().name), r = role(g, arg), before = snap(ev); g.roles = g.roles.filter(x => x !== r); logChange(ev, `Removed ${r.name} from ${g.name}`, before); render(); withUndo(ev, before, 'Removed ' + r.name); break; }
     case 'unpill': { const [key, i] = arg.split(':'), before = snap(ev), v = ev[key][+i]; ev[key].splice(+i, 1); logChange(ev, `Removed ${v} from Event Details`, before); render(); withUndo(ev, before, 'Removed ' + v); break; }
     case 'addrole': { const r = {id: uid(), name: '', who: null, custom: true}; G().roles.push(r); addAndFocus('rn:' + r.id); break; }
@@ -1166,10 +1444,10 @@ document.addEventListener('click', e => {
       break;
     }
     case 'askev': ask('Delete This Event?', 'Its Rundown and documents go with it. You can undo right after.', 'Delete', 'delev:' + arg); break;
-    case 'askline': ask('Delete This Line?', 'Its tasks go with it. You can undo right after.', 'Delete', 'dell:' + arg); break;
+    case 'askline': { const l = ev.lines.find(x => x.id === arg), n = l ? l.tasks.length : 0; ask('Delete This Line?', `${n ? n + (n > 1 ? ' tasks go' : ' task goes') + ' with it. ' : ''}You can undo right after.`, 'Delete', 'dell:' + arg); break; }
     case 'askdoc': ask(`Delete This ${DOC_NAME[doc(ev, arg).type]}?`, 'It is removed for everyone. You can undo right after.', 'Delete', 'deld:' + arg); break;
     case 'delev': { const x = EVENTS.find(e2 => e2.id === arg), i = EVENTS.indexOf(x); S.undoEvent = {i, copy: JSON.parse(JSON.stringify(x))}; EVENTS.splice(i, 1); S.alert = null; render(); toast('Deleted ' + (x.name || 'event'), 'undoevent', 'Undo'); break; }
-    case 'dell': { const before = snap(ev), l = ev.lines.find(x => x.id === arg); ev.lines = ev.lines.filter(x => x !== l); logChange(ev, 'Deleted ' + (l.title || 'a line'), before); S.alert = null; render(); withUndo(ev, before, 'Deleted ' + (l.title || 'line')); break; }
+    case 'dell': { const before = snap(ev), l = ev.lines.find(x => x.id === arg); ev.lines = ev.lines.filter(x => x !== l); ev.docs.forEach(d => { if (d.line === l.id) d.line = ''; }); logChange(ev, 'Deleted ' + (l.title || 'a line'), before); S.alert = null; render(); withUndo(ev, before, 'Deleted ' + (l.title || 'line')); break; }
     case 'deld': { const before = snap(ev), d = doc(ev, arg); ev.docs = ev.docs.filter(x => x !== d); logChange(ev, 'Deleted ' + docLabel(d), before); S.alert = null; render(); withUndo(ev, before, 'Deleted ' + docLabel(d)); break; }
     case 'closealert': case 'closemenu': closeLayer(); break;
     case 'delline': { const before = snap(ev), l = L(); ev.lines = ev.lines.filter(x => x !== l); logChange(ev, 'Deleted ' + (l.title || 'a line'), before); S.stack.pop(); S.alert = null; render(); withUndo(ev, before, 'Deleted ' + (l.title || 'line')); break; }
@@ -1190,8 +1468,6 @@ document.addEventListener('click', e => {
     case 'leave': { const [g, ...n] = arg.split(':'), nm = n.join(':'), before = snap(ev), on = !onLeave(ev, g, nm);
       ((ev.leave = ev.leave || {})[g] = ev.leave[g] || {})[nm] = on; if (!on) delete ev.leave[g][nm];
       logChange(ev, `${nm} ${on ? 'on leave' : 'not on leave'}`, before); render(); break; }
-    case 'confirm': { const before = snap(ev); ev.confirmed = ev.confirmed ? '' : new Date().toISOString().slice(2, 10).replace(/-/g, '/');
-      logChange(ev, ev.confirmed ? 'Confirmed' : 'Not confirmed', before); render(); break; }
     case 'yearexport': exportYear(); break;
     case 'here': { const [g, n] = arg.split(':'), s = ((ev.attendance || {})[g] || {})[n] || ''; setAttend(ev, g, n, s === 'Attended' ? '' : 'Attended'); render(); break; }
     case 'call': { const [id, a, r] = arg.split(':'), d = doc(ev, id), row = item(item(d.awards, a).rows, r), before = snap(ev);
@@ -1270,7 +1546,7 @@ async function api(path, opts = {}) {
   if (r.status === 401 && path !== 'login') { signedOut('Please sign in again'); throw new Error('signin'); }
   return r;
 }
-const isBlank = ev => !ev.name.trim() && !ev.date && !ev.lines.length && !ev.groups.length && !ev.docs.length;
+const isBlank = ev => !ev.name.trim() && !ev.date && !ev.lines.some(l => !l.before || l.tasks.length) && !ev.groups.length && !ev.docs.length;
 const sortEvents = () => EVENTS.sort((a, b) => (!a.date) - (!b.date) || b.date.localeCompare(a.date));
 function cacheSave() {
   if (!S.acct) return;
@@ -1315,8 +1591,18 @@ function mergeObj(B, M, T, special = {}) {
 function merge3(b, m, t) {
   const perGroup = (B, M, T) => { const x = {}; new Set([...Object.keys(M || {}), ...Object.keys(T || {})]).forEach(g => { x[g] = pick((B || {})[g], (M || {})[g], (T || {})[g]); }); return x; };
   return mergeObj(b || {}, m, t, {
-    lines: (B, M, T) => mergeList(B, M, T, 'id', (b2, m2, t2) => mergeObj(b2, m2, t2, {tasks: (B3, M3, T3) => mergeList(B3, M3, T3, 'id'), v: (x, y, z) => Math.max(y || 0, z || 0)})),
-    docs: (B, M, T) => mergeList(B, M, T, 'id'),
+    lines: (B, M, T) => {
+      const out = mergeList(B, M, T, 'id', (b2, m2, t2) => mergeObj(b2, m2, t2, {tasks: (B3, M3, T3) => mergeList(B3, M3, T3, 'id'), v: (x, y, z) => Math.max(y || 0, z || 0)}));
+      // The order of lines: if only they moved lines, take their order
+      const ids = x => J((x || []).map(l => l.id));
+      if (ids(M) === ids(B) && T) { const pos = new Map(T.map((l, i) => [l.id, i])); out.sort((x, y) => (pos.get(x.id) ?? 1e9) - (pos.get(y.id) ?? 1e9)); }
+      return out;
+    },
+    // Documents merge paragraph by paragraph, award by award, row by row, so two people writing at once keep both
+    docs: (B, M, T) => mergeList(B, M, T, 'id', (b2, m2, t2) => mergeObj(b2, m2, t2, {
+      blocks: (B3, M3, T3) => mergeList(B3, M3, T3, 'id'),
+      guests: (B3, M3, T3) => mergeList(B3, M3, T3, 'id'),
+      awards: (B3, M3, T3) => mergeList(B3, M3, T3, 'id', (b4, m4, t4) => mergeObj(b4, m4, t4, {rows: (B5, M5, T5) => mergeList(B5, M5, T5, 'id')}))})),
     groups: (B, M, T) => mergeList(B, M, T, 'name', (b2, m2, t2) => mergeObj(b2, m2, t2)),
     attendance: perGroup, attTime: perGroup, leave: perGroup,
     log: (B, M, T) => { const seen = new Set(); return [...(M || []), ...(T || [])].filter(e => { const id = (e.ts || e.at) + '|' + e.who + '|' + e.what; if (seen.has(id)) return false; seen.add(id); return true; }).sort((x, y) => (y.ts || 0) - (x.ts || 0)); }

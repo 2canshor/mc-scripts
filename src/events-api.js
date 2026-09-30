@@ -99,7 +99,7 @@ async function mayChangePhoto(env, acct, name, data) {
 }
 
 // ---------- Units: the pieces of an event that rights are checked on ----------
-const FIELDS = ["date", "name", "start", "end", "venue", "leading", "support", "lead", "actingLead", "confirmed", "remarks"];
+const FIELDS = ["date", "name", "start", "end", "asmTime", "asmPlace", "venue", "leading", "support", "lead", "status", "remarks", "hv"];
 const KNOWN = new Set([...FIELDS, "id", "groups", "lines", "docs", "log", "attendance", "attTime", "leave"]);
 function units(ev) {
   const u = new Map(), put = (k, v) => u.set(k, JSON.stringify(v === undefined ? null : v));
@@ -109,8 +109,8 @@ function units(ev) {
   put("groups", (ev.groups || []).map((g) => g.name).sort());
   (ev.groups || []).forEach((g) => { put(`g:${g.name}:lead`, g.lead); put(`g:${g.name}:roles`, g.roles); put(`g:${g.name}:acting`, g.acting || null); put(`g:${g.name}:covers`, g.covers || null); });
   (ev.lines || []).forEach((l) => {
-    put("l:" + l.id, { time: l.time, title: l.title, place: l.place, remarks: l.remarks });
-    (l.tasks || []).forEach((t) => put("t:" + t.id, { line: l.id, text: t.text, to: t.to }));
+    put("l:" + l.id, { time: l.time, end: l.end || "", title: l.title, place: l.place, remarks: l.remarks, before: !!l.before });
+    (l.tasks || []).forEach((t) => put("t:" + t.id, { line: l.id, text: t.text, to: t.to, at: t.at || "", chk: !!t.chk }));
   });
   (ev.docs || []).forEach((d) => put("d:" + d.id, d));
   const some = (x) => !!x && Object.keys(x).length > 0;
@@ -122,16 +122,19 @@ function units(ev) {
 const onDuty = (ev, g) => !!ev && (ev.groups || []).some((x) => x.name === g);
 // The group whose Group Lead rights this session has in this event: a Group Lead on duty, or the member a
 // Group Lead named Acting Group Lead, signed in on the group's account.
+// An Acting Group Lead has the Group Lead's rights only on the day of the event (the Group Lead does the work before it).
+const todayHK = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, "/");
 function leadsGroup(acct, ev) {
   if (!acct.group || !onDuty(ev, acct.group)) return null;
   if (acct.type === "gl") return acct.group;
   const g = ev.groups.find((x) => x.name === acct.group);
-  return acct.type === "group" && acct.who && g && g.acting === acct.who ? acct.group : null;
+  return acct.type === "group" && acct.who && g && g.acting === acct.who && ev.date === todayHK() ? acct.group : null;
 }
 function taskOf(ev, id) { for (const l of (ev && ev.lines) || []) for (const t of l.tasks || []) if (t.id === id) return t; return null; }
 function docOf(ev, id) { return ((ev && ev.docs) || []).find((d) => d.id === id) || null; }
-// A Group Lead's task: given to one of their own roles or members, or not yet given to anyone.
-const ownTask = (t, g) => !t || !t.to || (/^[rp]:/.test(t.to) && t.to.split(":")[1] === g);
+// A Group Lead's task: every one of its targets is their own group, one of its roles or one of its members.
+// A task given to no one, to All or to another group belongs to the Event Lead.
+const ownTask = (t, g) => !t || (!!t.to && t.to.split(",").every((x) => /^[grp]:/.test(x) && x.split(":")[1] === g));
 function allowed(acct, old, key) {
   if (acct.type === "lead") return true;
   if (acct.type === "teacher" || !old) return false;
