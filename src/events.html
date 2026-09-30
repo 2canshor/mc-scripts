@@ -556,7 +556,7 @@ function roleText(ev, n) {
 }
 function pMyTasks(ev) {
   return {page: 'mytasks', back: true, right: [['info', 'details', 'Event Details']],
-    body: head('My Tasks', bar(evSub(ev), roleText(ev, me()), ev.confirmed ? 'Confirmed' : 'Not Confirmed')) + listSec('tl', taskRows(ev, me(), true))};
+    body: head('My Tasks', bar(evSub(ev), roleText(ev, me())) + '<br>' + (ev.confirmed ? 'Confirmed' : 'Not Confirmed')) + listSec('tl', taskRows(ev, me(), true))};
 }
 function pPerson(ev, name) {
   const g = ev.groups.find(x => x.lead === name || membersOf(x.name).includes(name));
@@ -649,7 +649,7 @@ function pLine(ev, id) {
 // Event Details: the title as Scripts writes it, then one list of properties (Obsidian's properties), then every document
 function dutyPills(ev, lead) {
   const gs = sortGroups(ev.groups).map(g => { const n = openCount(g);
-    return `<span class="pill${lead ? '' : ' ro'}${n ? ' unset' : ''}"><button data-act="group:${esc(g.name)}" type="button" aria-label="${esc(g.name)}${n ? `, ${n} ${n > 1 ? 'roles' : 'role'} to fill` : ''}">${esc(g.name)}</button>${lead ? `<button class="px" data-act="dutyask:${esc(g.name)}" type="button" aria-label="Take ${esc(g.name)} off duty">${ic('x')}</button>` : ''}</span>`; }).join('');
+    return `<span class="pill${lead ? '' : ' ro'}${n && lead ? ' unset' : ''}"><button data-act="group:${esc(g.name)}" type="button" aria-label="${esc(g.name)}${n ? `, ${n} ${n > 1 ? 'roles' : 'role'} to fill` : ''}">${esc(g.name)}</button>${lead ? `<button class="px" data-act="dutyask:${esc(g.name)}" type="button" aria-label="Take ${esc(g.name)} off duty">${ic('x')}</button>` : ''}</span>`; }).join('');
   const free = ['MC', 'Backstage', 'Reception'].map(k => {
     const list = rotation(ev, k).filter(x => !onDuty(ev, x.g)), next = list.find(x => !x.busy);
     return {group: k, items: list.map(x => [x.g, x.g + (x.busy ? ' (On Duty Elsewhere)' : x === next ? ' (Next)' : ''), x.busy])};
