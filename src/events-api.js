@@ -99,15 +99,15 @@ async function mayChangePhoto(env, acct, name, data) {
 }
 
 // ---------- Units: the pieces of an event that rights are checked on ----------
-const FIELDS = ["date", "name", "start", "end", "venue", "leading", "support", "lead", "remarks"];
-const KNOWN = new Set([...FIELDS, "id", "groups", "lines", "docs", "log", "attendance", "attTime"]);
+const FIELDS = ["date", "name", "start", "end", "venue", "leading", "support", "lead", "actingLead", "confirmed", "remarks"];
+const KNOWN = new Set([...FIELDS, "id", "groups", "lines", "docs", "log", "attendance", "attTime", "leave"]);
 function units(ev) {
   const u = new Map(), put = (k, v) => u.set(k, JSON.stringify(v === undefined ? null : v));
   if (!ev) return u;
   FIELDS.forEach((f) => put("f:" + f, ev[f]));
   Object.keys(ev).filter((k) => !KNOWN.has(k)).forEach((k) => put("x:" + k, ev[k]));
   put("groups", (ev.groups || []).map((g) => g.name).sort());
-  (ev.groups || []).forEach((g) => { put(`g:${g.name}:lead`, g.lead); put(`g:${g.name}:roles`, g.roles); put(`g:${g.name}:acting`, g.acting || null); });
+  (ev.groups || []).forEach((g) => { put(`g:${g.name}:lead`, g.lead); put(`g:${g.name}:roles`, g.roles); put(`g:${g.name}:acting`, g.acting || null); put(`g:${g.name}:covers`, g.covers || null); });
   (ev.lines || []).forEach((l) => {
     put("l:" + l.id, { time: l.time, title: l.title, place: l.place, remarks: l.remarks });
     (l.tasks || []).forEach((t) => put("t:" + t.id, { line: l.id, text: t.text, to: t.to }));
@@ -115,6 +115,8 @@ function units(ev) {
   (ev.docs || []).forEach((d) => put("d:" + d.id, d));
   const some = (x) => !!x && Object.keys(x).length > 0;
   GROUPS.forEach((g) => { const a = (ev.attendance || {})[g], t = (ev.attTime || {})[g]; if (some(a) || some(t)) put("a:" + g, { a: a || {}, t: t || {} }); });
+  // On Leave, marked before the event: set by the Event Lead or that group's Group Lead
+  GROUPS.forEach((g) => { const v = (ev.leave || {})[g]; if (some(v)) put("v:" + g, v); });
   return u;
 }
 const onDuty = (ev, g) => !!ev && (ev.groups || []).some((x) => x.name === g);
@@ -137,24 +139,24 @@ function allowed(acct, old, key) {
   return (nw) => {
     if (key.startsWith("d:")) { const a = docOf(old, key.slice(2)), b = docOf(nw, key.slice(2)); return !!mine && (!a || a.type === mine) && (!b || b.type === mine); }
     if (!g) return false;
-    if (key === `g:${g}:roles` || key === `g:${g}:acting` || key === "a:" + g) return true;
+    if (key === `g:${g}:roles` || key === `g:${g}:acting` || key === "a:" + g || key === "v:" + g) return true;
     if (key.startsWith("t:")) return ownTask(taskOf(old, key.slice(2)), g) && ownTask(taskOf(nw, key.slice(2)), g);
     return false;
   };
 }
-// What an account may read: attendance only for the Event Lead and the group's own Group Lead.
+// What an account may read: attendance and On Leave only for the Event Lead and the group's own Group Lead.
 function visible(acct, ev) {
   if (!ev || acct.type === "lead") return ev;
-  const g = leadsGroup(acct, ev), out = { ...ev, attendance: {}, attTime: {} };
-  if (g) { out.attendance[g] = (ev.attendance || {})[g] || {}; out.attTime[g] = (ev.attTime || {})[g] || {}; }
+  const g = leadsGroup(acct, ev), out = { ...ev, attendance: {}, attTime: {}, leave: {} };
+  if (g) { out.attendance[g] = (ev.attendance || {})[g] || {}; out.attTime[g] = (ev.attTime || {})[g] || {}; out.leave[g] = (ev.leave || {})[g] || {}; }
   return out;
 }
 // A write keeps what the writer could not see.
 function withHidden(acct, old, nw) {
   if (acct.type === "lead" || !old) return nw;
-  const g = leadsGroup(acct, old), a = { ...(old.attendance || {}) }, t = { ...(old.attTime || {}) };
-  if (g) { a[g] = (nw.attendance || {})[g] || {}; t[g] = (nw.attTime || {})[g] || {}; }
-  return { ...nw, attendance: a, attTime: t };
+  const g = leadsGroup(acct, old), a = { ...(old.attendance || {}) }, t = { ...(old.attTime || {}) }, v = { ...(old.leave || {}) };
+  if (g) { a[g] = (nw.attendance || {})[g] || {}; t[g] = (nw.attTime || {})[g] || {}; v[g] = (nw.leave || {})[g] || {}; }
+  return { ...nw, attendance: a, attTime: t, leave: v };
 }
 function checkWrite(acct, old, nw) {
   const a = units(old), b = units(nw);

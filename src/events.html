@@ -394,6 +394,22 @@ const can = {
 
 /* ---------- Derived data ---------- */
 const group = (ev, n) => ev.groups.find(g => g.name === n);
+// Rotation (replaces the Rotation Log): each main group takes turns A→B→C→D. The group with the fewest duties comes
+// first; among equals, the one after the group that served most recently. A group that covered for another has one
+// duty more, so the covered group comes first next time: the swap back needs no record of its own.
+const ROTATION_START = [{date: '26/09/28', groups: ['MC Group B', 'Backstage Group B']}];  // the last duty before Event Centre
+const overlaps = (a, b) => !!a.date && a.date === b.date && (!a.start || !a.end || !b.start || !b.end || (a.start < b.end && b.start < a.end));
+function rotation(ev, kind) {
+  const all = ALL_GROUPS.filter(g => kindOf(g) === kind), count = Object.fromEntries(all.map(g => [g, 0]));
+  let last = null, lastDate = '';
+  [...ROTATION_START, ...EVENTS.filter(e => e.id !== ev.id && e.date).map(e => ({date: e.date, groups: e.groups.map(g => g.name)}))]
+    .forEach(e => e.groups.filter(g => g in count).forEach(g => { count[g]++; if (e.date >= lastDate) { lastDate = e.date; last = g; } }));
+  const start = last ? all.indexOf(last) + 1 : 0, dist = g => (all.indexOf(g) - start + 4) % 4;
+  const busy = new Set(EVENTS.filter(e => e.id !== ev.id && overlaps(e, ev)).flatMap(e => e.groups.map(g => g.name)));
+  return all.sort((a, b) => count[a] - count[b] || dist(a) - dist(b)).map(g => ({g, busy: busy.has(g)}));
+}
+const onLeave = (ev, g, n) => !!(((ev.leave || {})[g] || {})[n]);
+const covered = ev => ev.groups.map(g => g.covers).filter(Boolean);  // groups whose turn another group took
 const sortGroups = gs => [...gs].sort((a, b) => ALL_GROUPS.indexOf(a.name) - ALL_GROUPS.indexOf(b.name));
 const doc = (ev, id) => ev.docs.find(d => d.id === id);
 const zh = x => /[㐀-鿿]/.test(x || '');
@@ -505,7 +521,7 @@ function pAccount() {
   // The person shown above is you; Switch Person lists everyone else on this account
   const others = (peopleOf(a) || []).filter(n => n !== (pn || S.who));
   if (others.length) h += `<section class="sec"><p class="sh">Switch Person</p>${faces(others, 'be')}</section>`;
-  if (a.type === 'lead') h += listSec('nav icons', `<button class="row" data-act="roster">${ic('users', 'ic')}<span>Roster</span><span></span>${chev}</button><button class="row" data-act="passwords">${ic('key', 'ic')}<span>Passwords</span><span></span>${chev}</button><button class="row" data-act="photos">${ic('photo', 'ic')}<span>Photos</span><span></span>${chev}</button>`);
+  if (a.type === 'lead') h += listSec('nav icons', `<button class="row" data-act="roster">${ic('users', 'ic')}<span>Roster</span><span></span>${chev}</button><button class="row" data-act="passwords">${ic('key', 'ic')}<span>Passwords</span><span></span>${chev}</button><button class="row" data-act="photos">${ic('photo', 'ic')}<span>Photos</span><span></span>${chev}</button><button class="row" data-act="yearexport">${ic('download', 'ic')}<span>Export Attendance</span><span></span><span></span></button>`);
   h += listSec('nav icons', `<button class="row danger" data-act="signout">${ic('logout')}<span>Sign Out</span><span></span><span></span></button>`);
   return {page: 'account', back: true, body: h};
 }
@@ -540,7 +556,7 @@ function roleText(ev, n) {
 }
 function pMyTasks(ev) {
   return {page: 'mytasks', back: true, right: [['info', 'details', 'Event Details']],
-    body: head('My Tasks', bar(evSub(ev), roleText(ev, me()))) + listSec('tl', taskRows(ev, me(), true))};
+    body: head('My Tasks', bar(evSub(ev), roleText(ev, me()), ev.confirmed ? 'Confirmed' : 'Not Confirmed')) + listSec('tl', taskRows(ev, me(), true))};
 }
 function pPerson(ev, name) {
   const g = ev.groups.find(x => x.lead === name || membersOf(x.name).includes(name));
@@ -548,6 +564,8 @@ function pPerson(ev, name) {
   let props = '';
   if (g && g.lead !== name && can.roles(g.name)) { const mine = g.roles.find(r => r.who === name);
     props += `<div class="row">${ic('flag', 'ic')}<span class="k">Role</span><span>${picker(`pr:${esc(name)}`, mine ? mine.id : '', mine ? mine.name : '', [['', 'No role'], ...g.roles.map(r => [r.id, r.name + (r.who && r.who !== name ? ` (${r.who})` : '')])], 'No role', 'Role', true)}</span></div>`; }
+  if (g && can.attendance(g.name)) { const on = onLeave(ev, g.name, name);
+    props += `<div class="row">${ic('clock', 'ic')}<span class="k">On Leave</span><span><button class="ib ckb${on ? ' on' : ''}" data-act="leave:${esc(g.name)}:${esc(name)}" type="button" aria-pressed="${on}" aria-label="On Leave">${ic(on ? 'check-fill' : 'circle')}</button></span></div>`; }
   return {page: 'person', back: true, body: head(esc(name), bar(evSub(ev), roleText(ev, name))) + (props ? listSec('props', props) : '') + listSec('tl', taskRows(ev, name, false) + add, 'Tasks')};
 }
 
@@ -559,6 +577,9 @@ function pGroup(ev, name, first) {
   const edit = can.roles(g.name), att = can.attendance(g.name);
   const at = att ? (((ev.attendance = ev.attendance || {})[g.name] = ev.attendance[g.name] || {})) : {};
   let body = head(nb(esc(g.name)), evSub(ev));
+  // First: the tasks the Event Lead gave to this group, which the Group Lead shares out among the members
+  const given = sorted(ev).flatMap(l => l.tasks.filter(t => t.to === 'g:' + g.name).map(t => `<button class="row" data-act="line:${l.id}"><span class="t">${l.time}</span><span>${esc(t.text) || '<span class="empty">Task</span>'}${l.place ? `<span class="cap">${esc(l.place)}</span>` : ''}</span>${chev}</button>`)).join('');
+  if (given) body += listSec('tl', given, 'Tasks');
   const pillsHtml = g.roles.map(r => `<span class="pill${edit ? '' : ' ro'}${r.who ? '' : ' unset'}"><span>${esc(r.name)}</span>${edit ? `<button class="px" data-act="unrole:${esc(r.id)}" type="button" aria-label="Remove ${esc(r.name)}">${ic('x')}</button>` : ''}</span>`).join('');
   body += `<section class="sec"><p class="sh">Roles</p><span class="pills">${pillsHtml}${edit ? `<input class="fld cell pin" data-pill="role" placeholder="Role" aria-label="Add a role" autocomplete="off" enterkeyhint="done">` : ''}${!pillsHtml && !edit ? '<span class="empty">No roles yet</span>' : ''}</span></section>`;
   const members = [g.lead, ...membersOf(g.name).filter(n => n !== g.lead)].filter(Boolean);
@@ -568,15 +589,21 @@ function pGroup(ev, name, first) {
     const opts = [['', 'No role'], ...g.roles.map(r => [r.id, r.name + (r.who && r.who !== n ? ` (${r.who})` : '')])];
     const roleCtl = n === g.lead ? `<span>Group Lead</span>` : edit ? `<span class="nwp">${picker(`pr:${esc(n)}`, mine ? mine.id : '', shown, opts, 'No role', 'Role of ' + n, true)}</span>` : `<span>${esc(shown)}</span>`;
     // Attendance: the tick is the record; the system keeps the time it was ticked (the chairs: no other status to choose)
-    const t = s === 'Attended' && ((ev.attTime || {})[g.name] || {})[n];
-    const st = t ? `<span class="tm">${t}</span>` : '';
-    return `<div class="row">${att ? presence(`here:${esc(g.name)}:${esc(n)}`, s === 'Attended', n) : ''}<button class="nmb" data-act="person:${esc(n)}" type="button">${esc(n)}${st}</button>${roleCtl}</div>`;
+    const t = s === 'Attended' && ((ev.attTime || {})[g.name] || {})[n], off = att && onLeave(ev, g.name, n);
+    const st = t ? `<span class="tm">${t}</span>` : off ? '<span class="tm">On Leave</span>' : '';
+    return `<div class="row">${att ? (off && s !== 'Attended' ? '<span></span>' : presence(`here:${esc(g.name)}:${esc(n)}`, s === 'Attended', n)) : ''}<button class="nmb" data-act="person:${esc(n)}" type="button">${esc(n)}${st}</button>${roleCtl}</div>`;
   }).join('');
   body += listSec(att ? 'people' : 'people plain', rows || emptyRow('No members yet'), 'Members');
-  // Acting Group Lead: leads the group on site when the Group Lead cannot (Group Lead SOP)
-  const others = membersOf(g.name).filter(n => n !== g.lead);
-  if (edit && A().type !== 'group') body += listSec('props', `<div class="row">${ic('flag', 'ic')}<span class="k">Acting Group Lead</span><span>${picker('ag', g.acting || '', g.acting || '', [['', 'None'], ...others.map(n => [n, n])], 'None', 'Acting Group Lead', true)}</span></div>`);
-  else if (g.acting) body += listSec('props', `<div class="row">${ic('flag', 'ic')}<span class="k">Acting Group Lead</span><span>${esc(g.acting)}</span></div>`);
+  // Acting Group Lead (leads the group on site when the Group Lead cannot) and, for the Event Lead, Covering For:
+  // this group takes another group's turn; the rotation gives the turn back by itself. One list, as on Event Details.
+  const others = membersOf(g.name).filter(n => n !== g.lead), lead = A().type === 'lead';
+  const same = ALL_GROUPS.filter(x => kindOf(x) === kindOf(g.name) && x !== g.name && !onDuty(ev, x));
+  let props = '';
+  if (edit && A().type !== 'group') props += `<div class="row">${ic('flag', 'ic')}<span class="k">Acting Group Lead</span><span>${picker('ag', g.acting || '', g.acting || '', [['', 'None'], ...others.map(n => [n, n])], 'None', 'Acting Group Lead', true)}</span></div>`;
+  else if (g.acting) props += `<div class="row">${ic('flag', 'ic')}<span class="k">Acting Group Lead</span><span>${esc(g.acting)}</span></div>`;
+  if (lead) props += `<div class="row">${ic('layers', 'ic')}<span class="k">Covering For</span><span>${picker('cv', g.covers || '', g.covers || '', [['', 'None'], ...same.map(x => [x, x])], 'None', 'Covering For', true)}</span></div>`;
+  else if (g.covers) props += `<div class="row">${ic('layers', 'ic')}<span class="k">Covering For</span><span>${nb(esc(g.covers))}</span></div>`;
+  if (props) body += listSec('props', props);
   return {page: 'group', back: true, right: first ? [['info', 'details', 'Event Details']] : null, body};
 }
 
@@ -623,7 +650,10 @@ function pLine(ev, id) {
 function dutyPills(ev, lead) {
   const gs = sortGroups(ev.groups).map(g => { const n = openCount(g);
     return `<span class="pill${lead ? '' : ' ro'}${n ? ' unset' : ''}"><button data-act="group:${esc(g.name)}" type="button" aria-label="${esc(g.name)}${n ? `, ${n} ${n > 1 ? 'roles' : 'role'} to fill` : ''}">${esc(g.name)}</button>${lead ? `<button class="px" data-act="dutyask:${esc(g.name)}" type="button" aria-label="Take ${esc(g.name)} off duty">${ic('x')}</button>` : ''}</span>`; }).join('');
-  const free = ['MC', 'Backstage', 'Reception'].map(k => ({group: k, items: ALL_GROUPS.filter(g => kindOf(g) === k && !onDuty(ev, g)).map(g => [g, g])})).filter(o => o.items.length);
+  const free = ['MC', 'Backstage', 'Reception'].map(k => {
+    const list = rotation(ev, k).filter(x => !onDuty(ev, x.g)), next = list.find(x => !x.busy);
+    return {group: k, items: list.map(x => [x.g, x.g + (x.busy ? ' (On Duty Elsewhere)' : x === next ? ' (Next)' : ''), x.busy])};
+  }).filter(o => o.items.length);
   const add = lead && free.length ? `<label class="who addg"><span>Group</span>${ic('updown')}<select data-k="addgroup" aria-label="Add a duty group"><option value="" selected disabled></option>${free.map(o => `<optgroup label="${o.group}">${o.items.map(x => optHtml(x, '')).join('')}</optgroup>`).join('')}</select></label>` : '';
   return `<span class="pills">${gs}${add}${!gs && !add ? '<span class="empty">None yet</span>' : ''}</span>`;
 }
@@ -639,6 +669,9 @@ function pDetails(ev) {
   rows += prop('person', 'Leading Teacher', pills('leading', ev.leading, 'Name', lead), lead || ev.leading.length);
   rows += prop('users', 'Supporting Teachers', pills('support', ev.support, 'Name', lead), lead || ev.support.length);
   rows += prop('flag', 'Event Lead', lead ? picker('d:lead', ev.lead, ev.lead, CHAIRS.map(n => [n, n]), 'None', 'Event Lead') : esc(ev.lead), lead || ev.lead);
+  const helpers = [...new Set([...CHAIRS, ...sortGroups(ev.groups).flatMap(g => membersOf(g.name))])].filter(n => n !== ev.lead);
+  rows += prop('flag', 'Acting Event Lead', lead ? picker('d:actingLead', ev.actingLead || '', ev.actingLead || '', [['', 'None'], ...helpers.map(n => [n, n])], 'None', 'Acting Event Lead', true) : esc(ev.actingLead), lead || ev.actingLead);
+  rows += prop('check', 'Confirmed', lead ? `<button class="ib ckb${ev.confirmed ? ' on' : ''}" data-act="confirm" type="button" aria-pressed="${!!ev.confirmed}" aria-label="Confirmed">${ic(ev.confirmed ? 'check-fill' : 'circle')}</button>` : ev.confirmed ? 'Yes' : 'Not Yet', true);
   rows += prop('layers', 'Duty Groups', dutyPills(ev, lead), true);
   h += listSec('props', rows);
   if (lead || ev.remarks) h += remarks('d:remarks', ev.remarks, lead);
@@ -969,6 +1002,7 @@ document.addEventListener('change', e => {
     if (was && was !== n) { S.undo = {ev: ev.id, snap: before}; toast(`${r.name} moved from ${was}`, 'undo', 'Undo'); }
     return;
   }
+  if (k === 'cv') { const g = group(ev, cur().name); g.covers = v || null; logChange(ev, `${g.name} covering for ${v || 'no group'}`, before); render(); return; }
   if (k === 'ag') { const g = group(ev, cur().p === 'group' ? cur().name : A().group); g.acting = v || null; logChange(ev, `Acting Group Lead of ${g.name}: ${v || 'None'}`, before); render(); return; }
   if (p[0] === 'at') { setAttend(ev, p[1], p[2], v === 'Absent' ? '' : v); render(); return; }
   if (k === 'addgroup') { ev.groups.push({name: v, lead: roster(v).lead.name || null, roles: rolesFor(v)}); logChange(ev, 'Added ' + v, before); render(); return; }
@@ -976,6 +1010,7 @@ document.addEventListener('change', e => {
   else if (p[0] === 'tl') { const [l, tk] = taskAt(ev, p[1]), to = ev.lines.find(x => x.id === v); l.tasks = l.tasks.filter(x => x !== tk); to.tasks.push(tk); l.v++; to.v++; logChange(ev, `${tk.text || 'A task'} moved to ${to.time}`, before); }
   else if (p[0] === 'sp') { item(doc(ev, p[1]).blocks, p[2]).sp = v; logChange(ev, 'Changed ' + docLabel(doc(ev, p[1])), before); }
   else if (k === 'd:lead') { ev.lead = v; logChange(ev, 'Event Lead: ' + v, before); }
+  else if (k === 'd:actingLead') { ev.actingLead = v; logChange(ev, 'Acting Event Lead: ' + (v || 'None'), before); }
   else if (k === 'd:date') { ev.date = fromIso(v); logChange(ev, 'Date: ' + ev.date, before); }
   else if (k === 'd:start' || k === 'd:end') { ev[p[1]] = v; logChange(ev, 'Time: ' + (ev.start || '') + '–' + (ev.end || ''), before); }
   else if (k === 'l:time' && v) {
@@ -1013,15 +1048,32 @@ const setAttend = (ev, g, n, s) => { const before = snap(ev); ((ev.attendance = 
 const addAndFocus = key => { S.focusKey = key; render(); };
 
 // Attendance for every group on duty, as a table the chairs copy into List of Members (Event Lead only)
-async function exportAttendance(ev) {
-  const at = ev.attendance || {}, esc2 = s => /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  const rows = [['Group', 'Class', 'Name', 'Status', 'Ticked At']];
-  sortGroups(ev.groups).forEach(g => [g.lead, ...membersOf(g.name).filter(n => n !== g.lead)].filter(Boolean).forEach(n => rows.push([g.name, clsOf(g.name, n), n, (at[g.name] || {})[n] || 'Absent', ((ev.attTime || {})[g.name] || {})[n] || ''])));
-  const csv = '﻿' + rows.map(r => r.map(esc2).join(',')).join('\r\n');
-  const name = `${ev.name || 'Event'} ${ev.date.replace(/\//g, '')} Attendance.csv`;
+// Status of one member at one event: ticked, On Leave, covering for another group, or the covered group
+function statusOf(ev, g, n) {
+  if (!onDuty(ev, g)) return covered(ev).includes(g) ? 'Excluded' : '';
+  if (((ev.attendance || {})[g] || {})[n] === 'Attended') return group(ev, g).covers ? 'Covering' : 'Attended';
+  return onLeave(ev, g, n) ? 'Off' : 'Absent';
+}
+const people = g => [roster(g).lead.name, ...peopleNames(g)].filter(Boolean);
+async function saveCsv(name, rows) {
+  const esc2 = s => /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  const csv = '\ufeff' + rows.map(r => r.map(x => esc2(String(x ?? ''))).join(',')).join('\r\n');
   const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
   if (!dl) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); return; }
   try { await dl.save({filename: name, data: csv}); } catch (e) { if (e && e.code !== 'declined') toast('Export did not finish'); }
+}
+function exportAttendance(ev) {
+  const rows = [['Group', 'Class', 'Name', 'Status', 'Ticked At']];
+  [...sortGroups(ev.groups).map(g => g.name), ...covered(ev)].forEach(g => people(g).forEach(n => rows.push([g, clsOf(g, n), n, statusOf(ev, g, n), ((ev.attTime || {})[g] || {})[n] || ''])));
+  saveCsv(`${ev.name || 'Event'} ${ev.date.replace(/\//g, '')} Attendance.csv`, rows);
+}
+// The year's attendance, one column per event that has taken place: what the Members sheet of List of Members held
+function exportYear() {
+  const today = new Date().toISOString().slice(2, 10).replace(/-/g, '/');
+  const evs = EVENTS.filter(e => e.date && e.date <= today).sort((a, b) => a.date.localeCompare(b.date));
+  const rows = [['Group', 'Class', 'Name', ...evs.map(e => `${e.date} ${e.name}`)]];
+  ALL_GROUPS.forEach(g => people(g).forEach(n => rows.push([g, clsOf(g, n), n, ...evs.map(e => statusOf(e, g, n))])));
+  saveCsv(`Attendance ${today.replace(/\//g, '')}.csv`, rows);
 }
 
 // Pointer safety: a tap counts only on the control it started on, and not in the moment after a page change,
@@ -1135,6 +1187,12 @@ document.addEventListener('click', e => {
       break;
     }
     // Presence: the same circle for attendance and roll call
+    case 'leave': { const [g, ...n] = arg.split(':'), nm = n.join(':'), before = snap(ev), on = !onLeave(ev, g, nm);
+      ((ev.leave = ev.leave || {})[g] = ev.leave[g] || {})[nm] = on; if (!on) delete ev.leave[g][nm];
+      logChange(ev, `${nm} ${on ? 'on leave' : 'not on leave'}`, before); render(); break; }
+    case 'confirm': { const before = snap(ev); ev.confirmed = ev.confirmed ? '' : new Date().toISOString().slice(2, 10).replace(/-/g, '/');
+      logChange(ev, ev.confirmed ? 'Confirmed' : 'Not confirmed', before); render(); break; }
+    case 'yearexport': exportYear(); break;
     case 'here': { const [g, n] = arg.split(':'), s = ((ev.attendance || {})[g] || {})[n] || ''; setAttend(ev, g, n, s === 'Attended' ? '' : 'Attended'); render(); break; }
     case 'call': { const [id, a, r] = arg.split(':'), d = doc(ev, id), row = item(item(d.awards, a).rows, r), before = snap(ev);
       row.here = row.here === 'Present' ? '' : 'Present'; logChange(ev, `Roll call: ${row.name} ${row.here || 'not here'}`, before); render(); break; }
@@ -1260,7 +1318,7 @@ function merge3(b, m, t) {
     lines: (B, M, T) => mergeList(B, M, T, 'id', (b2, m2, t2) => mergeObj(b2, m2, t2, {tasks: (B3, M3, T3) => mergeList(B3, M3, T3, 'id'), v: (x, y, z) => Math.max(y || 0, z || 0)})),
     docs: (B, M, T) => mergeList(B, M, T, 'id'),
     groups: (B, M, T) => mergeList(B, M, T, 'name', (b2, m2, t2) => mergeObj(b2, m2, t2)),
-    attendance: perGroup, attTime: perGroup,
+    attendance: perGroup, attTime: perGroup, leave: perGroup,
     log: (B, M, T) => { const seen = new Set(); return [...(M || []), ...(T || [])].filter(e => { const id = (e.ts || e.at) + '|' + e.who + '|' + e.what; if (seen.has(id)) return false; seen.add(id); return true; }).sort((x, y) => (y.ts || 0) - (x.ts || 0)); }
   });
 }
