@@ -1,5 +1,5 @@
 node_modules/
 .wrangler/
 .DS_Store
-build/MC Scripts.html
+build/Scripts.html
 .dev.vars

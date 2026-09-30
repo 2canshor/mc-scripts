@@ -1,4 +1,4 @@
-<title>MC Scripts</title>
+<title>Scripts</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&display=swap">
@@ -909,7 +909,7 @@ var CLOUD = %%CLOUD%%;
      page's own server, reached with the CA passcode; each iPad keeps its own copy, so writing works
      offline and uploads later. A write names the version it started from; if someone else saved in
      between, the shared copy stays as they left it and this iPad's version is kept as a separate script. */
-  var SPACE_KEY = "mc-scripts-space";
+  var SPACE_KEY = "event-centre-space";
   var cloud = null, sync = { state: "ok", loaded: false, pulling: false, pushing: {}, timer: null };
   function pending(s) { return s.dirty && !(isBlank(s.state) && !s.rev && !s.deleted); }
   function api(path, method, body, code) {

@@ -35,7 +35,8 @@ export function ensureEventTables(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, data TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0, updated INTEGER NOT NULL, seq INTEGER NOT NULL)"),
     db.prepare("CREATE INDEX IF NOT EXISTS events_seq ON events (seq)"),
     db.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS login_fail (account TEXT PRIMARY KEY, n INTEGER NOT NULL, since INTEGER NOT NULL)")
+    db.prepare("CREATE TABLE IF NOT EXISTS login_fail (account TEXT PRIMARY KEY, n INTEGER NOT NULL, since INTEGER NOT NULL)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS photos (name TEXT PRIMARY KEY, data TEXT NOT NULL, updated INTEGER NOT NULL)")
   ]).catch((e) => { ready = null; throw e; });
   return ready;
 }
@@ -76,6 +77,25 @@ async function login(request, env) {
   const token = hex(crypto.getRandomValues(new Uint8Array(24)));
   await env.DB.prepare("INSERT INTO sessions (token, account, created) VALUES (?, ?, ?)").bind(await sha(token), acct.id, Date.now()).run();
   return json({ token, account: acct });
+}
+
+// ---------- Profile photos ----------
+const MAX_PHOTO = 80000;  // a 192-pixel square JPEG is about 10-20 KB as text
+async function photoVersions(env) {
+  const { results } = await env.DB.prepare("SELECT name, updated FROM photos").all();
+  return Object.fromEntries(results.map((r) => [r.name, r.updated]));
+}
+async function settingOf(env, k) {
+  const row = await env.DB.prepare("SELECT v FROM settings WHERE k = ?").bind(k).first();
+  try { return row ? JSON.parse(row.v) : null; } catch { return null; }
+}
+// A person changes only their own photo: the name they are signed in as. The Event Lead may also remove anyone's.
+async function mayChangePhoto(env, acct, name, data) {
+  if (acct.type === "lead") return data === null || (acct.who === name && ((await settingOf(env, "chairs")) || []).includes(name));
+  if (acct.type === "teacher") return false;
+  const r = ((await settingOf(env, "rosters")) || {})[acct.group] || {};
+  if (acct.type === "gl") return !!r.lead && r.lead.name === name;
+  return acct.who === name && (r.people || []).some((p) => p.name === name);
 }
 
 // ---------- Units: the pieces of an event that rights are checked on ----------
@@ -170,7 +190,7 @@ export async function handleEvents(request, env, url, path) {
     const since = Math.max(0, Number(url.searchParams.get("since")) || 0);
     const { results } = await env.DB.prepare("SELECT id, data, deleted, seq FROM events WHERE seq > ? ORDER BY seq").bind(since).all();
     const rows = results.map((r) => ({ id: r.id, rev: r.seq, deleted: !!r.deleted, data: r.deleted ? null : JSON.stringify(visible(acct, JSON.parse(r.data))) }));
-    const out = { account: { id: acct.id, type: acct.type, group: acct.group || null }, rows };
+    const out = { account: { id: acct.id, type: acct.type, group: acct.group || null }, rows, photos: await photoVersions(env) };
     if (!since || url.searchParams.get("full")) {
       const s = await env.DB.prepare("SELECT k, v FROM settings WHERE k IN ('rosters', 'chairs')").all();
       const map = Object.fromEntries(s.results.map((r) => [r.k, JSON.parse(r.v)]));
@@ -207,6 +227,31 @@ export async function handleEvents(request, env, url, path) {
       : await env.DB.prepare("INSERT INTO events (id, data, deleted, updated, seq) VALUES (?1, ?2, 0, ?3, " + next + ") ON CONFLICT (id) DO NOTHING RETURNING seq").bind(id, data, Date.now()).first();
     if (!saved) return json({ error: "conflict", rev: -1 }, 409);
     return json({ rev: saved.seq, data: JSON.stringify(visible(acct, nw)) });
+  }
+
+  // Profile photos: every signed-in account sees them; each person changes their own, and the Event Lead can remove anyone's.
+  if (path === "photos" && request.method === "GET") {
+    let names = []; try { names = JSON.parse(url.searchParams.get("names") || "[]"); } catch { names = []; }
+    if (!Array.isArray(names)) names = [];
+    const out = {};
+    for (const n of names.slice(0, 120)) {
+      const row = await env.DB.prepare("SELECT data, updated FROM photos WHERE name = ?").bind(String(n)).first();
+      out[n] = row ? { v: row.updated, d: row.data } : null;
+    }
+    return json(out);
+  }
+  if (path === "photo" && request.method === "PUT") {
+    let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+    const name = String(body.name || "").slice(0, 40), data = body.data;
+    if (!name || !(await mayChangePhoto(env, acct, name, data))) return json({ error: "forbidden" }, 403);
+    if (data === null) {
+      await env.DB.prepare("DELETE FROM photos WHERE name = ?").bind(name).run();
+      return json({ ok: true, v: 0 });
+    }
+    if (typeof data !== "string" || !/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(data) || data.length > MAX_PHOTO) return json({ error: "bad request" }, 400);
+    const v = Date.now();
+    await env.DB.prepare("INSERT INTO photos (name, data, updated) VALUES (?1, ?2, ?3) ON CONFLICT (name) DO UPDATE SET data = ?2, updated = ?3").bind(name, data, v).run();
+    return json({ ok: true, v });
   }
 
   // Rosters and the chairs' names: the Event Lead keeps them (copied from List of Members).

@@ -2,7 +2,7 @@ const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 const assert=(c,m)=>{if(!c){console.log('FAIL',m);process.exitCode=1}else console.log('ok',m)};
 (async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:820,height:1180},hasTouch:true});const errs=[];
 p.on('pageerror',e=>errs.push(e.message));
-await p.goto('file://'+__dirname+'/MC Scripts.html');await p.waitForTimeout(300);
+await p.goto('file://'+__dirname+'/Scripts.html');await p.waitForTimeout(300);
 await p.click('#insert');
 assert(await p.evaluate(()=>document.activeElement.id)==='event','new script starts at the event name');
 await p.click('#insert',{force:true});await p.waitForTimeout(100);

@@ -1,0 +1,9 @@
+# Deployed by hand once, after the main Worker is renamed event-centre.
+name = "mc-scripts"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[services]]
+binding = "APP"
+service = "event-centre"
