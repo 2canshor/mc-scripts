@@ -7,8 +7,14 @@ workers_dev = true
 [assets]
 directory = "./public"
 
-# D1 cannot be renamed, so the database keeps its first name.
 [[d1_databases]]
 binding = "DB"
 database_name = "event-centre"
+database_id = "NEW_DATABASE_ID"
+
+# The first database. D1 cannot rename a database, so src/move-db.js copies it into event-centre once.
+# Remove this binding after the old database is deleted.
+[[d1_databases]]
+binding = "OLD_DB"
+database_name = "mc-scripts"
 database_id = "5fee58f6-18e0-4a78-ae54-a996d8be2f36"
