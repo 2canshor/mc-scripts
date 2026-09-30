@@ -10,7 +10,7 @@ directory = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "event-centre"
-database_id = "NEW_DATABASE_ID"
+database_id = "7bc32e9b-0f2c-451e-9f83-7a58397d1e4f"
 
 # The first database. D1 cannot rename a database, so src/move-db.js copies it into event-centre once.
 # Remove this binding after the old database is deleted.
