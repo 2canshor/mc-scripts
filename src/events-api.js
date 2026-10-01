@@ -344,7 +344,7 @@ export async function importApplications(env, force) {
     if (seen[ts] !== undefined) continue;
     const start = hm(v("start")), end = hm(v("end"));
     const id = "e" + date.replace(/\//g, "") + (await sha(ts)).slice(0, 4);
-    const ev = { id, v: 4, date, name, asmTime: /早會/.test(name) ? "07:35" : minus30(start), venue: "", leading: people(v("lead")), support: people(v("sup")), lead: "",
+    const ev = { id, v: 4, date, name, asmTime: /早會/.test(name) ? "07:45" : minus30(start), venue: "", leading: people(v("lead")), support: people(v("sup")), lead: "",
       remarks: [v("rmk"), v("roles") ? "所需人力：" + v("roles") : ""].filter(Boolean).join("\n"), groups: [], mcs: [],
       rows: [start ? { id: "r1", time: start, title: "開始", place: "", remark: "", say: [] } : null, end ? { id: "r2", time: end, title: "完結", place: "", remark: "", say: [] } : null].filter(Boolean),
       tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: [{ at: hkNow(), ts: Date.now(), who: "CA Support Form", what: "Added from a CA Support application" }], upd: {} };
