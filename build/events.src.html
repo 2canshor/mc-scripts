@@ -74,6 +74,7 @@ h1 .sep,.sep{color:var(--secondary);font-weight:400}
 .mcl{margin:4px 0 0;font-weight:600}
 .sec{margin-top:32px}
 .sh{margin:0 0 2px;font-size:15px;color:var(--secondary)}
+.lk{color:inherit;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
 .fld.apps{width:100%;text-overflow:ellipsis}
 .cap{display:block;font-size:15px;color:var(--secondary);line-height:1.45;margin-top:1px;white-space:pre-line}
 .pre,.srow .body{white-space:pre-line}
@@ -384,6 +385,8 @@ const DOC_KIND = {script: 'MC', awards: 'Backstage', guests: 'Reception'};
 const canDoc = (ev, type) => isLead() || (['member', 'gl'].includes(V().type) && kind(V().group) === DOC_KIND[type] && ev.groups.some(g => g.name === V().group));
 
 /* ---------- Helpers ---------- */
+// Links typed in text (the teacher's attachments in Remarks) open in a new tab
+const linked = s => esc(s).replace(/https?:\/\/[^\s<"]+/g, u => `<a class="lk" href="${u}" target="_blank" rel="noopener">${u}</a>`);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const ic = (n, c = '') => `<svg class="i ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const sym = (n, label, c = 'ic') => `<span class="${c}"${label ? ` role="img" aria-label="${esc(label)}"` : ''}>${ic(n)}</span>`;
@@ -508,7 +511,7 @@ function facts(ev, ed) {
     ${ev.venue ? row('pin', 'Venue', esc(ev.venue)) : ''}
     ${t ? row('teacher', 'Teachers', t) : ''}
     ${ev.lead ? row('flag', 'Event Lead', esc(ev.lead)) : ''}
-    ${ev.remarks ? row('note', 'Remarks', `<span class="pre">${esc(ev.remarks)}</span>`, true) : ''}</section>`;
+    ${ev.remarks ? row('note', 'Remarks', `<span class="pre">${linked(ev.remarks)}</span>`, true) : ''}</section>`;
 }
 // The time column: a date (before the day) or a time (on the day). Today, the next one is marked.
 function taskRows(ev, tasks, render) {

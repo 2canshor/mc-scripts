@@ -291,7 +291,7 @@ async function whoOf(env, acct) {
 // The Event Lead pastes the sheet's link once (Account). Every 5 minutes at most, the first page that loads makes the
 // Worker read the sheet, and each application not seen before becomes an event with its basic information: date, name,
 // Assembly (CA's default), Leading and Supporting Teachers, a Rundown line at the start and end times, and the
-// teacher's Remark. An application whose date and name match an event already there (made by hand) is only marked seen.
+// teacher's Remark with the links they attached under it. An application whose date and name match an event already there (made by hand) is only marked seen.
 const APPS_EVERY = 5 * 60000;
 function csv(text) {
   const rows = []; let row = [], f = "", q = false;
@@ -329,7 +329,7 @@ export async function importApplications(env, force) {
     rows = csv(text);
   } catch { cfg.error = true; await saveSetting(env, "applications", cfg); return { error: "unreadable" }; }
   const head = (rows.shift() || []).map((h) => h.trim().toLowerCase()), col = (w) => head.findIndex((h) => h.startsWith(w));
-  const C = { ts: col("timestamp"), name: col("event"), date: col("date"), start: col("start"), end: col("end"), lead: col("leading"), sup: col("supporting"), roles: col("roles"), rmk: col("remark") };
+  const C = { ts: col("timestamp"), name: col("event"), date: col("date"), start: col("start"), end: col("end"), lead: col("leading"), sup: col("supporting"), roles: col("roles"), files: col("materials"), rmk: col("remark") };
   if (C.ts < 0 || C.name < 0 || C.date < 0) { cfg.error = true; await saveSetting(env, "applications", cfg); return { error: "unreadable" }; }
   const seen = cfg.seen || {}, claimed = new Set(Object.values(seen));
   const { results } = await env.DB.prepare("SELECT id, data FROM events").all();
@@ -345,7 +345,7 @@ export async function importApplications(env, force) {
     const start = hm(v("start")), end = hm(v("end"));
     const id = "e" + date.replace(/\//g, "") + (await sha(ts)).slice(0, 4);
     const ev = { id, v: 4, date, name, asmTime: /早會/.test(name) ? "07:45" : minus30(start), venue: "", leading: people(v("lead")), support: people(v("sup")), lead: "",
-      remarks: [v("rmk"), v("roles") ? "所需人力：" + v("roles") : ""].filter(Boolean).join("\n"), groups: [], mcs: [],
+      remarks: [v("rmk"), ...(v("files").match(/https?:\/\/[^\s,，]+/g) || []), v("roles") ? "所需人力：" + v("roles") : ""].filter(Boolean).join("\n"), groups: [], mcs: [],
       rows: [start ? { id: "r1", time: start, title: "開始", place: "", remark: "", say: [] } : null, end ? { id: "r2", time: end, title: "完結", place: "", remark: "", say: [] } : null].filter(Boolean),
       tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: [{ at: hkNow(), ts: Date.now(), who: "CA Support Form", what: "Added from a CA Support application" }], upd: {} };
     ev.upd = stamp(null, ev, "CA Support Form");
