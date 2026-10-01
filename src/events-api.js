@@ -107,7 +107,7 @@ function units(ev) {
   FIELDS.forEach((f) => put("f:" + f, ev[f]));
   Object.keys(ev).filter((k) => !KNOWN.has(k)).forEach((k) => put("x:" + k, ev[k]));
   put("groups", (ev.groups || []).map((g) => g.name).sort());
-  (ev.groups || []).forEach((g) => { put(`g:${g.name}:lead`, g.lead); put(`g:${g.name}:roles`, g.roles); put(`g:${g.name}:acting`, g.acting || null); put(`g:${g.name}:covers`, g.covers || null); });
+  (ev.groups || []).forEach((g) => { put(`g:${g.name}:lead`, g.lead); put(`g:${g.name}:since`, g.since || null); put(`g:${g.name}:roles`, g.roles); put(`g:${g.name}:acting`, g.acting || null); put(`g:${g.name}:covers`, g.covers || null); });
   (ev.lines || []).forEach((l) => {
     put("l:" + l.id, { time: l.time, end: l.end || "", title: l.title, place: l.place, remarks: l.remarks, before: !!l.before });
     (l.tasks || []).forEach((t) => put("t:" + t.id, { line: l.id, text: t.text, to: t.to, at: t.at || "", chk: !!t.chk }));
@@ -147,9 +147,11 @@ function allowed(acct, old, key) {
     return false;
   };
 }
-// What an account may read: attendance and On Leave only for the Event Lead and the group's own Group Lead.
+// What an account may read: a group or Group Lead account sees only the events its group is on duty for (Carson, 26/10/01);
+// attendance and On Leave only the Event Lead and the group's own Group Lead. null: this account does not see the event.
 function visible(acct, ev) {
   if (!ev || acct.type === "lead") return ev;
+  if ((acct.type === "group" || acct.type === "gl") && !onDuty(ev, acct.group)) return null;
   const g = leadsGroup(acct, ev), out = { ...ev, attendance: {}, attTime: {}, leave: {} };
   if (g) { out.attendance[g] = (ev.attendance || {})[g] || {}; out.attTime[g] = (ev.attTime || {})[g] || {}; out.leave[g] = (ev.leave || {})[g] || {}; }
   return out;
@@ -194,7 +196,8 @@ export async function handleEvents(request, env, url, path) {
   if (path === "state" && request.method === "GET") {
     const since = Math.max(0, Number(url.searchParams.get("since")) || 0);
     const { results } = await env.DB.prepare("SELECT id, data, deleted, seq FROM events WHERE seq > ? ORDER BY seq").bind(since).all();
-    const rows = results.map((r) => ({ id: r.id, rev: r.seq, deleted: !!r.deleted, data: r.deleted ? null : JSON.stringify(visible(acct, JSON.parse(r.data))) }));
+    // An event this account does not see arrives as deleted, so a group taken off duty loses it on its devices
+    const rows = results.map((r) => { const v = r.deleted ? null : visible(acct, JSON.parse(r.data)); return { id: r.id, rev: r.seq, deleted: !v, data: v ? JSON.stringify(v) : null }; });
     const out = { account: { id: acct.id, type: acct.type, group: acct.group || null }, rows, photos: await photoVersions(env) };
     if (!since || url.searchParams.get("full")) {
       const s = await env.DB.prepare("SELECT k, v FROM settings WHERE k IN ('rosters', 'chairs')").all();
@@ -211,7 +214,7 @@ export async function handleEvents(request, env, url, path) {
     let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
     const id = m[1], rev = Number(body.rev) || 0;
     const row = await env.DB.prepare("SELECT data, deleted, seq FROM events WHERE id = ?").bind(id).first();
-    if ((row ? row.seq : 0) !== rev) return json({ error: "conflict", rev: row ? row.seq : 0, deleted: row ? !!row.deleted : false, data: row && !row.deleted ? JSON.stringify(visible(acct, JSON.parse(row.data))) : null }, 409);
+    if ((row ? row.seq : 0) !== rev) { const v = row && !row.deleted ? visible(acct, JSON.parse(row.data)) : null; return json({ error: "conflict", rev: row ? row.seq : 0, deleted: !!row && !v, data: v ? JSON.stringify(v) : null }, 409); }
     const old = row && !row.deleted ? JSON.parse(row.data) : null;
     const next = "(SELECT COALESCE(MAX(seq), 0) + 1 FROM events)";
     if (body.deleted) {
