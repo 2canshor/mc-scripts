@@ -74,7 +74,11 @@ h1 .sep,.sep{color:var(--secondary);font-weight:400}
 .mcl{margin:4px 0 0;font-weight:600}
 .sec{margin-top:32px}
 .sh{margin:0 0 2px;font-size:15px;color:var(--secondary)}
-.cap{display:block;font-size:15px;color:var(--secondary);line-height:1.45;margin-top:1px}
+.cap{display:block;font-size:15px;color:var(--secondary);line-height:1.45;margin-top:1px;white-space:pre-line}
+.pre,.srow .body{white-space:pre-line}
+/* A Remark is edited where it reads: caption size and colour, as wide as its text (only the event's Remarks is a box) */
+.rmkl{display:block;margin-top:4px}
+.fld.rmk{font-size:15px;color:var(--secondary);line-height:1.45}
 .who{display:block;font-size:15px;color:var(--secondary)}
 .muted,.t{color:var(--secondary)}
 .t,.tn{font-variant-numeric:tabular-nums}
@@ -500,7 +504,7 @@ function facts(ev, ed) {
     ${ev.venue ? row('pin', 'Venue', esc(ev.venue)) : ''}
     ${t ? row('teacher', 'Teachers', t) : ''}
     ${ev.lead ? row('flag', 'Event Lead', esc(ev.lead)) : ''}
-    ${ev.remarks ? row('note', 'Remarks', esc(ev.remarks), true) : ''}</section>`;
+    ${ev.remarks ? row('note', 'Remarks', `<span class="pre">${esc(ev.remarks)}</span>`, true) : ''}</section>`;
 }
 // The time column: a date (before the day) or a time (on the day). Today, the next one is marked.
 function taskRows(ev, tasks, render) {
@@ -566,7 +570,7 @@ function pRundown(ev) {
   const shown = t => !t.role;
   const tk = t => `<div class="tk">${dot(`${ev.id}:t:${t.id}`)}${owner(t)}<span>${esc(t.text)}${remark(t)}${names(t)}</span></div>`;
   if (ed) {
-    const lines = ev.rows.map(r => `<div class="ln e"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span style="display:block;margin-top:6px">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span>${rmB('askrow:' + r.id, 'Delete line')}</div>`).join('');
+    const lines = ev.rows.map(r => `<div class="ln e"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${fld(`row:${r.id}:remark`, r.remark || '', 'Remark', 'rmk')}</span></span>${rmB('askrow:' + r.id, 'Delete line')}</div>`).join('');
     return {...docBar(true), title: 'Rundown', body: docHead('Rundown', ev) + `<section class="sec"><div class="list">${lines}${addB('addrow', 'Add Line', 'var(--tc)')}</div></section>`};
   }
   const before = ev.tasks.filter(t => !t.row && shown(t)).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -662,7 +666,7 @@ function sheet() {
     const groupOpts = ['MC', 'Backstage', 'Reception'].map(k => `<optgroup label="${k}">${rotation(ev, k).filter(x => x.g === g || !ev.groups.some(y => y.name === x.g)).map((x, i) => `<option value="${x.g}"${x.g === g ? ' selected' : ''}>${x.g}${i === 0 && x.g !== g ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}</option>`).join('')}</optgroup>`).join('');
     const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc(r.time + ' ' + r.title)}</option>`).join('');
     const taskE = t => `<div class="row g-tme"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : pick(`task:${t.id}:row`, esc(whenOf(ev, t)), lineOpts(t), 'Line')}</span>
-      <span>${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="fl own${t.to.includes('All') ? ' all' : ''}" style="margin-top:4px;font-size:15px">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : gname(g), `<option value="${esc(g)}"${t.to.includes('All') ? '' : ' selected'}>${esc(g)}</option><option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`, 'For')}</span>${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span>${rmB('deltask:' + t.id, 'Delete task')}</div>`;
+      <span>${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="fl own${t.to.includes('All') ? ' all' : ''}" style="margin-top:4px;font-size:15px">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : gname(g), `<option value="${esc(g)}"${t.to.includes('All') ? '' : ' selected'}>${esc(g)}</option><option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`, 'For')}</span><span class="rmkl">${fld(`task:${t.id}:remark`, t.remark, 'Remark', 'rmk')}</span></span>${rmB('deltask:' + t.id, 'Delete task')}</div>`;
     const taskR = t => `<div class="row g-tm">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${whenOf(ev, t)}</span><span>${esc(t.text)}${remark(t)}${t.to.includes('All') ? '<span class="who">Everyone</span>' : names(t)}</span></div>`;
     const title = isNew ? 'New Duty Group' : g === 'All' ? 'Everyone' : 'Duty Group';
     if (ed) {
