@@ -13,7 +13,8 @@ export const ACCOUNTS = [
 ];
 const DOC_OF = { MC: "script", Backstage: "awards", Reception: "guests" };
 const kindOf = (g) => g.split(" ")[0];
-const MAX_EVENT = 900000, SESSION_DAYS = 180, ROUNDS = 100000, MIN_PASSWORD = 8, MAX_FAILS = 5, LOCK_MS = 15 * 60000;
+const MAX_EVENT = 900000, SESSION_DAYS = 180, ROUNDS = 100000, MIN_PASSWORD = 8, RESET_MS = 60 * 60000;
+const waitAfter = (n) => (n < 5 ? 0 : [30, 60, 300][n - 5] || 900) * 1000;  // wrong tries so far -> seconds before the next try
 // Passwords ignore capitals and spaces, so a phone keyboard that capitalises or adds a space does not lock anyone out.
 const normal = (pw) => String(pw || "").toLowerCase().replace(/\s+/g, "");
 
@@ -63,13 +64,14 @@ async function login(request, env) {
   const typed = String(body.account || "").trim().toLowerCase().replace(/\s+/g, " ");
   const acct = ACCOUNTS.find((a) => a.id.toLowerCase() === typed);
   if (!acct) { await new Promise((r) => setTimeout(r, 400)); return json({ error: "Wrong account or password" }, 401); }
-  // Short passwords are safe because guessing is slow: five wrong tries lock the account for 15 minutes.
+  // Wrong tries wait longer each time, as an iPhone does (Carson, 26/10/01): after 5, 30 seconds; then 1, 5 and 15 minutes.
+  // "since" is the last wrong try; an hour without one starts the count again.
   const fail = await env.DB.prepare("SELECT n, since FROM login_fail WHERE account = ?").bind(acct.id).first();
-  const now = Date.now(), fresh = fail && now - fail.since < LOCK_MS;
-  if (fresh && fail.n >= MAX_FAILS) return json({ error: "Too many tries. Wait 15 minutes, or ask a chair to set a new password." }, 429);
+  const now = Date.now(), n = fail && now - fail.since < RESET_MS ? fail.n : 0, wait = waitAfter(n), left = fail ? fail.since + wait - now : 0;
+  if (wait && left > 0) { const sec = Math.ceil(left / 1000); return json({ error: "Too many tries. Try again in " + (sec < 60 ? sec + " seconds." : Math.ceil(sec / 60) + (sec > 60 ? " minutes." : " minute.")) }, 429); }
   const stored = await hashOf(env, acct.id), pw = normal(body.password);
   if (!stored || !pw || !same(await pbkdf2(pw, stored.split(":")[0]), stored.split(":")[1])) {
-    await env.DB.prepare("INSERT INTO login_fail (account, n, since) VALUES (?1, 1, ?2) ON CONFLICT (account) DO UPDATE SET n = CASE WHEN ?2 - since < ?3 THEN n + 1 ELSE 1 END, since = CASE WHEN ?2 - since < ?3 THEN since ELSE ?2 END").bind(acct.id, now, LOCK_MS).run();
+    await env.DB.prepare("INSERT INTO login_fail (account, n, since) VALUES (?1, ?2, ?3) ON CONFLICT (account) DO UPDATE SET n = ?2, since = ?3").bind(acct.id, n + 1, now).run();
     await new Promise((r) => setTimeout(r, 400));
     return json({ error: "Wrong account or password" }, 401);
   }
