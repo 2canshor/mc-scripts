@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&display=swap">
 <style>
 :root{
+  --ga:#933D36;--gb:#106E32;--gc:#367CBA;--gd:#8B5492; /* tell-ok: small-group colours A-D */
   --canvas:#FBFAF7;--current:#F1EFE8;--field:#EDEBE3;--fill:#6E5916;--primary:#BAA877;--on-primary:#1A1A18; /* tell-ok: CA Design System tokens */
   --primary-glass:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.06) 55%,rgba(255,255,255,0)),color-mix(in srgb,var(--primary) 88%,transparent); /* tell-ok: tinted glass for the one primary button */
   --text:#1A1A18;--secondary:#6B6A64;--caption:#85837C;--present:#4E9F62;--danger:#9A3B2E;--on-color:#FFFFFF; /* tell-ok: CA Design System tokens */
@@ -20,10 +21,10 @@
   --side:max(36px,calc((100vw - 760px) / 2));
   --tc:3.6em;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--ga:#F39D92;--gb:#64C67B;--gc:#91B9E4;--gd:#D3A5D9;
   --canvas:#1C1C1A;--current:#262623;--field:#2E2D2A;--fill:#BAA877;--text:#F2F0EA;--secondary:#B0AEA5;--caption:#8E8D87;--present:#7CCB8F;--danger:#E59A8C;--on-color:#1C1C1A; /* tell-ok: CA Design System tokens (dark) */
   --glass:rgba(44,44,41,.66);--glass-hi:rgba(58,58,54,.97);--glass-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 28px rgba(0,0,0,.45);--dim:rgba(0,0,0,.5)}}
-:root[data-theme="dark"]{color-scheme:dark;
+:root[data-theme="dark"]{color-scheme:dark;--ga:#F39D92;--gb:#64C67B;--gc:#91B9E4;--gd:#D3A5D9;
   --canvas:#1C1C1A;--current:#262623;--field:#2E2D2A;--fill:#BAA877;--text:#F2F0EA;--secondary:#B0AEA5;--caption:#8E8D87;--present:#7CCB8F;--danger:#E59A8C;--on-color:#1C1C1A; /* tell-ok: CA Design System tokens (dark) */
   --glass:rgba(44,44,41,.66);--glass-hi:rgba(58,58,54,.97);--glass-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 28px rgba(0,0,0,.45);--dim:rgba(0,0,0,.5)}
 *{box-sizing:border-box}
@@ -115,6 +116,7 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .fld+.box{margin-top:6px}
 .g-acct{grid-template-columns:22px minmax(0,1fr) auto}      /* key | account | password */
 .ic{color:var(--secondary);display:grid;place-items:center}
+.gA{color:var(--ga)!important}.gB{color:var(--gb)!important}.gC{color:var(--gc)!important}.gD{color:var(--gd)!important}
 .go{width:18px;height:18px;color:var(--caption)}
 .me{font-weight:600}
 /* An update not yet seen: a Strong Yellow dot in the margin, as Mail's unread dot (not for the person who made it) */
@@ -407,6 +409,8 @@ const canDoc = (ev, type) => isLead() || (['member', 'gl'].includes(V().type) &&
 const linked = s => esc(s).replace(/https?:\/\/[^\s<"]+/g, u => `<a class="lk" href="${u}" target="_blank" rel="noopener">${u}</a>`);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const ic = (n, c = '') => `<svg class="i ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+// A small group's symbol in its own colour: A red, B green, C blue, D purple, so MC Group A and MC Group B look different
+const gsym = g => sym(SYM[kind(g)], g, 'ic g' + g.slice(-1));
 const sym = (n, label, c = 'ic') => `<span class="${c}"${label ? ` role="img" aria-label="${esc(label)}"` : ''}>${ic(n)}</span>`;
 const gname = g => g === 'All' ? 'Everyone' : esc(g).replace(/ Group /, ' Group&nbsp;');
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
@@ -450,7 +454,7 @@ const order = (ev, t) => !t.row ? '0' + (t.date || '') : '1' + String(ev.rows.fi
 const sorted = (ev, list) => list.map((t, i) => [t, i]).sort((a, b) => order(ev, a[0]).localeCompare(order(ev, b[0])) || a[1] - b[1]).map(x => x[0]);
 // The tasks a duty group sees: its own and Everyone's, in the event's own order
 const groupTasks = (ev, g) => ev.tasks.filter(t => !t.role && (t.to.includes(g) || t.to.includes('All')));
-const owner = t => t.to.includes('All') ? sym('all', 'Everyone') : t.to.length ? sym(SYM[kind(t.to[0])], t.to[0]) : `<span class="ic">${nobody()}</span>`;
+const owner = t => t.to.includes('All') ? sym('all', 'Everyone') : t.to.length ? gsym(t.to[0]) : `<span class="ic">${nobody()}</span>`;
 const names = t => { if (t.to.includes('All')) return ''; const v = V();
   return `<span class="who">${t.names.length ? t.names.map(n => `<span class="nw${n === v.name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`; };
 const remark = t => t.remark ? `<span class="cap">${esc(t.remark)}</span>` : '';
@@ -612,14 +616,14 @@ function yourPart(ev, ed) {
   if (type === 'lead') {
     // Duty groups: who is on duty, with the number of tasks still without a name. Their tasks are in Tasks below.
     const rows = ev.groups.map(gr => { const g = gr.name, n = openCount(ev, g), cov = gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
-      if (ed) return `<div class="row g-p" tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto">${sym(SYM[kind(g)], kind(g))}<span><span class="fl">${pick(`dg:${g}`, gname(g), dutyOpts(ev, kind(g), g), 'Group')}</span>${cov}</span>${rmB('askgroup:' + g, 'Remove duty group')}</div>`;
-      return `<div class="row g-p" style="grid-template-columns:22px minmax(0,1fr) auto">${sym(SYM[kind(g)], kind(g))}<span>${gname(g)}${cov}</span><span>${n ? badge(n) : ''}</span></div>`; }).join('');
+      if (ed) return `<div class="row g-p" tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto">${gsym(g)}<span><span class="fl">${pick(`dg:${g}`, gname(g), dutyOpts(ev, kind(g), g), 'Group')}</span>${cov}</span>${rmB('askgroup:' + g, 'Remove duty group')}</div>`;
+      return `<div class="row g-p" style="grid-template-columns:22px minmax(0,1fr) auto">${gsym(g)}<span>${gname(g)}${cov}</span><span>${n ? badge(n) : ''}</span></div>`; }).join('');
     return `<section class="sec"><p class="sh">Duty Groups</p><div class="list">${rows}${ed ? addB('menu:addgroup', 'Add Duty Group') : ''}</div>${!rows && !ed ? '<p class="empty">No duty groups yet</p>' : ''}</section>` + (ed ? (isDay(ev) ? `<section class="sec"><p class="sh">Rundown</p>${runEdit(ev)}</section>` : '') + allTasks(ev, true) : isDay(ev) ? daySec(ev) : allTasks(ev, false));
   }
   // Teacher: who is responsible
   const who = ev.groups.map(gr => { const g = gr.name, ns = [...new Set(ev.tasks.filter(t => t.to.includes(g)).flatMap(t => t.names))];
     const lines = ns.map(n => `<span class="nw">${esc(n)}</span>`);
-    return `<div class="row g-p top">${sym(SYM[kind(g)], kind(g))}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('、')}</span>` : ''}</span></div>`; }).join('');
+    return `<div class="row g-p top">${gsym(g)}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('、')}</span>` : ''}</span></div>`; }).join('');
   return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + (isDay(ev) ? daySec(ev) : allTasks(ev, false));
 }
 // A group's members: attendance | name, time, Group Lead or Acting Group Lead | ›. Each is ticked one by one. The row opens their tasks.
@@ -705,7 +709,7 @@ function pMembers() {
       <button class="row g-ic" data-a="group:Event Lead">${sym('flag', '')}<span>Event Lead</span><span class="t">${CHAIRS.length}</span>${ic('chev-r', 'go')}</button>
       <button class="row g-ic" data-a="group:Admin">${sym('key', '')}<span>Admin</span><span class="t">${ADMINS.length}</span>${ic('chev-r', 'go')}</button>
       <button class="row g-ic" data-a="group:Teacher">${sym('teacher', '')}<span>Teacher</span><span></span>${ic('chev-r', 'go')}</button></div></section>
-    <section class="sec"><p class="sh">Groups</p><div class="list">${ALL_GROUPS.map(g => `<button class="row g-ic" data-a="group:${g}">${sym(SYM[kind(g)], kind(g))}<span>${gname(g)}</span><span class="t">${members(g).length}</span>${ic('chev-r', 'go')}</button>`).join('')}</div></section>`};
+    <section class="sec"><p class="sh">Groups</p><div class="list">${ALL_GROUPS.map(g => `<button class="row g-ic" data-a="group:${g}">${gsym(g)}<span>${gname(g)}</span><span class="t">${members(g).length}</span>${ic('chev-r', 'go')}</button>`).join('')}</div></section>`};
 }
 function pAccount(id) {
   const ed = S.edit, bar = editBar(true);
@@ -777,7 +781,7 @@ function menuItems(k, arg) {
     const guests = ev.guests && unread(ev, {type: 'guests'}).length ? [[`addsay:${arg}:guests`, 'guests', 'Guest List']] : [];
     return [[`addsay:${arg}:line`, 'line', 'MC Line'], [`addsay:${arg}:cue`, 'cue', 'Stage Direction'], ...lists, ...guests]; }
   if (k === 'addtask') return [['addtask:date', 'calendar', 'Before the Event'], ...ev.rows.map(r => [`addtask:row:${r.id}`, 'list', [r.time, r.title].filter(Boolean).join(' ')])];
-  if (k === 'addgroup') return ['MC', 'Backstage', 'Reception'].flatMap(kk => rotation(ev, kk).filter(x => !ev.groups.some(y => y.name === x.g)).map((x, i) => [`addgroup:${x.g}`, SYM[kk], `${x.g}${i === 0 ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}`]));
+  if (k === 'addgroup') return ['MC', 'Backstage', 'Reception'].flatMap(kk => rotation(ev, kk).filter(x => !ev.groups.some(y => y.name === x.g)).map((x, i) => [`addgroup:${x.g}`, SYM[kk] + ':g' + x.g.slice(-1), `${x.g}${i === 0 ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}`]));
   return [];
 }
 
@@ -811,7 +815,7 @@ function render() {
 function layer() {
   let m = '';
   if (S.menu) { const items = menuItems(S.menu.k, S.menu.arg);
-    m = `<div class="mbg" data-a="closemenu"></div><div class="menu glass" role="menu" style="left:${S.menu.x}px;${S.menu.up ? `bottom:${S.menu.y}px` : `top:${S.menu.y}px`};max-height:${S.menu.h}px">${items.map(([a, i, l]) => `<button role="menuitem" data-a="${a}">${ic(i)}<span>${esc(l)}</span></button>`).join('')}</div>`; }
+    m = `<div class="mbg" data-a="closemenu"></div><div class="menu glass" role="menu" style="left:${S.menu.x}px;${S.menu.up ? `bottom:${S.menu.y}px` : `top:${S.menu.y}px`};max-height:${S.menu.h}px">${items.map(([a, i, l]) => `<button role="menuitem" data-a="${a}">${ic(...i.split(':'))}<span>${esc(l)}</span></button>`).join('')}</div>`; }
   const al = S.alert ? `<div class="alert" role="alertdialog" aria-modal="true"><div><h2>${esc(S.alert.t)}</h2><p>${esc(S.alert.m)}</p><div class="b"><button data-a="keep">${esc(S.alert.no || 'Cancel')}</button><button class="d" data-a="${S.alert.act}">${esc(S.alert.verb)}</button></div></div></div>` : '';
   lay.innerHTML = sheet() + m + al + (S.toast ? `<div class="toast glass" role="status">${esc(S.toast)}</div>` : '');
   document.documentElement.classList.toggle('locked', !!(S.sheet || S.menu || S.alert));
