@@ -257,7 +257,7 @@ function stamp(old, nw, by) {
   const o = old || {};
   FIELDS.forEach((f) => { if (J(o[f]) !== J(nw[f])) bump("f:" + (f === "support" ? "leading" : f)); });
   const byId = (list) => new Map((list || []).map((x) => [x.id, J(x)]));
-  const diff = (oldList, newList, k) => { const m = byId(oldList); let c = false; (newList || []).forEach((x) => { if (m.get(x.id) !== J(x)) { bump(k + ":" + x.id); c = true; } }); return c || (oldList || []).length !== (newList || []).length; };
+  const diff = (oldList, newList, k) => { const m = byId(oldList); let c = false; (newList || []).forEach((x) => { if (m.get(x.id) !== J(x)) { bump(k + ":" + x.id); c = true; } }); const ids = (l) => J((l || []).map((x) => x.id)); return c || ids(oldList) !== ids(newList); };
   if (diff((o.tasks || []).filter((t) => !t.role), (nw.tasks || []).filter((t) => !t.role), "t")) any = true;
   const says = (e) => (e.rows || []).flatMap((r) => r.say || []);
   const mcs = J(o.mcs || []) !== J(nw.mcs || []);

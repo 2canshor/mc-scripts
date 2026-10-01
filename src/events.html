@@ -103,9 +103,15 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .g-ev{grid-template-columns:var(--dw,max-content) minmax(0,1fr) 18px}       /* date | event | › */
 .g-kv{grid-template-columns:4.2em minmax(0,1fr) 24px}       /* class | name | − */
 .g-opt{grid-template-columns:minmax(0,1fr) 22px}
-.sheet .g-tme{grid-template-columns:5.2em minmax(0,1fr) 24px}
+.sheet .g-tme{grid-template-columns:5.2em minmax(0,1fr) auto}
+.sheet .sbar+.sec{margin-top:0}
+.sheet .list+.sec{margin-top:20px}
+.sheet .sec.addsec{margin-top:4px}
 /* Who a task is for shows when it is for Everyone, or while the task is being edited */
 .own:not(.all){display:none}
+/* The Rundown line a task is on, named above the task (in Edit, chosen there) */
+.lnm{display:block;font-size:15px;color:var(--secondary);line-height:1.45}
+.lpk{font-size:15px;color:var(--secondary);margin-bottom:2px}
 .g-tme:focus-within .own{display:flex}
 .fld+.box{margin-top:6px}
 .g-acct{grid-template-columns:22px minmax(0,1fr) auto}      /* key | account | password */
@@ -130,7 +136,7 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .tk>.ic svg.i{width:18px;height:18px}
 /* Rundown: time | line, its place and its tasks */
 .ln{display:grid;grid-template-columns:var(--tc) minmax(0,1fr);column-gap:14px;align-items:start;width:calc(100% + 24px);margin:0 -12px;padding:10px 12px;border-radius:12px}
-.ln.e{grid-template-columns:var(--tc) minmax(0,1fr) 24px}
+.ln.e{grid-template-columns:var(--tc) minmax(0,1fr) auto}
 .ln.current{background:var(--current)}
 .ln>.t{padding-top:1px}
 .lt{font-weight:600}
@@ -188,25 +194,28 @@ textarea.fld{display:inline-block}
 .fl>:first-child{margin-left:-.45em}
 /* Title in Edit: "date｜name" wraps as in reading. The name field runs on from the date (text-indent) and under it. */
 .tline{position:relative}
-.tpre{position:absolute;left:0;top:2px;z-index:1;display:inline-block;white-space:nowrap}
+.tpre{position:absolute;left:0;top:0;z-index:1;display:inline-block;white-space:nowrap}
 .tpre .sep{margin-left:.3em}
-.tpre .dt.f{margin-left:0;padding:0}
-.tpre .dt.f.empty{background:transparent}
 .tline .tname{display:block;box-sizing:border-box;width:calc(100% + .9em);max-width:none}
 .pw .fld{max-width:none;white-space:nowrap}
 .tm{font-variant-numeric:tabular-nums}
 .tch{display:flex;flex-direction:column;gap:6px}
 .fld.muted{color:var(--secondary)}
-.dt{position:relative;display:inline-flex;align-items:center;border-radius:8px;font-variant-numeric:tabular-nums;line-height:1.5}
-.dt input{position:absolute;inset:0;opacity:0;width:100%;height:100%;font-size:16px;cursor:pointer}
-.dt .ph,.pk .ph{color:var(--caption)}
+.pk .ph{color:var(--caption)}
 .pk{position:relative;display:inline-flex;align-items:center;gap:6px;border-radius:8px;line-height:1.5;max-width:calc(100% - .9em)}
 .pk svg.i{width:14px;height:14px;color:var(--caption)}
 .pk select{position:absolute;inset:0;opacity:0;width:100%;font-size:16px;cursor:pointer}
 .ib{width:32px;height:32px;margin:-4px -4px -4px 0;display:grid;place-items:center;border-radius:999px;flex:none;justify-self:end}
 .ib.rm{color:var(--danger);visibility:hidden}
-*:focus-within>.ib.rm{visibility:visible}
-@media (hover:hover) and (pointer:fine){*:hover>.ib.rm{visibility:visible}}
+*:focus-within>.ib.rm,*:focus-within>.rg>.ib.rm{visibility:visible}
+@media (hover:hover) and (pointer:fine){*:hover>.ib.rm,*:hover>.rg>.ib.rm{visibility:visible}}
+/* Delete and move, at the end of a row in Edit; the handle is always there, as in Apple's lists */
+.rg{display:flex;align-items:center;justify-self:end;margin-right:-4px}
+.rg>.ib{margin:-4px 0}
+.ib.grip{color:var(--caption);touch-action:none;cursor:grab}
+.ib.grip svg.i{width:20px;height:20px}
+.lift{position:relative;z-index:3;background:var(--canvas);box-shadow:var(--glass-shadow);transition:none!important}
+.moving-list>[data-drag]:not(.lift){transition:transform .18s ease}
 [tabindex="-1"]{outline:none}
 .ib.rm svg.i{width:22px;height:22px}
 .ib.eye{color:var(--secondary)}
@@ -225,13 +234,16 @@ textarea.fld{display:inline-block}
 .mcs .f{margin-inline:0}
 /* ---------- Menus: glass, a symbol before each item ---------- */
 .mbg{position:fixed;inset:0;z-index:39}
-.menu{position:fixed;z-index:40;min-width:220px;max-width:calc(100vw - 48px);padding:6px;border-radius:18px;display:flex;flex-direction:column;background:var(--glass-hi)}
+.menu{position:fixed;z-index:40;min-width:220px;max-width:calc(100vw - 48px);padding:6px;border-radius:18px;display:flex;flex-direction:column;background:var(--glass-hi);overflow-y:auto;overscroll-behavior:contain}
+/* While a sheet, a menu or an alert is open, only it scrolls: the page behind stays where it is */
+html.locked,html.locked body{overflow:hidden}
+.mbg,.dimbg,.alert{touch-action:none}
 .menu button{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;font-size:16px}
 .menu button svg.i{color:var(--secondary)}
 @media (hover:hover){.menu button:hover{background:var(--field)}}
 /* ---------- Sheets ---------- */
 .dimbg{position:fixed;inset:0;z-index:20;background:var(--dim);display:flex;align-items:flex-end;justify-content:center}
-.sheet{width:min(560px,100%);max-height:90vh;overflow:auto;background:var(--canvas);border-radius:24px 24px 0 0;padding:12px 36px calc(28px + env(safe-area-inset-bottom,0px))}
+.sheet{width:min(560px,100%);max-height:90vh;overflow:auto;overscroll-behavior:contain;touch-action:pan-y;background:var(--canvas);border-radius:24px 24px 0 0;padding:12px 36px calc(28px + env(safe-area-inset-bottom,0px))}
 .sheet.tall{min-height:72vh}
 @media (min-width:700px){.dimbg{align-items:center}.sheet{border-radius:24px}}
 .sbar{display:grid;grid-template-columns:1fr minmax(0,auto) 1fr;column-gap:8px;align-items:center;min-height:52px;margin-bottom:12px}
@@ -595,6 +607,7 @@ if (typeof module !== "undefined") module.exports = ScriptGen;
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
 <symbol id="i-line" viewBox="0 0 24 24"><path d="M14 14a2 2 0 0 0 2-2V8h-2"/><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M8 14a2 2 0 0 0 2-2V8H8"/></symbol>
 <symbol id="i-cue" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+<symbol id="i-grip" viewBox="0 0 24 24"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></symbol>
 <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
 </svg>
 
@@ -681,8 +694,16 @@ const nobody = () => `<span class="nob" role="img" aria-label="No one yet">${ic(
 const badge = n => `<span class="badge" aria-label="${n} without a name">${n}</span>`;
 const toast = m => { S.toast = m; layer(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; layer(); }, 2400); };
 const hasScript = ev => ev.rows.some(r => r.say.length);
+// When a task happens: its date before the day, or its Rundown line's time. The time column holds only dates and times;
+// the line itself is named above the task, so a line without a time still shows where the task is.
 const whenOf = (ev, t) => !t.row ? md(t.date || '') : (rowOf(ev, t.row) || {}).time || '';
+const lineOf = (ev, t) => t.row ? `<span class="lnm">${esc((rowOf(ev, t.row) || {}).title || '')}</span>` : '';
+const lineTime = (ev, t) => t.row ? (rowOf(ev, t.row) || {}).time || '' : '';
+// Order: by date, then by Rundown line; tasks of one date or one line keep the order they were put in (dragged by their handle)
 const order = (ev, t) => !t.row ? '0' + (t.date || '') : '1' + String(ev.rows.findIndex(r => r.id === t.row)).padStart(3, '0');
+const sorted = (ev, list) => list.map((t, i) => [t, i]).sort((a, b) => order(ev, a[0]).localeCompare(order(ev, b[0])) || a[1] - b[1]).map(x => x[0]);
+// The tasks a duty group sees: its own and Everyone's, in the event's own order
+const groupTasks = (ev, g) => ev.tasks.filter(t => !t.role && (t.to.includes(g) || t.to.includes('All')));
 const owner = t => t.to.includes('All') ? sym('all', 'Everyone') : t.to.length ? sym(SYM[kind(t.to[0])], t.to[0]) : `<span class="ic">${nobody()}</span>`;
 const names = t => { if (t.to.includes('All')) return ''; const v = V();
   return `<span class="who">${t.names.length ? t.names.map(n => `<span class="nw${n === v.name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`; };
@@ -718,13 +739,30 @@ const editBar = (canEdit, extra = '') => ({
 // Fields: a placeholder names what goes there; no examples. A short field is as wide as its text (MC Scripts' fit).
 const fld = (b, v, ph, cls = '') => `<textarea class="fld f fit ${cls}" rows="1" data-b="${b}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(v)}</textarea>`;
 const box = (b, v, ph, cls = 'f') => `<textarea class="fld box ${cls}" rows="1" data-b="${b}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(v)}</textarea>`;
-const dateF = (b, v, ph = 'Date', short) => `<label class="dt f${v ? '' : ' empty'}"><span class="${v ? '' : 'ph'}">${v ? esc(short ? md(v) : v) : ph}</span><input type="date" data-b="${b}" value="${v ? iso(v) : ''}" aria-label="${ph}"></label>`;
+// A date is typed as a time is (1006, 10/6 or 26/10/06 all become 26/10/06; a task's date shows as 10/06) and checked when the field is left
+const dateF = (b, v, ph = 'Date', short) => `<textarea class="fld f fit tm" rows="1" data-b="${b}" data-date="${short ? 'short' : 'full'}" inputmode="numeric" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(short ? md(v) : v)}</textarea>`;
+// Without a year, the year that puts the date nearest the event (or today)
+const normDate = (raw, ref) => { const s = String(raw).trim().replace(/日/g, '').replace(/[年月\-.\s]+/g, '/').replace(/^\/+|\/+$/g, ''); if (!s) return '';
+  let y, m, d, x;
+  if ((x = /^(\d{2}|\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(s))) [y, m, d] = [+x[1] % 100, +x[2], +x[3]];
+  else if ((x = /^(\d{1,2})\/(\d{1,2})$/.exec(s))) [m, d] = [+x[1], +x[2]];
+  else if (/^\d{8}$/.test(s)) [y, m, d] = [+s.slice(2, 4), +s.slice(4, 6), +s.slice(6)];
+  else if (/^\d{6}$/.test(s)) [y, m, d] = [+s.slice(0, 2), +s.slice(2, 4), +s.slice(4)];
+  else if (/^\d{3,4}$/.test(s)) [m, d] = [+s.slice(0, -2), +s.slice(-2)];
+  else return null;
+  const at = (yy, mm, dd) => Date.UTC(2000 + yy, mm - 1, dd), r = ref || TODAY, rt = at(+r.slice(0, 2), +r.slice(3, 5), +r.slice(6, 8));
+  if (y === undefined) y = [-1, 0, 1].map(k => +r.slice(0, 2) + k).sort((a, b) => Math.abs(at(a, m, d) - rt) - Math.abs(at(b, m, d) - rt))[0];
+  const dt = new Date(at(y, m, d));
+  if (m < 1 || m > 12 || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+  return [y, m, d].map(n => String(n).padStart(2, '0')).join('/'); };
 // A time is typed (0750, 7:50 or 7.50 all become 07:50) and checked when the field is left
 const timeF = (b, v, ph = 'Time') => `<textarea class="fld f fit tm" rows="1" data-b="${b}" data-time inputmode="numeric" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(v)}</textarea>`;
 const normTime = raw => { const t = String(raw).trim().replace(/[：.\s]/g, ':'); if (!t) return '';
   let m = /^(\d{1,2}):(\d{1,2})$/.exec(t), h, mi;
   if (m) { h = +m[1]; mi = +m[2]; } else if (/^\d{1,4}$/.test(t)) { h = +(t.length > 2 ? t.slice(0, t.length - 2) : t); mi = t.length > 2 ? +t.slice(-2) : 0; } else return null;
   return h < 24 && mi < 60 ? `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}` : null; };
+// A handle at the side of a row in Edit, as in Apple's lists: drag it to move the row
+const grip = label => `<button class="ib grip" data-grip aria-label="${esc(label)}">${ic('grip')}</button>`;
 const pick = (b, shown, opts, ph) => `<label class="pk f${shown ? '' : ' empty'}"><span${shown ? '' : ' class="ph"'}>${shown || ph}</span>${ic('chev-ud')}<select data-b="${b}" aria-label="${esc(ph)}">${opts}</select></label>`;
 const rmB = (act, label) => `<button class="ib rm" data-a="${act}" aria-label="${esc(label)}">${ic('minus-c')}</button>`;
 const addB = (act, label, cols) => `<button class="row add${cols ? ' cols' : ''}" data-a="${act}"${cols ? ` style="--c1:${cols}"` : ''}>${ic('plus-c')}<span>${label}</span></button>`;
@@ -787,25 +825,28 @@ function facts(ev, ed) {
 }
 // The time column: a date (before the day) or a time (on the day). Today, the next one is marked.
 function taskRows(ev, tasks, render) {
-  const list = [...tasks].sort((a, b) => order(ev, a).localeCompare(order(ev, b)));
-  const next = ev.date === TODAY ? list.find(t => t.row && whenOf(ev, t) >= NOW()) : null;
+  const list = sorted(ev, tasks);
+  const next = ev.date === TODAY ? list.find(t => lineTime(ev, t) >= NOW()) : null;
   return twoGroups(list, t => render(t, whenOf(ev, t), t === next));
 }
 // Before the Event (a date) and On the Day (a Rundown line), each under its own heading, as on the Rundown
 const twoGroups = (list, one) => { const b = list.filter(t => !t.row), d = list.filter(t => t.row);
   return (b.length ? `<p class="sub">Before the Event</p>${b.map(one).join('')}` : '') + (d.length ? `<p class="sub">On the Day</p>${d.map(one).join('')}` : ''); };
+// The same two groups as a sheet's own sections (a duty group's Tasks)
+const taskSecs = (list, one) => { const b = list.filter(t => !t.row), d = list.filter(t => t.row), sec = (n, l) => l.length ? `<section class="sec"><p class="sh">${n}</p><div class="list">${l.map(one).join('')}</div></section>` : '';
+  return sec('Before the Event', b) + sec('On the Day', d); };
 function yourPart(ev, ed) {
   const v = V(), type = vt(ev);
   if (type === 'member') {
     const mine = ev.tasks.filter(t => !t.role && forMe(t)), roles = rolesOf(ev, v.group, v.name);
     const render = (t, when, now) => { const others = t.to.includes('All') ? [] : t.names.filter(n => n !== v.name);
-      return `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${esc(t.text)}${remark(t)}${others.length ? `<span class="who">${others.map(n => `<span class="nw">${esc(n)}</span>`).join('、')}</span>` : ''}</span></div>`; };
+      return `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${others.length ? `<span class="who">${others.map(n => `<span class="nw">${esc(n)}</span>`).join('、')}</span>` : ''}</span></div>`; };
     // A Role is a task for the whole event: a row of its own, without a time
     return `<section class="sec"><p class="sh">My Tasks</p><div class="list">${taskRows(ev, mine, render)}</div>${!mine.length ? '<p class="empty">No tasks yet</p>' : ''}</section>`;
   }
   if (type === 'gl') {
-    const g = v.group, mine = tasksOf(ev, g).concat(tasksOf(ev, 'All'));
-    const render = (t, when, now) => t.to.includes('All') ? `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${esc(t.text)}${remark(t)}<span class="who">Everyone</span></span></div>` : `<button class="row g-tm${now ? ' current' : ''}" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
+    const g = v.group, mine = groupTasks(ev, g);
+    const render = (t, when, now) => t.to.includes('All') ? `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}<span class="who">Everyone</span></span></div>` : `<button class="row g-tm${now ? ' current' : ''}" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
     return `<section class="sec"><p class="sh">Tasks</p>${mine.length ? `<div class="list">${taskRows(ev, mine, render)}</div>` : '<p class="empty">No tasks yet</p>'}</section>` + memberList(ev, g);
   }
   if (type === 'lead') {
@@ -852,7 +893,7 @@ function pRundown(ev) {
   const shown = t => !t.role;
   const tk = t => `<div class="tk">${dot(`${ev.id}:t:${t.id}`)}${owner(t)}<span>${esc(t.text)}${remark(t)}${names(t)}</span></div>`;
   if (ed) {
-    const lines = ev.rows.map(r => `<div class="ln e"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span>${rmB('askrow:' + r.id, 'Delete line')}</div>`).join('');
+    const lines = ev.rows.map(r => `<div class="ln e" data-drag="rows" data-id="${r.id}"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span><span class="rg">${rmB('askrow:' + r.id, 'Delete line')}${grip('Move line')}</span></div>`).join('');
     return {...docBar(true), title: 'Rundown', body: docHead('Rundown', ev) + `<section class="sec"><div class="list">${lines}${addB('addrow', 'Add Line', 'var(--tc)')}</div></section>`};
   }
   const before = ev.tasks.filter(t => !t.row && shown(t)).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -944,20 +985,22 @@ function sheet() {
   // A duty group: which group, and its tasks. Laid out like New Event. Read-only unless the event is in Edit.
   if (s.k === 'group') {
     const g = s.g, ed = s.edit, isNew = s.isNew, gr = ev.groups.find(x => x.name === g);
-    const tasks = g ? tasksOf(ev, g).concat(tasksOf(ev, 'All')).sort((a, b) => order(ev, a).localeCompare(order(ev, b))) : [];
+    const tasks = g ? sorted(ev, groupTasks(ev, g)) : [];
     const groupOpts = ['MC', 'Backstage', 'Reception'].map(k => `<optgroup label="${k}">${rotation(ev, k).filter(x => x.g === g || !ev.groups.some(y => y.name === x.g)).map((x, i) => `<option value="${x.g}"${x.g === g ? ' selected' : ''}>${x.g}${i === 0 && x.g !== g ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}</option>`).join('')}</optgroup>`).join('');
-    const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc(r.time + ' ' + r.title)}</option>`).join('');
-    const taskE = t => `<div class="row g-tme"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : pick(`task:${t.id}:row`, esc(whenOf(ev, t)), lineOpts(t), 'Line')}</span>
-      <span>${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="fl own${t.to.includes('All') ? ' all' : ''}" style="margin-top:4px;font-size:15px">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : gname(g), `<option value="${esc(g)}"${t.to.includes('All') ? '' : ' selected'}>${esc(g)}</option><option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`, 'For')}</span><span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span></span>${rmB('deltask:' + t.id, 'Delete task')}</div>`;
-    const taskR = t => `<div class="row g-tm">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${whenOf(ev, t)}</span><span>${esc(t.text)}${remark(t)}${t.to.includes('All') ? '<span class="who">Everyone</span>' : names(t)}</span></div>`;
-    const title = isNew ? 'New Duty Group' : g === 'All' ? 'Everyone' : 'Duty Group';
+    const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
+    // A task moves only among the tasks of its own date or its own Rundown line
+    const taskE = t => `<div class="row g-tme" data-drag="${t.row ? 'r:' + t.row : 'd:' + (t.date || '')}" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${whenOf(ev, t)}</span>`}</span>
+      <span>${t.row ? `<span class="fl lpk">${pick(`task:${t.id}:row`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="fl own${t.to.includes('All') ? ' all' : ''}" style="margin-top:4px;font-size:15px">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : gname(g), `<option value="${esc(g)}"${t.to.includes('All') ? '' : ' selected'}>${esc(g)}</option><option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`, 'For')}</span><span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
+    const taskR = t => `<div class="row g-tm">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${whenOf(ev, t)}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${t.to.includes('All') ? '<span class="who">Everyone</span>' : names(t)}</span></div>`;
+    // The sheet is the group's Tasks: Before the Event and On the Day are its sections, with no Tasks heading above them
+    const subj = `<span class="s2">${gname(g)}${gr && gr.covers ? ` · Covering ${gname(gr.covers)}` : ''}</span>`;
     if (ed) {
-      h = bar(cancel('gcancel'), title, `<button class="nb pri" data-a="gdone"${g ? '' : ' disabled'}>${isNew ? 'Add' : 'Done'}</button>`) +
+      h = bar(cancel('gcancel'), isNew ? 'New Duty Group' : `Tasks${g === 'All' ? subj : ''}`, `<button class="nb pri" data-a="gdone"${g ? '' : ' disabled'}>${isNew ? 'Add' : 'Done'}</button>`) +
         (g === 'All' ? '' : `<div class="list"><div class="row g-p">${sym(g ? SYM[kind(g)] : 'users', 'Group')}<span class="fl">${pick('group', g ? gname(g) : '', `<option value="" disabled ${g ? '' : 'selected'}></option>` + groupOpts, 'Group')}</span></div></div>`) +
-        (g ? `<section class="sec" style="margin-top:20px"><p class="sh">Tasks</p><div class="list">${twoGroups(tasks, taskE)}${addB('menu:addtask', 'Add Task', '5.2em')}</div></section>` : '') +
+        (g ? taskSecs(tasks, taskE) + `<section class="sec addsec"><div class="list">${addB('menu:addtask', 'Add Task', '5.2em')}</div></section>` : '') +
         (g && !isNew ? `<button class="nb glass danger" style="width:100%;margin-top:28px" data-a="gremove">Remove Duty Group</button>` : '');
     } else {
-      h = bar(close, `${gname(g)}${gr && gr.covers ? `<span class="s2">Covering ${gname(gr.covers)}</span>` : ''}`, '') + `<div class="list">${twoGroups(tasks, taskR)}</div>${tasks.length ? '' : '<p class="empty">No tasks yet</p>'}`;
+      h = bar(close, `Tasks${subj}`, '') + (tasks.length ? taskSecs(tasks, taskR) : '<p class="empty">No tasks yet</p>');
     }
   }
   if (s.k === 'assign') {
@@ -1033,9 +1076,10 @@ function render() {
 function layer() {
   let m = '';
   if (S.menu) { const items = menuItems(S.menu.k, S.menu.arg);
-    m = `<div class="mbg" data-a="closemenu"></div><div class="menu glass" role="menu" style="left:${S.menu.x}px;${S.menu.up ? `bottom:${S.menu.y}px` : `top:${S.menu.y}px`}">${items.map(([a, i, l]) => `<button role="menuitem" data-a="${a}">${ic(i)}<span>${esc(l)}</span></button>`).join('')}</div>`; }
+    m = `<div class="mbg" data-a="closemenu"></div><div class="menu glass" role="menu" style="left:${S.menu.x}px;${S.menu.up ? `bottom:${S.menu.y}px` : `top:${S.menu.y}px`};max-height:${S.menu.h}px">${items.map(([a, i, l]) => `<button role="menuitem" data-a="${a}">${ic(i)}<span>${esc(l)}</span></button>`).join('')}</div>`; }
   const al = S.alert ? `<div class="alert" role="alertdialog" aria-modal="true"><div><h2>${esc(S.alert.t)}</h2><p>${esc(S.alert.m)}</p><div class="b"><button data-a="keep">${esc(S.alert.no || 'Cancel')}</button><button class="d" data-a="${S.alert.act}">${esc(S.alert.verb)}</button></div></div></div>` : '';
   lay.innerHTML = sheet() + m + al + (S.toast ? `<div class="toast glass" role="status">${esc(S.toast)}</div>` : '');
+  document.documentElement.classList.toggle('locked', !!(S.sheet || S.menu || S.alert));
   fitAll(lay);
 }
 // MC Scripts' fit: a field is as wide as its text (or its placeholder); it wraps, and grows in height, only at the edge
@@ -1046,10 +1090,10 @@ function fit(t) {
     t.style.width = Math.ceil(Math.max(...text.split('\n').map(x => measure.measureText(x).width)) + 2) + 'px'; }
   if (t.tagName === 'TEXTAREA') { const cs = getComputedStyle(t), pad = cs.boxSizing === 'content-box' ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) : 0; t.style.height = 'auto'; t.style.height = (t.scrollHeight - pad) + 'px'; }
 }
-const fitAll = root => { root.querySelectorAll('.tline').forEach(indent); root.querySelectorAll('textarea.fld').forEach(fit); };
-// The name starts where "date｜" ends
+const fitAll = root => { root.querySelectorAll('textarea.fld').forEach(fit); root.querySelectorAll('.tline').forEach(indent); };
+// The name starts where "date｜" ends (the date sized first), and then takes the height that leaves it
 function indent(l) { const pre = l.querySelector('.tpre'), t = l.querySelector('.tname'); if (!pre || !t) return;
-  const pad = parseFloat(getComputedStyle(t).paddingLeft); t.style.textIndent = (pre.getBoundingClientRect().right - t.getBoundingClientRect().left - pad + 4) + 'px'; }
+  const pad = parseFloat(getComputedStyle(t).paddingLeft); t.style.textIndent = (pre.getBoundingClientRect().right - t.getBoundingClientRect().left - pad + 4) + 'px'; fit(t); }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitAll(app); fitAll(lay); });
 // Past the top, content fades under the controls; once the large title has gone, its name shows in the bar
 function onScroll() {
@@ -1073,14 +1117,15 @@ function getVal(b) {
   if (p[0] === 'row') return rowOf(ev, p[1])[p[2]] || '';
   if (p[0] === 'ev') return ev[p[1]] || '';
   if (p[0] === 'draft') return S.draft[p[1]] || '';
+  if (p[0] === 'task') return (ev.tasks.find(x => x.id === p[1]) || {})[p[2]] || '';
   return '';
 }
 function setVal(b, val, el) {
   const p = b.split(':'), ev = cur() && cur().ev ? EV() : null, list = v => v.split(/[、,，]/).map(x => x.trim()).filter(Boolean);
-  const date = el && el.type === 'date' ? fromIso(val) : null;
+  const date = el && el.dataset && el.dataset.date !== undefined ? val : null;
   switch (p[0]) {
-    case 'ev': ev[p[1]] = p[1] === 'date' ? date : p[1] === 'leading' || p[1] === 'support' ? list(val) : val; return el && (el.type === 'date' || el.type === 'time' || el.tagName === 'SELECT');
-    case 'draft': S.draft[p[1]] = date ?? val; { const btn = lay.querySelector('[data-a="create"]'); if (btn) btn.disabled = !(S.draft.name.trim() && S.draft.date && S.draft.asmTime); } return el.type === 'date' || el.type === 'time';
+    case 'ev': ev[p[1]] = p[1] === 'date' ? date : p[1] === 'leading' || p[1] === 'support' ? list(val) : val; return !!el && el.tagName === 'SELECT';
+    case 'draft': S.draft[p[1]] = date ?? val; { const btn = lay.querySelector('[data-a="create"]'); if (btn) btn.disabled = !(S.draft.name.trim() && S.draft.date && S.draft.asmTime); } return false;
     case 'task': { const t = ev.tasks.find(x => x.id === p[1]); if (p[2] === 'to') { t.to = [val]; t.names = []; return true; } t[p[2]] = p[2] === 'date' ? date : val; return p[2] === 'date' || p[2] === 'row'; }
     case 'row': rowOf(ev, p[1])[p[2]] = val; return p[2] === 'time';
     case 'say': rowOf(ev, p[1]).say.find(s => s.id === p[2])[p[3]] = val; return p[3] === 'sp';
@@ -1130,8 +1175,8 @@ document.addEventListener('click', e => {
     case 'cancel': if (snapOf() === S.snap) { S.edit = false; render(); catchUp(); } else { S.alert = {t: 'Discard Changes?', m: 'Your changes will be lost.', no: 'Keep Editing', verb: 'Discard', act: 'discard'}; layer(); } break;
     case 'keep': S.alert = null; layer(); break;
     case 'discard': restore(S.snap); S.alert = null; S.edit = false; render(); catchUp(); break;
-    case 'menu': { const rc = b.getBoundingClientRect(), up = rc.bottom > innerHeight * .6, x = Math.min(rc.left, innerWidth - 244);
-      S.menu = {k: r[0], arg: r.slice(1).join(':'), x: Math.max(16, x), y: up ? innerHeight - rc.top + 6 : rc.bottom + 6, up}; layer(); break; }
+    case 'menu': { const rc = b.getBoundingClientRect(), up = rc.top > innerHeight - rc.bottom, x = Math.min(rc.left, innerWidth - 244);
+      S.menu = {k: r[0], arg: r.slice(1).join(':'), x: Math.max(16, x), y: up ? innerHeight - rc.top + 6 : rc.bottom + 6, up, h: Math.floor((up ? rc.top : innerHeight - rc.bottom) - 6 - 16)}; layer(); break; }
     case 'closemenu': S.menu = null; layer(); break;
     case 'sheet': { const [k, x, y] = arg.split(':'); S.q = '';
       if (k === 'new') S.draft = {name: '', date: '', asmTime: '', venue: '', leading: ''};
@@ -1206,7 +1251,8 @@ document.addEventListener('input', e => {
   if (d.q !== undefined) { if (e.isComposing) return; S.q = t.value; const pos = t.selectionStart; layer(); const f = lay.querySelector('[data-q]'); f.focus(); f.setSelectionRange(pos, pos); return; }
   if (!d.b) return;
   if (t.tagName === 'TEXTAREA') fit(t);
-  if (d.time !== undefined) return;  // a time is set when its field is left
+  if (t.closest('.tline')) indent(t.closest('.tline'));
+  if (d.time !== undefined || d.date !== undefined) return;  // a time or a date is set when its field is left
   const again = setVal(d.b, t.value, t);
   if (again) { if (S.sheet && lay.contains(t)) layer(); else render(); }
 });
@@ -1223,12 +1269,13 @@ document.addEventListener('focusout', e => { const m = e.target.closest && e.tar
   setTimeout(() => { const ev = EV(); if (!ev || m.contains(document.activeElement)) return; ev.leading = ev.leading.filter(Boolean); ev.support = ev.support.filter(Boolean); render(); }, 0); });
 document.addEventListener('focusout', e => { const m = e.target.closest && e.target.closest('[data-mcs]'); if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) setTimeout(() => { const ev = EV(); tidyMcs(ev); if (!m.contains(document.activeElement)) render(); }, 0); });
 document.addEventListener('compositionend', e => { if (e.target.dataset && e.target.dataset.q !== undefined) e.target.dispatchEvent(new Event('input', {bubbles: true})); });
-// A typed time: tidied when the field is left; something that is not a time goes back to what it was
+// A typed time or date: tidied when the field is left; something that is not a time or a date goes back to what it was
 document.addEventListener('change', e => {
-  const t = e.target; if (!t.dataset || t.dataset.time === undefined) return;
-  const v = normTime(t.value), old = getVal(t.dataset.b);
-  t.value = v === null ? old : v; fit(t);
-  if (v !== null && v !== old) setVal(t.dataset.b, v, t);  // no redraw: the field already shows it, and the next field keeps the focus
+  const t = e.target; if (!t.dataset || (t.dataset.time === undefined && t.dataset.date === undefined)) return;
+  const b = t.dataset.b, old = getVal(b), short = t.dataset.date === 'short';
+  const v = t.dataset.date === undefined ? normTime(t.value) : normDate(t.value, b.startsWith('task:') ? EV().date : TODAY);
+  t.value = short ? md(v === null ? old : v) : v === null ? old : v; fit(t); if (t.closest('.tline')) indent(t.closest('.tline'));
+  if (v !== null && v !== old) setVal(b, v, t);  // no redraw: the field already shows it, and the next field keeps the focus
 });
 // The applications sheet: saved when its field is left, read at once by the server
 document.addEventListener('change', async e => {
@@ -1244,6 +1291,59 @@ document.addEventListener('pointermove', e => { if (!sw) return; const dx = e.cl
 document.addEventListener('pointerup', () => { if (!sw) return; const w = sw.w, r = w.firstElementChild; r.style.transition = ''; w.classList.remove('moving');
   if (sw.moved) { const max = w.querySelector('.swa').offsetWidth, open = sw.dx < -max / 2; w.classList.toggle('open', open); r.style.transform = open ? `translateX(${-max}px)` : ''; w.dataset.dragged = '1'; setTimeout(() => delete w.dataset.dragged, 50); }
   sw = null; });
+
+/* ---------- Move a row by its handle (Rundown lines; a duty group's tasks within one date or one line) ---------- */
+// The row lifts and follows the finger; the rows it passes make room; near the top or bottom the list scrolls.
+// The arrow keys move it one place. Only rows with the same data-drag move among each other.
+let DRAG = null;
+function moveRow(kindKey, id, beforeId, afterId) {
+  const ev = EV(); if (!ev) return;
+  const key = kindKey === 'rows' ? 'rows' : 'tasks', list = ev[key], item = list.find(x => x.id === id); if (!item) return;
+  const rest = list.filter(x => x !== item), at = beforeId ? rest.findIndex(x => x.id === beforeId) : rest.findIndex(x => x.id === afterId) + 1;
+  rest.splice(at < 0 ? rest.length : at, 0, item); ev[key] = rest;
+  if (key === 'rows') render(); else layer();
+  focus(`[data-id="${id}"] [data-grip]`);
+}
+const dragSibs = row => [...row.parentElement.children].filter(x => x.dataset && x.dataset.drag === row.dataset.drag);
+const dragKind = row => row.dataset.drag === 'rows' ? 'rows' : 'tasks';
+document.addEventListener('pointerdown', e => {
+  const h = e.target.closest('[data-grip]'), row = h && h.closest('[data-drag]'); if (!row) return;
+  e.preventDefault();
+  const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur();  // a typed time or date is kept first
+  const sibs = dragSibs(row), sc = row.closest('.sheet');
+  DRAG = {row, sibs, from: sibs.indexOf(row), to: sibs.indexOf(row), y0: e.clientY, y: e.clientY, sc, s0: sc ? sc.scrollTop : scrollY, rects: sibs.map(x => x.getBoundingClientRect())};
+  try { h.setPointerCapture(e.pointerId); } catch (x) {}
+  row.classList.add('lift'); row.parentElement.classList.add('moving-list');
+  const loop = () => { if (!DRAG) return; const d = DRAG, top = d.sc ? d.sc.getBoundingClientRect().top : 92, bottom = d.sc ? d.sc.getBoundingClientRect().bottom : innerHeight - 24;
+    const v = d.y < top + 56 ? -Math.ceil((top + 56 - d.y) / 6) : d.y > bottom - 56 ? Math.ceil((d.y - bottom + 56) / 6) : 0;
+    if (v) { if (d.sc) d.sc.scrollTop += v; else scrollBy(0, v); dragMove(); }
+    d.raf = requestAnimationFrame(loop); };
+  DRAG.raf = requestAnimationFrame(loop);
+});
+function dragMove() {
+  const d = DRAG, dy = d.y - d.y0 + ((d.sc ? d.sc.scrollTop : scrollY) - d.s0), r0 = d.rects[d.from];
+  // A row makes room once the moving row covers half of it
+  const mids = d.rects.map(r => r.top + r.height / 2);
+  let to = d.from;
+  for (let i = d.from + 1; i < mids.length; i++) if (r0.bottom + dy > mids[i]) to = i;
+  if (to === d.from) for (let i = d.from - 1; i >= 0; i--) if (r0.top + dy < mids[i]) to = i;
+  d.to = to;
+  d.row.style.transform = `translateY(${dy}px)`;
+  d.sibs.forEach((x, i) => { if (x === d.row) return; x.style.transform = i > d.from && i <= to ? `translateY(${-r0.height}px)` : i < d.from && i >= to ? `translateY(${r0.height}px)` : ''; });
+}
+document.addEventListener('pointermove', e => { if (!DRAG) return; DRAG.y = e.clientY; dragMove(); });
+const dragEnd = () => { if (!DRAG) return; const d = DRAG; DRAG = null; cancelAnimationFrame(d.raf);
+  d.sibs.forEach(x => { x.style.transform = ''; }); d.row.classList.remove('lift'); d.row.parentElement.classList.remove('moving-list');
+  if (d.to === d.from) return;
+  const target = d.sibs[d.to].dataset.id;
+  moveRow(dragKind(d.row), d.row.dataset.id, d.to < d.from ? target : null, d.to > d.from ? target : null); };
+document.addEventListener('pointerup', dragEnd);
+document.addEventListener('pointercancel', dragEnd);
+document.addEventListener('keydown', e => {
+  const h = e.target.closest && e.target.closest('[data-grip]'), row = h && h.closest('[data-drag]'); if (!row || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+  e.preventDefault(); const sibs = dragSibs(row), i = sibs.indexOf(row), j = i + (e.key === 'ArrowUp' ? -1 : 1); if (j < 0 || j >= sibs.length) return;
+  moveRow(dragKind(row), row.dataset.id, j < i ? sibs[j].dataset.id : null, j > i ? sibs[j].dataset.id : null);
+});
 
 /* ---------- Server: sign-in, loading, merging and saving ---------- */
 const store = {
@@ -1277,7 +1377,7 @@ function cacheLoad() {
 // Rebuild the page with new data, but never under the fingers of someone typing or choosing
 function refresh() {
   const a = document.activeElement;
-  if (S.menu || S.alert || (a && (app.contains(a) || lay.contains(a)) && a.matches('input,textarea,select') && a.type !== 'checkbox')) { SYNC.pending = true; return; }
+  if (DRAG || S.menu || S.alert || (a && (app.contains(a) || lay.contains(a)) && a.matches('input,textarea,select') && a.type !== 'checkbox')) { SYNC.pending = true; return; }
   render();
 }
 document.addEventListener('focusout', () => { if (SYNC.pending) setTimeout(() => { if (SYNC.pending) { SYNC.pending = false; refresh(); } }, 200); });
