@@ -116,7 +116,10 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .fld+.box{margin-top:6px}
 .g-acct{grid-template-columns:22px minmax(0,1fr) auto}      /* key | account | password */
 .ic{color:var(--secondary);display:grid;place-items:center}
-.gA{color:var(--ga)!important}.gB{color:var(--gb)!important}.gC{color:var(--gc)!important}.gD{color:var(--gd)!important}
+.gA,.gA svg.i{color:var(--ga)!important}.gB,.gB svg.i{color:var(--gb)!important}.gC,.gC svg.i{color:var(--gc)!important}.gD,.gD svg.i{color:var(--gd)!important}
+.who .isym svg.i,.pk .isym svg.i{width:15px;height:15px}
+.pk .isym{color:var(--secondary)}
+.gAll,.gAll svg.i{color:var(--text)!important} /* Everyone: white in dark, ink in light */
 .go{width:18px;height:18px;color:var(--caption)}
 .me{font-weight:600}
 /* An update not yet seen: a Strong Yellow dot in the margin, as Mail's unread dot (not for the person who made it) */
@@ -454,7 +457,7 @@ const order = (ev, t) => !t.row ? '0' + (t.date || '') : '1' + String(ev.rows.fi
 const sorted = (ev, list) => list.map((t, i) => [t, i]).sort((a, b) => order(ev, a[0]).localeCompare(order(ev, b[0])) || a[1] - b[1]).map(x => x[0]);
 // The tasks a duty group sees: its own and Everyone's, in the event's own order
 const groupTasks = (ev, g) => ev.tasks.filter(t => !t.role && (t.to.includes(g) || t.to.includes('All')));
-const owner = t => t.to.includes('All') ? sym('all', 'Everyone') : t.to.length ? gsym(t.to[0]) : `<span class="ic">${nobody()}</span>`;
+const owner = t => t.to.includes('All') ? sym('all', 'Everyone', 'ic gAll') : t.to.length ? gsym(t.to[0]) : `<span class="ic">${nobody()}</span>`;
 const names = t => { if (t.to.includes('All')) return ''; const v = V();
   return `<span class="who">${t.names.length ? t.names.map(n => `<span class="nw${n === v.name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`; };
 const remark = t => t.remark ? `<span class="cap">${esc(t.remark)}</span>` : '';
@@ -587,7 +590,9 @@ function taskRows(ev, tasks, render) {
 const taskSec = (ev, head, tasks, render) => { const rows = taskRows(ev, tasks, render);
   return rows ? `<section class="sec"><p class="sh">${head}</p><div class="list">${rows}</div></section>` : tasks.length ? '' : `<section class="sec"><p class="sh">${head}</p><p class="empty">No tasks yet</p></section>`; };
 // Who a task is for: the group (or Everyone), then the names the Group Lead has added
-const whoLine = t => t.to.includes('All') ? '<span class="who">Everyone</span>' : `<span class="who">${t.to.length ? gname(t.to[0]) + '　' : ''}${t.names.length ? t.names.map(n => `<span class="nw${n === V().name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`;
+// A group written out keeps its coloured symbol in front (Everyone its own symbol in grey)
+const gtag = g => g === 'All' ? `<span class="nw"><span class="isym gAll">${ic('all')}</span> Everyone</span>` : `<span class="nw"><span class="isym g${g.slice(-1)}">${ic(SYM[kind(g)])}</span> ${gname(g)}</span>`;
+const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}</span>` : `<span class="who">${t.to.length ? gtag(t.to[0]) + '　' : ''}${t.names.length ? t.names.map(n => `<span class="nw${n === V().name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`;
 // Every task of the event (Event Lead and Teacher). In Edit each task chooses when (Before the Event or a Rundown line) and which group.
 function allTasks(ev, ed) {
   const list = sorted(ev, ev.tasks.filter(t => !t.role));
@@ -597,7 +602,7 @@ function allTasks(ev, ed) {
   const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
   const toOpts = t => `<option value="" disabled${t.to.length ? '' : ' selected'}></option>` + ev.groups.map(gr => `<option value="${esc(gr.name)}"${t.to[0] === gr.name ? ' selected' : ''}>${esc(gr.name)}</option>`).join('') + `<option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`;
   const row = t => `<div class="row g-tme" data-drag="task" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
-    <span>${t.row ? `<span class="fl lpk">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span><span class="fl lpk gpk">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : t.to.length ? gname(t.to[0]) : '', toOpts(t), 'Group')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
+    <span>${t.row ? `<span class="fl lpk">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span><span class="fl lpk gpk">${pick(`task:${t.id}:to`, t.to.includes('All') ? gtag('All') : t.to.length ? gtag(t.to[0]) : '', toOpts(t), 'Group')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
   return `<section class="sec"><div class="list tasks"><p class="sh" data-head="before">Before the Event</p>${list.filter(t => !t.row).map(row).join('')}<p class="sh" data-head="day">On the Day</p>${list.filter(t => t.row).map(row).join('')}</div><div class="list">${addB('menu:addtask', 'Add Task', 'var(--tc)')}</div></section>`;
 }
 function yourPart(ev, ed) {
@@ -610,7 +615,7 @@ function yourPart(ev, ed) {
   }
   if (type === 'gl') {
     const g = v.group, mine = groupTasks(ev, g);
-    const render = (t, when, now) => t.to.includes('All') ? `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}<span class="who">Everyone</span></span></div>` : `<button class="row g-tm${now ? ' current' : ''}" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
+    const render = (t, when, now) => t.to.includes('All') ? `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}<span class="who">${gtag('All')}</span></span></div>` : `<button class="row g-tm${now ? ' current' : ''}" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
     return (isDay(ev) ? daySec(ev) : taskSec(ev, 'Tasks', mine, render)) + memberList(ev, g);
   }
   if (type === 'lead') {
