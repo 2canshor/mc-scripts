@@ -1033,7 +1033,7 @@ document.addEventListener('change', e => {
   const t = e.target; if (!t.dataset || (t.dataset.time === undefined && t.dataset.date === undefined)) return;
   const b = t.dataset.b, old = getVal(b), short = t.dataset.date === 'short';
   const v = t.dataset.date === undefined ? normTime(t.value) : normDate(t.value, b.startsWith('task:') ? EV().date : TODAY);
-  t.value = (short ? md : dmy)(v === null ? old : v); fit(t); if (t.closest('.tline')) indent(t.closest('.tline'));
+  const shown = v === null ? old : v; t.value = t.dataset.date === undefined ? shown : (short ? md : dmy)(shown); fit(t);  // a time shows as typed; a date day first if (t.closest('.tline')) indent(t.closest('.tline'));
   if (v !== null && v !== old) setVal(b, v, t);  // no redraw: the field already shows it, and the next field keeps the focus
 });
 // The applications sheet: saved when its field is left, read at once by the server
