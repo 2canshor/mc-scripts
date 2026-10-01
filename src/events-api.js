@@ -1,5 +1,5 @@
 // Events: accounts, sessions, rosters and one record per event, with rights checked here.
-// Rights (Decision Record Part A): the Event Lead edits everything; a Group Lead on duty puts names on their group's
+// Rights (Decision Record Part A): the Event Lead, and Admin (CA's own teachers), edit everything; a Group Lead on duty puts names on their group's
 // tasks and sets its roles, Acting Group Lead, attendance and On Leave; on-duty members and Group Leads edit their
 // kind of document; the teacher reads. An event is compared with the stored one piece by piece ("units"), and every
 // changed piece must be allowed. The server also records who changed what, for the yellow update dots.
@@ -7,7 +7,7 @@ import { SEED } from "./accounts-seed.js";
 
 const GROUPS = ["MC", "Backstage", "Reception"].flatMap((m) => ["A", "B", "C", "D"].map((x) => `${m} Group ${x}`));
 export const ACCOUNTS = [
-  { id: "Event Lead", type: "lead" }, { id: "Teacher", type: "teacher" },
+  { id: "Event Lead", type: "lead" }, { id: "Admin", type: "lead", admin: true }, { id: "Teacher", type: "teacher" },
   ...GROUPS.map((g) => ({ id: g, type: "group", group: g })),
   ...GROUPS.map((g) => ({ id: g + " Lead", type: "gl", group: g }))
 ];
@@ -91,9 +91,9 @@ async function settingOf(env, k) {
   const row = await env.DB.prepare("SELECT v FROM settings WHERE k = ?").bind(k).first();
   try { return row ? JSON.parse(row.v) : null; } catch { return null; }
 }
-// A person changes only their own photo: the name they are signed in as. The Event Lead may also remove anyone's.
+// A person changes only their own photo: the name they are signed in as. The Event Lead and Admin may also remove anyone's.
 async function mayChangePhoto(env, acct, name, data) {
-  if (acct.type === "lead") return data === null || (acct.who === name && ((await settingOf(env, "chairs")) || []).includes(name));
+  if (acct.type === "lead") return data === null || (acct.who === name && ((await settingOf(env, acct.admin ? "admins" : "chairs")) || []).includes(name));
   if (acct.type === "teacher") return false;
   const r = ((await settingOf(env, "rosters")) || {})[acct.group] || {};
   if (acct.type === "gl") return !!r.lead && r.lead.name === name;
@@ -380,9 +380,9 @@ export async function handleEvents(request, env, url, path) {
     const rows = results.map((r) => ({ id: r.id, rev: r.seq, deleted: !!r.deleted, data: r.deleted ? null : JSON.stringify(visible(acct, upgrade(JSON.parse(r.data)))) }));
     const out = { account: { id: acct.id, type: acct.type, group: acct.group || null }, rows, photos: await photoVersions(env) };
     if (!since || url.searchParams.get("full")) {
-      const s = await env.DB.prepare("SELECT k, v FROM settings WHERE k IN ('rosters', 'chairs')").all();
+      const s = await env.DB.prepare("SELECT k, v FROM settings WHERE k IN ('rosters', 'chairs', 'admins')").all();
       const map = Object.fromEntries(s.results.map((r) => [r.k, JSON.parse(r.v)]));
-      out.rosters = map.rosters || {}; out.chairs = map.chairs || [];
+      out.rosters = map.rosters || {}; out.chairs = map.chairs || []; out.admins = map.admins || [];
       if (acct.type === "lead") { const a = await settingOf(env, "applications"); out.apps = a ? { url: a.url || "", error: !!a.error } : { url: "", error: false }; }
     }
     return json(out);
@@ -447,8 +447,8 @@ export async function handleEvents(request, env, url, path) {
     return json({ ok: true, v });
   }
 
-  // Rosters and the chairs' names: the Event Lead keeps them (copied from List of Members).
-  if ((path === "rosters" || path === "chairs") && request.method === "PUT") {
+  // Rosters, the chairs' names and Admin's teachers: the Event Lead (or Admin) keeps them (copied from List of Members).
+  if ((path === "rosters" || path === "chairs" || path === "admins") && request.method === "PUT") {
     if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
     const text = await request.text();
     if (text.length > 200000) return json({ error: "too large" }, 413);

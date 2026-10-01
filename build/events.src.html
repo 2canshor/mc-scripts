@@ -83,6 +83,7 @@ h1 .sep,.sep{color:var(--secondary);font-weight:400}
 .pre,.srow .body{white-space:pre-line}
 /* A Remark is edited where it reads: caption size and colour, as wide as its text (only the event's Remarks is a box) */
 .rmkl{display:block;margin-top:6px}
+.rmkl .fld{font-size:15px;line-height:1.45;color:var(--secondary)}
 .who{display:block;font-size:15px;color:var(--secondary)}
 .muted,.t{color:var(--secondary)}
 .t,.tn{font-variant-numeric:tabular-nums}
@@ -109,6 +110,8 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .lnm{display:block;font-size:15px;color:var(--secondary);line-height:1.45}
 .lpk{font-size:15px;color:var(--secondary);margin-bottom:2px}
 .gpk{margin:6px 0 0}
+.list.tasks>.sh{margin:0 0 2px}
+.list.tasks>.row+.sh,.list.tasks>.sh+.sh{margin-top:24px}
 .fld+.box{margin-top:6px}
 .g-acct{grid-template-columns:22px minmax(0,1fr) auto}      /* key | account | password */
 .ic{color:var(--secondary);display:grid;place-items:center}
@@ -121,7 +124,7 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .ln>.udot{top:calc(10px + .75em - 4px)}
 .srow,.award h2,.lh{position:relative}
 .srow>.udot,.award h2>.udot{left:-16px;top:calc(.875em - 4px)}
-.badge{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--danger);color:var(--on-color);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.badge{color:var(--secondary);font-variant-numeric:tabular-nums}
 .nob{color:var(--danger);display:inline-grid;vertical-align:-4px}
 .nob svg.i{width:19px;height:19px}
 .isym{display:inline-grid;vertical-align:-3px;color:var(--secondary)}
@@ -365,7 +368,7 @@ const kind = g => g === 'All' ? 'All' : g.split(' ')[0];
 const SYM = {MC: 'mic', Backstage: 'curtain', Reception: 'wave', All: 'all'};
 // The chairs keep the rosters (copied from List of Members). The server stores {lead: {cls, name}, people: [{cls, name}]};
 // this page keeps [class, name] pairs.
-let CHAIRS = [], ROSTER = {}, EVENTS = [], PHOTOS = {};
+let CHAIRS = [], ADMINS = [], ROSTER = {}, EVENTS = [], PHOTOS = {};
 const roster = g => ROSTER[g] = ROSTER[g] || {lead: ['', ''], people: []};
 const members = g => ROSTER[g] ? [ROSTER[g].lead[1], ...ROSTER[g].people.map(p => p[1])].filter(Boolean) : [];
 const rosterIn = o => Object.fromEntries(Object.entries(o || {}).map(([g, r]) => [g, {lead: [((r || {}).lead || {}).cls || '', ((r || {}).lead || {}).name || ''], people: ((r || {}).people || []).map(p => [p.cls || '', p.name || ''])}]));
@@ -374,7 +377,8 @@ const clsOf = (g, n) => { const r = roster(g); return r.lead[1] === n ? r.lead[0
 let APPS = null;  // the Event Lead's link to the CA Support form's sheet: {url, error}
 let PASSWORDS = {};  // new passwords typed on a Members page, sent on Done
 // One account per small group (members pick their name), one per Group Lead, one for the chairs, one for teachers
-const ACCOUNTS = [{id: 'Event Lead', type: 'lead'}, {id: 'Teacher', type: 'teacher'},
+// Admin: CA's own teachers, with the Event Lead's rights; each picks their name, as the chairs do in Event Lead
+const ACCOUNTS = [{id: 'Event Lead', type: 'lead'}, {id: 'Admin', type: 'lead', admin: true}, {id: 'Teacher', type: 'teacher'},
   ...ALL_GROUPS.map(g => ({id: g, type: 'group', group: g})), ...ALL_GROUPS.map(g => ({id: g + ' Lead', type: 'gl', group: g}))];
 
 /* ---------- Who is looking: the account signed in on this device, and the person who picked their name ---------- */
@@ -382,13 +386,13 @@ const S = {acct: null, who: null, seen: {}, toSee: new Set(), stack: [], edit: f
 const ACCT = () => ACCOUNTS.find(a => a.id === S.acct);
 function V() {
   const a = ACCT(); if (!a) return null;
-  if (a.type === 'lead') return {type: 'lead', name: S.who || 'Event Lead'};
+  if (a.type === 'lead') return {type: 'lead', name: S.who || a.id};
   if (a.type === 'teacher') return {type: 'teacher', name: 'Teacher'};
   if (a.type === 'gl') return {type: 'gl', name: roster(a.group).lead[1] || a.id, group: a.group};
   return {type: 'member', name: S.who || a.id, group: a.group};
 }
 // The names to pick from on an account several people share
-const peopleOf = a => !a ? [] : a.type === 'lead' ? CHAIRS.filter(Boolean) : a.type === 'group' ? members(a.group).filter(n => n !== roster(a.group).lead[1]) : [];
+const peopleOf = a => !a ? [] : a.type === 'lead' ? (a.admin ? ADMINS : CHAIRS).filter(Boolean) : a.type === 'group' ? members(a.group).filter(n => n !== roster(a.group).lead[1]) : [];
 const cur = () => S.stack[S.stack.length - 1], EV = () => EVENTS.find(e => e.id === (cur() || {}).ev);
 const isLead = () => !!V() && V().type === 'lead';
 // An Acting Group Lead works as the Group Lead on the day of the event
@@ -409,7 +413,9 @@ const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 const iso = d => '20' + d.replace(/\//g, '-');
 const fromIso = s => s ? s.slice(2).replace(/-/g, '/') : '';
 const wd = d => d ? '（' + WEEK[new Date(iso(d) + 'T12:00').getDay()] + '）' : '';
-const md = d => d ? d.slice(3) : '';   // 26/10/05 -> 10/05 in a date column
+// Dates are kept as YY/MM/DD (they sort) and shown day first: 26/10/05 -> 05/10/26, and 05/10 in a date column
+const dmy = d => d ? d.slice(6, 8) + '/' + d.slice(3, 5) + '/' + d.slice(0, 2) : '';
+const md = d => d ? d.slice(6, 8) + '/' + d.slice(3, 5) : '';
 const rowOf = (ev, id) => ev.rows.find(r => r.id === id);
 const onLeave = (ev, g, n) => !!(((ev.leave || {})[g] || {})[n]);
 const tasksOf = (ev, g) => ev.tasks.filter(t => !t.role && t.to.includes(g));
@@ -481,16 +487,17 @@ const editBar = (canEdit, extra = '') => ({
 // Fields: a placeholder names what goes there; no examples. A short field is as wide as its text (MC Scripts' fit).
 const fld = (b, v, ph, cls = '') => `<textarea class="fld f fit ${cls}" rows="1" data-b="${b}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(v)}</textarea>`;
 const box = (b, v, ph, cls = 'f') => `<textarea class="fld box ${cls}" rows="1" data-b="${b}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(v)}</textarea>`;
-// A date is typed as a time is (1006, 10/6 or 26/10/06 all become 26/10/06; a task's date shows as 10/06) and checked when the field is left
-const dateF = (b, v, ph = 'Date', short) => `<textarea class="fld f fit tm" rows="1" data-b="${b}" data-date="${short ? 'short' : 'full'}" inputmode="numeric" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(short ? md(v) : v)}</textarea>`;
+// A date is typed as a time is, day first (0610, 6/10 or 06/10/26 all become 06/10/26; a task's date shows as 06/10) and checked when the field is left
+const dateF = (b, v, ph = 'Date', short) => `<textarea class="fld f fit tm" rows="1" data-b="${b}" data-date="${short ? 'short' : 'full'}" inputmode="numeric" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${short ? md(v) : dmy(v)}</textarea>`;
 // Without a year, the year that puts the date nearest the event (or today)
 const normDate = (raw, ref) => { const s = String(raw).trim().replace(/日/g, '').replace(/[年月\-.\s]+/g, '/').replace(/^\/+|\/+$/g, ''); if (!s) return '';
   let y, m, d, x;
-  if ((x = /^(\d{2}|\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(s))) [y, m, d] = [+x[1] % 100, +x[2], +x[3]];
-  else if ((x = /^(\d{1,2})\/(\d{1,2})$/.exec(s))) [m, d] = [+x[1], +x[2]];
-  else if (/^\d{8}$/.test(s)) [y, m, d] = [+s.slice(2, 4), +s.slice(4, 6), +s.slice(6)];
-  else if (/^\d{6}$/.test(s)) [y, m, d] = [+s.slice(0, 2), +s.slice(2, 4), +s.slice(4)];
-  else if (/^\d{3,4}$/.test(s)) [m, d] = [+s.slice(0, -2), +s.slice(-2)];
+  if ((x = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(s))) [y, m, d] = [+x[1] % 100, +x[2], +x[3]];
+  else if ((x = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(s))) [d, m, y] = [+x[1], +x[2], +x[3] % 100];
+  else if ((x = /^(\d{1,2})\/(\d{1,2})$/.exec(s))) [d, m] = [+x[1], +x[2]];
+  else if (/^\d{8}$/.test(s)) [d, m, y] = [+s.slice(0, 2), +s.slice(2, 4), +s.slice(6)];
+  else if (/^\d{6}$/.test(s)) [d, m, y] = [+s.slice(0, 2), +s.slice(2, 4), +s.slice(4)];
+  else if (/^\d{3,4}$/.test(s)) [d, m] = [+s.slice(0, -2), +s.slice(-2)];
   else return null;
   const at = (yy, mm, dd) => Date.UTC(2000 + yy, mm - 1, dd), r = ref || TODAY, rt = at(+r.slice(0, 2), +r.slice(3, 5), +r.slice(6, 8));
   if (y === undefined) y = [-1, 0, 1].map(k => +r.slice(0, 2) + k).sort((a, b) => Math.abs(at(a, m, d) - rt) - Math.abs(at(b, m, d) - rt))[0];
@@ -508,11 +515,11 @@ const grip = label => `<button class="ib grip" data-grip aria-label="${esc(label
 const pick = (b, shown, opts, ph) => `<label class="pk f${shown ? '' : ' empty'}"><span${shown ? '' : ' class="ph"'}>${shown || ph}</span>${ic('chev-ud')}<select data-b="${b}" aria-label="${esc(ph)}">${opts}</select></label>`;
 const rmB = (act, label) => `<button class="ib rm" data-a="${act}" aria-label="${esc(label)}">${ic('minus-c')}</button>`;
 const addB = (act, label, cols) => `<button class="row add${cols ? ' cols' : ''}" data-a="${act}"${cols ? ` style="--c1:${cols}"` : ''}>${ic('plus-c')}<span>${label}</span></button>`;
-const evLine = ev => `<span class="nw">${esc(ev.date)}</span>｜${esc(ev.name)}`;
+const evLine = ev => `<span class="nw">${dmy(ev.date)}</span>｜${esc(ev.name)}`;
 // A title "date｜name": a Chinese name stays whole. It follows the date when it fits there, moves whole to the next line
 // when it does not, and breaks inside only when it is longer than a line. A name in English breaks between words as usual.
 const CJK = /[\u3000-\u9fff\uff00-\uffef]/;
-const evTitle = ev => `<span class="nw">${esc(ev.date)}<span class="sep">｜</span></span><span class="${CJK.test(ev.name) ? 'evn' : ''}">${esc(ev.name)}</span>`;
+const evTitle = ev => `<span class="nw">${dmy(ev.date)}<span class="sep">｜</span></span><span class="${CJK.test(ev.name) ? 'evn' : ''}">${esc(ev.name)}</span>`;
 
 /* ---------- Pages. Each returns {l, r, title, body, root, search}. ---------- */
 function pSignIn() {
@@ -527,9 +534,9 @@ function pWho() {
 }
 function pEvents() {
   const q = S.find.trim().toLowerCase();
-  const list = EVENTS.filter(seen).filter(e => !q || (e.name + ' ' + e.date).toLowerCase().includes(q)).sort((a, b) => b.date.localeCompare(a.date) || a.asmTime.localeCompare(b.asmTime));
+  const list = EVENTS.filter(seen).filter(e => !q || (e.name + ' ' + dmy(e.date)).toLowerCase().includes(q)).sort((a, b) => b.date.localeCompare(a.date) || a.asmTime.localeCompare(b.asmTime));
   const up = list.filter(e => e.date >= TODAY).reverse(), past = list.filter(e => e.date < TODAY);
-  const rows = l => l.map(e => `<button class="row g-ev${e.date === TODAY ? ' current' : ''}" data-a="open:${e.id}">${dot(e.id, true)}<span class="t">${e.date}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('');
+  const rows = l => l.map(e => `<button class="row g-ev${e.date === TODAY ? ' current' : ''}" data-a="open:${e.id}">${dot(e.id, true)}<span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('');
   return {root: true, title: 'Events', search: true,
     fab: isLead() ? {act: 'sheet:new', label: 'New Event'} : null, r: `<button class="nb round glass av" data-a="sheet:account" aria-label="Account">${avatar(V().name)}</button>`,
     body: `<h1>Events</h1>
@@ -581,11 +588,13 @@ const whoLine = t => t.to.includes('All') ? '<span class="who">Everyone</span>' 
 function allTasks(ev, ed) {
   const list = sorted(ev, ev.tasks.filter(t => !t.role));
   if (!ed) return taskSec(ev, 'Tasks', list, (t, when, now) => `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${whoLine(t)}</span></div>`);
-  const secOpts = t => `<option value=""${t.row ? '' : ' selected'}>Before the Event</option>` + ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
+  // Edit: Before the Event (dates) and On the Day (each line's time) as headings, so the first column holds one kind of time.
+  // A task moves by its handle anywhere in the list; dropped under the other heading, or beside another date or line, it takes that one.
+  const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
   const toOpts = t => `<option value="" disabled${t.to.length ? '' : ' selected'}></option>` + ev.groups.map(gr => `<option value="${esc(gr.name)}"${t.to[0] === gr.name ? ' selected' : ''}>${esc(gr.name)}</option>`).join('') + `<option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`;
-  const row = t => `<div class="row g-tme" data-drag="${t.row ? 'r:' + t.row : 'd:' + (t.date || '')}" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : ''}</span>
-    <span><span class="fl lpk">${pick(`task:${t.id}:sec`, t.row ? esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' ')) : 'Before the Event', secOpts(t), 'When')}</span>${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span><span class="fl lpk gpk">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : t.to.length ? gname(t.to[0]) : '', toOpts(t), 'Group')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
-  return `<section class="sec"><p class="sh">Tasks</p><div class="list">${list.map(row).join('')}${addB('menu:addtask', 'Add Task', 'var(--tc)')}</div></section>`;
+  const row = t => `<div class="row g-tme" data-drag="task" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
+    <span>${t.row ? `<span class="fl lpk">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span><span class="fl lpk gpk">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : t.to.length ? gname(t.to[0]) : '', toOpts(t), 'Group')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
+  return `<section class="sec"><div class="list tasks"><p class="sh" data-head="before">Before the Event</p>${list.filter(t => !t.row).map(row).join('')}<p class="sh" data-head="day">On the Day</p>${list.filter(t => t.row).map(row).join('')}</div><div class="list">${addB('menu:addtask', 'Add Task', 'var(--tc)')}</div></section>`;
 }
 function yourPart(ev, ed) {
   const v = V(), type = vt(ev);
@@ -694,12 +703,15 @@ function pMembers() {
   return {l: backBtn(), title: 'Members', body: `<h1>Members</h1>
     <section class="sec"><div class="list">
       <button class="row g-ic" data-a="group:Event Lead">${sym('flag', '')}<span>Event Lead</span><span class="t">${CHAIRS.length}</span>${ic('chev-r', 'go')}</button>
+      <button class="row g-ic" data-a="group:Admin">${sym('key', '')}<span>Admin</span><span class="t">${ADMINS.length}</span>${ic('chev-r', 'go')}</button>
       <button class="row g-ic" data-a="group:Teacher">${sym('teacher', '')}<span>Teacher</span><span></span>${ic('chev-r', 'go')}</button></div></section>
     <section class="sec"><p class="sh">Groups</p><div class="list">${ALL_GROUPS.map(g => `<button class="row g-ic" data-a="group:${g}">${sym(SYM[kind(g)], kind(g))}<span>${gname(g)}</span><span class="t">${members(g).length}</span>${ic('chev-r', 'go')}</button>`).join('')}</div></section>`};
 }
 function pAccount(id) {
   const ed = S.edit, bar = editBar(true);
   if (id === 'Teacher') return {...bar, title: 'Teacher', body: `<h1>Teacher</h1><section class="sec list">${acctRow('Teacher', ed)}</section>`};
+  if (id === 'Admin') return {...bar, title: 'Admin', body: `<h1>Admin</h1><section class="sec list">${acctRow('Admin', ed)}</section>
+    <section class="sec"><p class="sh">Teachers</p><div class="list">${ADMINS.map((n, i) => ed ? `<div class="row" style="grid-template-columns:minmax(0,1fr) 24px"><span class="fl">${fld('admin:' + i, n, 'Name')}</span>${rmB('deladmin:' + i, 'Remove teacher')}</div>` : `<div class="row"><span>${esc(n)}</span></div>`).join('')}${ed ? addB('addadmin', 'Add Teacher') : ''}</div></section>`};
   if (id === 'Event Lead') return {...bar, title: 'Event Lead', body: `<h1>Event Lead</h1><section class="sec list">${acctRow('Event Lead', ed)}</section>
     <section class="sec"><p class="sh">Chairs</p><div class="list">${CHAIRS.map((n, i) => ed ? `<div class="row" style="grid-template-columns:minmax(0,1fr) 24px"><span class="fl">${fld('chair:' + i, n, 'Name')}</span>${rmB('delchair:' + i, 'Remove chair')}</div>` : `<div class="row"><span>${esc(n)}</span></div>`).join('')}${ed ? addB('addchair', 'Add Chair') : ''}</div></section>`};
   const g = id, r = roster(g);
@@ -747,12 +759,12 @@ function sheet() {
     const v = V(), others = peopleOf(ACCT()).filter(x => x !== v.name), pn = photoName();
     const face = pn ? `<button class="av avb" data-a="photo" aria-label="${PHOTOS[pn] ? 'Change Photo' : 'Add Photo'}">${avatar(v.name)}<span class="ov">${ic('photo')}</span></button>` : `<span class="av">${avatar(v.name)}</span>`;
     h = bar(close, 'Account', '') +
-      `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === 'Event Lead' ? '' : 'Event Lead') : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
+      `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === ACCT().id ? '' : ACCT().id) : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
       (others.length ? `<section class="sec"><p class="sh">Switch Person</p><div class="list">${others.map(x => `<button class="row g-sw" data-a="switch:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
       (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Members</span>${ic('chev-r', 'go')}</button><div class="row g-sw">${sym('inbox', 'Applications')}<span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="Applications Sheet" aria-label="Applications Sheet" autocomplete="off">${APPS && APPS.error ? '<span class="cap danger">Cannot read this sheet</span>' : ''}</span></div>` : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
       `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="signout"><span class="ic" style="color:inherit">${ic('logout')}</span><span>Sign Out</span></button></div></section>`;
   }
-  if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map((e, i) => { const txt = `<span>${esc(e.what)}<span class="cap">${esc(e.at)} · ${esc(e.who)}</span></span>`;
+  if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map((e, i) => { const txt = `<span>${esc(e.what)}<span class="cap">${esc(dmy(e.at.slice(0, 8)) + e.at.slice(8))} · ${esc(e.who)}</span></span>`;
     return e.snap && isLead() ? `<button class="row" data-a="askrestore:${i}" style="grid-template-columns:minmax(0,1fr) auto">${txt}<span class="muted">Restore</span></button>` : `<div class="row">${txt}</div>`; }).join('') || '<p class="empty">No changes yet</p>'}</div>`; // tell-ok: history time and person
   if (s.k === 'delete') h = bar(cancel(), 'Delete Event?', '') + `<p class="note">${esc(ev.name)}: its Rundown, tasks and documents go for everyone.</p><button class="nb glass danger" style="width:100%;font-weight:600" data-a="delevent">Delete Event</button>`;
   return `<div class="dimbg" data-a="bg"><div class="sheet" role="dialog" aria-modal="true">${h}</div></div>`;
@@ -792,7 +804,7 @@ function render() {
   const keep = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find !== undefined;
   if (!keep) barEl.innerHTML = (o.l ? `<div class="ctl l">${o.l}</div>` : '') + (o.r ? `<div class="ctl r">${o.r}</div>` : '') + `<div class="edge"></div><div class="bt" aria-hidden="true">${S.edit ? '' : esc(o.title || '')}</div>` +
     (o.fab ? `<button class="fab" data-a="${o.fab.act}" aria-label="${o.fab.label}">${ic('plus')}</button>` : '') + (o.fab && !o.search ? '<div class="edge b"></div>' : '') + (o.search ? `<div class="edge b"></div><label class="search glass${o.fab ? ' withfab' : ''}">${ic('search')}<input data-find placeholder="Search" value="${esc(S.find)}" aria-label="Search events" enterkeyhint="search"></label>` : '');
-  fitAll(app); onScroll(); layer(); persistSoon();
+  fitAll(app); fitPage(); onScroll(); layer(); persistSoon();
   // one date column for every event row, as wide as the widest date
   const ds = [...app.querySelectorAll('.g-ev>.t')]; app.style.removeProperty('--dw'); if (ds.length) app.style.setProperty('--dw', Math.ceil(Math.max(...ds.map(d => d.getBoundingClientRect().width))) + 'px');
 }
@@ -813,6 +825,11 @@ function fit(t) {
     t.style.width = Math.ceil(Math.max(...text.split('\n').map(x => measure.measureText(x).width)) + 2) + 'px'; }
   if (t.tagName === 'TEXTAREA') { const cs = getComputedStyle(t), pad = cs.boxSizing === 'content-box' ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) : 0; t.style.height = 'auto'; t.style.height = (t.scrollHeight - pad) + 'px'; }
 }
+// The space kept under the content for the floating controls makes a page scroll only when the content itself needs it
+function fitPage() { const pg = app.firstElementChild; if (!pg || pg.classList.contains('fixed')) return; pg.style.paddingBottom = '';
+  const pad = parseFloat(getComputedStyle(pg).paddingBottom), end = document.documentElement.scrollHeight - pad, room = innerHeight - end;
+  if (room >= (barEl.querySelector('.fab,.search') ? 84 : 24)) pg.style.paddingBottom = room + 'px'; }
+addEventListener('resize', () => fitPage());
 const fitAll = root => { root.querySelectorAll('textarea.fld').forEach(fit); root.querySelectorAll('.tline').forEach(indent); };
 // The name starts where "date｜" ends (the date sized first), and then takes the height that leaves it
 // In Edit the name keeps the reading rule: a Chinese name that does not fit after "date｜" starts on the next line
@@ -822,7 +839,7 @@ function indent(l) { const pre = l.querySelector('.tpre'), t = l.querySelector('
   const w = Math.max(...(t.value || t.placeholder).split('\n').map(x => measure.measureText(x).width)), inner = t.clientWidth - pad - parseFloat(cs.paddingRight);
   const drop = CJK.test(t.value || '') && w > inner - ind;
   t.style.textIndent = (drop ? 0 : ind) + 'px'; t.style.marginTop = drop ? cs.lineHeight : ''; fit(t); }
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitAll(app); fitAll(lay); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitAll(app); fitAll(lay); fitPage(); });
 // Past the top, content fades under the controls; once the large title has gone, its name shows in the bar
 function onScroll() {
   const h = app.querySelector('h1'), b = document.body;
@@ -833,8 +850,8 @@ addEventListener('scroll', onScroll, {passive: true});
 const go = p => { if (p.p === 'event') { seeNow(p.ev); S.toSee.delete(p.ev); } else if (p.p === 'doc') { seeNow(`${p.ev}:d:${p.id}`); S.toSee.delete(`${p.ev}:d:${p.id}`); } seePage(); S.stack.push(p); S.edit = false; scrollTo(0, 0); render(); };
 const back = () => { seePage(); S.stack.pop(); S.edit = false; render(); };
 // Edit and Cancel: a snapshot of what the page can change
-const snapOf = () => JSON.stringify(cur().p === 'group' ? {ROSTER, PASSWORDS, CHAIRS} : EV());
-const restore = j => { const o = JSON.parse(j); if (cur().p === 'group') { ROSTER = o.ROSTER; PASSWORDS = o.PASSWORDS; CHAIRS = o.CHAIRS; } else { const ev = EV(); Object.keys(ev).forEach(k => delete ev[k]); Object.assign(ev, o); } };
+const snapOf = () => JSON.stringify(cur().p === 'group' ? {ROSTER, PASSWORDS, CHAIRS, ADMINS} : EV());
+const restore = j => { const o = JSON.parse(j); if (cur().p === 'group') { ROSTER = o.ROSTER; PASSWORDS = o.PASSWORDS; CHAIRS = o.CHAIRS; ADMINS = o.ADMINS; } else { const ev = EV(); Object.keys(ev).forEach(k => delete ev[k]); Object.assign(ev, o); } };
 const tidyMcs = ev => { if (!ev || !ev.mcs) return; if (canDoc(ev, 'script')) ev.rows.forEach(r => { r.say = r.say.filter(x => hasSource(ev, x)); }); const speaks = n => ev.rows.some(r => r.say.some(s => s.sp === n)); ev.mcs = ev.mcs.filter((m, i) => m[0] || m[1] || speaks(m[1]) || i === 0 && ev.mcs.length === 1); };
 // The next MC for a new line: after the last speaker, round the MCs
 const nextMc = (ev, r) => { const ms = named(ev).map(m => m[1]); if (!ms.length) return ''; const last = [...ev.rows.flatMap(x => x.say)].reverse().find(s => s.type === 'line' && s.sp); return last ? ms[(ms.indexOf(last.sp) + 1) % ms.length] : ms[0]; };
@@ -866,6 +883,7 @@ function setVal(b, val, el) {
     case 'teach': { const l = ev[p[1]], i = +p[2]; l[i] = val.trim(); return false; }
     case 'pw': PASSWORDS[p.slice(1).join(':')] = val; return false;
     case 'chair': CHAIRS[+p[1]] = val; return false;
+    case 'admin': ADMINS[+p[1]] = val; return false;
     case 'rc': (p[2] === 'lead' ? ROSTER[p[1]].lead : ROSTER[p[1]].people[+p[2]])[+p[3]] = p[3] === '0' ? val.toUpperCase() : val; return false;
     case 'dg': replaceGroup(ev, p.slice(1).join(':'), val); return true;
   }
@@ -898,7 +916,7 @@ document.addEventListener('click', e => {
     case 'edit': S.edit = true; S.snap = snapOf(); render(); break;
     case 'done': if (document.activeElement) document.activeElement.blur();
       if (cur().p === 'group') { const short = Object.values(PASSWORDS).find(x => x && x.trim() && [...x.replace(/\s+/g, '')].length < 8); if (short) { toast('A password needs 8 characters or more'); break; }
-        CHAIRS = CHAIRS.map(x => x.trim()).filter(Boolean); S.edit = false; savePasswords(); render(); break; }
+        CHAIRS = CHAIRS.map(x => x.trim()).filter(Boolean); ADMINS = ADMINS.map(x => x.trim()).filter(Boolean); S.edit = false; savePasswords(); render(); break; }
       tidyMcs(ev); if (ev && cur().p === 'event') ev.tasks = ev.tasks.filter(t => t.role || t.text.trim()); S.edit = false; if (ev && snapOf() !== S.snap) log(ev, 'Edited ' + (cur().p === 'doc' ? 'a document' : 'the event')); render(); catchUp(); break;
     case 'cancel': if (snapOf() === S.snap) { S.edit = false; render(); catchUp(); } else { S.alert = {t: 'Discard Changes?', m: 'Your changes will be lost.', no: 'Keep Editing', verb: 'Discard', act: 'discard'}; layer(); } break;
     case 'keep': S.alert = null; layer(); break;
@@ -953,6 +971,8 @@ document.addEventListener('click', e => {
     case 'delevent': EVENTS = EVENTS.filter(x => x !== ev); S.sheet = null; S.edit = false; S.stack = [{p: 'events'}]; render(); toast('Event deleted'); break;
     case 'addchair': CHAIRS.push(''); render(); focus(`[data-b="chair:${CHAIRS.length - 1}"]`); break;
     case 'delchair': CHAIRS.splice(+arg, 1); render(); break;
+    case 'addadmin': ADMINS.push(''); render(); focus(`[data-b="admin:${ADMINS.length - 1}"]`); break;
+    case 'deladmin': ADMINS.splice(+arg, 1); render(); break;
     case 'addperson': roster(arg).people.push(['', '']); render(); focus(`[data-b="rc:${arg}:${ROSTER[arg].people.length - 1}:0"]`); break;
     case 'delperson': { const [g, i] = arg.split(':'); ROSTER[g].people.splice(+i, 1); render(); break; }
     case 'photo': document.getElementById('photo').click(); break;
@@ -995,7 +1015,7 @@ document.addEventListener('change', e => {
   const t = e.target; if (!t.dataset || (t.dataset.time === undefined && t.dataset.date === undefined)) return;
   const b = t.dataset.b, old = getVal(b), short = t.dataset.date === 'short';
   const v = t.dataset.date === undefined ? normTime(t.value) : normDate(t.value, b.startsWith('task:') ? EV().date : TODAY);
-  t.value = short ? md(v === null ? old : v) : v === null ? old : v; fit(t); if (t.closest('.tline')) indent(t.closest('.tline'));
+  t.value = (short ? md : dmy)(v === null ? old : v); fit(t); if (t.closest('.tline')) indent(t.closest('.tline'));
   if (v !== null && v !== old) setVal(b, v, t);  // no redraw: the field already shows it, and the next field keeps the focus
 });
 // The applications sheet: saved when its field is left, read at once by the server
@@ -1013,7 +1033,7 @@ document.addEventListener('pointerup', () => { if (!sw) return; const w = sw.w, 
   if (sw.moved) { const max = w.querySelector('.swa').offsetWidth, open = sw.dx < -max / 2; w.classList.toggle('open', open); r.style.transform = open ? `translateX(${-max}px)` : ''; w.dataset.dragged = '1'; setTimeout(() => delete w.dataset.dragged, 50); }
   sw = null; });
 
-/* ---------- Move a row by its handle (Rundown lines; a duty group's tasks within one date or one line) ---------- */
+/* ---------- Move a row by its handle (Rundown lines; the event's tasks in Edit, across Before the Event and On the Day) ---------- */
 // The row lifts and follows the finger; the rows it passes make room; near the top or bottom the list scrolls.
 // The arrow keys move it one place. Only rows with the same data-drag move among each other.
 let DRAG = null;
@@ -1025,7 +1045,7 @@ function moveRow(kindKey, id, beforeId, afterId) {
   render();
   focus(`[data-id="${id}"] [data-grip]`);
 }
-const dragSibs = row => [...row.parentElement.children].filter(x => x.dataset && x.dataset.drag === row.dataset.drag);
+const dragSibs = row => [...row.parentElement.children].filter(x => x.dataset && (x.dataset.drag === row.dataset.drag || x.dataset.head));
 const dragKind = row => row.dataset.drag === 'rows' ? 'rows' : 'tasks';
 document.addEventListener('pointerdown', e => {
   const h = e.target.closest('[data-grip]'), row = h && h.closest('[data-drag]'); if (!row) return;
@@ -1048,22 +1068,34 @@ function dragMove() {
   let to = d.from;
   for (let i = d.from + 1; i < mids.length; i++) if (r0.bottom + dy > mids[i]) to = i;
   if (to === d.from) for (let i = d.from - 1; i >= 0; i--) if (r0.top + dy < mids[i]) to = i;
-  d.to = to;
+  d.to = Math.max(d.sibs[0].dataset.head ? 1 : 0, to);
   d.row.style.transform = `translateY(${dy}px)`;
   d.sibs.forEach((x, i) => { if (x === d.row) return; x.style.transform = i > d.from && i <= to ? `translateY(${-r0.height}px)` : i < d.from && i >= to ? `translateY(${r0.height}px)` : ''; });
 }
 document.addEventListener('pointermove', e => { if (!DRAG) return; DRAG.y = e.clientY; dragMove(); });
 const dragEnd = () => { if (!DRAG) return; const d = DRAG; DRAG = null; cancelAnimationFrame(d.raf);
   d.sibs.forEach(x => { x.style.transform = ''; }); d.row.classList.remove('lift'); d.row.parentElement.classList.remove('moving-list');
-  if (d.to === d.from) return;
-  const target = d.sibs[d.to].dataset.id;
-  moveRow(dragKind(d.row), d.row.dataset.id, d.to < d.from ? target : null, d.to > d.from ? target : null); };
+  drop(d.row, d.sibs, d.from, d.to); };
+// Put a row at its new place. A task takes the heading it is under and the date or line of the task beside it.
+function drop(row, sibs, from, to) {
+  if (to === from) return;
+  const order = sibs.slice(); order.splice(from, 1); order.splice(to, 0, row);
+  const i = order.indexOf(row), near = k => { for (let j = i + k; j >= 0 && j < order.length; j += k) { if (order[j].dataset.head) return null; return order[j]; } return null; };
+  const above = near(-1), below = near(1);
+  if (row.dataset.drag === 'task') {
+    const ev = EV(), t = ev.tasks.find(x => x.id === row.dataset.id), ref = above || below, rt = ref && ev.tasks.find(x => x.id === ref.dataset.id);
+    let head = null; for (let j = i - 1; j >= 0; j--) if (order[j].dataset.head) { head = order[j].dataset.head; break; }
+    if (head === 'day') { const line = rt ? rt.row : (ev.rows[0] || {}).id; if (line) { t.row = line; delete t.date; } }
+    else if (head === 'before') { t.date = rt ? rt.date : t.date || dayBefore(ev); delete t.row; }
+  }
+  moveRow(dragKind(row), row.dataset.id, above ? null : below && below.dataset.id, above && above.dataset.id);
+}
 document.addEventListener('pointerup', dragEnd);
 document.addEventListener('pointercancel', dragEnd);
 document.addEventListener('keydown', e => {
   const h = e.target.closest && e.target.closest('[data-grip]'), row = h && h.closest('[data-drag]'); if (!row || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
-  e.preventDefault(); const sibs = dragSibs(row), i = sibs.indexOf(row), j = i + (e.key === 'ArrowUp' ? -1 : 1); if (j < 0 || j >= sibs.length) return;
-  moveRow(dragKind(row), row.dataset.id, j < i ? sibs[j].dataset.id : null, j > i ? sibs[j].dataset.id : null);
+  e.preventDefault(); const sibs = dragSibs(row), i = sibs.indexOf(row), j = i + (e.key === 'ArrowUp' ? -1 : 1); if (j < (sibs[0].dataset.head ? 1 : 0) || j >= sibs.length) return;
+  drop(row, sibs, i, j);
 });
 
 /* ---------- Server: sign-in, loading, merging and saving ---------- */
@@ -1072,7 +1104,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', pending: false, later: new Set()};
+const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
   if (SYNC.token) headers.authorization = 'Bearer ' + SYNC.token;
@@ -1086,13 +1118,13 @@ const isBlank = ev => !ev.name.trim() && !ev.date && !ev.rows.length && !ev.task
 const editingId = () => S.edit ? (cur() || {}).ev || null : null;
 function cacheSave() {
   if (!S.acct) return;
-  store.set('cache', {acct: S.acct, events: EVENTS, base: SYNC.base, rev: SYNC.rev, seq: SYNC.seq, rosters: ROSTER, chairs: CHAIRS, rosterBase: SYNC.rosterBase, chairBase: SYNC.chairBase});
+  store.set('cache', {acct: S.acct, events: EVENTS, base: SYNC.base, rev: SYNC.rev, seq: SYNC.seq, rosters: ROSTER, chairs: CHAIRS, admins: ADMINS, adminBase: SYNC.adminBase, rosterBase: SYNC.rosterBase, chairBase: SYNC.chairBase});
 }
 function cacheLoad() {
   const c = store.get('cache');
   if (!c || c.acct !== S.acct) return false;
   EVENTS = c.events || []; SYNC.base = c.base || {}; SYNC.rev = c.rev || {}; SYNC.seq = c.seq || 0;
-  ROSTER = c.rosters || {}; CHAIRS = c.chairs || []; SYNC.rosterBase = c.rosterBase || ''; SYNC.chairBase = c.chairBase || '';
+  ROSTER = c.rosters || {}; CHAIRS = c.chairs || []; ADMINS = c.admins || []; SYNC.adminBase = c.adminBase || ''; SYNC.rosterBase = c.rosterBase || ''; SYNC.chairBase = c.chairBase || '';
   return true;
 }
 // Rebuild the page with new data, but never under the fingers of someone typing or choosing
@@ -1167,6 +1199,8 @@ function takeLists(b) {
   const chairDirty = SYNC.chairBase && J(CHAIRS) !== SYNC.chairBase;
   if (b.apps && !(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.b === 'apps')) APPS = b.apps;
   if (b.chairs && !chairDirty && !(cur() && cur().p === 'group' && S.edit)) { CHAIRS = b.chairs; SYNC.chairBase = J(CHAIRS); }
+  const adminDirty = SYNC.adminBase && J(ADMINS) !== SYNC.adminBase;
+  if (b.admins && !adminDirty && !(cur() && cur().p === 'group' && S.edit)) { ADMINS = b.admins; SYNC.adminBase = J(ADMINS); }
 }
 async function loadAll() {
   try {
@@ -1219,6 +1253,7 @@ function persist() {
   });
   if (isLead() && SYNC.rosterBase && J(rosterOut(ROSTER)) !== SYNC.rosterBase && !SYNC.busy.has('rosters') && !(cur() && cur().p === 'group' && S.edit)) pushList('rosters', rosterOut(ROSTER));
   if (isLead() && J(CHAIRS) !== SYNC.chairBase && !SYNC.busy.has('chairs') && !(cur() && cur().p === 'group' && S.edit)) pushList('chairs', CHAIRS);
+  if (isLead() && SYNC.loaded && J(ADMINS) !== SYNC.adminBase && !SYNC.busy.has('admins') && !(cur() && cur().p === 'group' && S.edit)) pushList('admins', ADMINS);
   cacheSave();
 }
 async function push(id, s) {
@@ -1259,7 +1294,7 @@ async function push(id, s) {
 async function pushList(path, value) {
   SYNC.busy.add(path);
   const text = J(value);
-  try { const r = await api(path, {method: 'PUT', body: text}); if (r.ok) { if (path === 'rosters') SYNC.rosterBase = text; else SYNC.chairBase = text; } else persistSoon(6000); }
+  try { const r = await api(path, {method: 'PUT', body: text}); if (r.ok) SYNC[{rosters: 'rosterBase', chairs: 'chairBase', admins: 'adminBase'}[path]] = text; else persistSoon(6000); }
   catch (e) { persistSoon(6000); }
   finally { SYNC.busy.delete(path); cacheSave(); }
 }
@@ -1289,7 +1324,7 @@ async function syncPhotos(v) {
   return changed;
 }
 // Whose photo this account may change: the person signed in (the teacher's account has no person)
-const photoName = () => { const a = ACCT(), v = V(); if (!a || a.type === 'teacher') return ''; if (a.type === 'lead') return CHAIRS.includes(v.name) ? v.name : ''; return a.type === 'group' && !S.who ? '' : v.name; };
+const photoName = () => { const a = ACCT(), v = V(); if (!a || a.type === 'teacher') return ''; if (a.type === 'lead') return (a.admin ? ADMINS : CHAIRS).includes(v.name) ? v.name : ''; return a.type === 'group' && !S.who ? '' : v.name; };
 // Any photo becomes a 192-pixel square from its centre, as a JPEG of about 15 KB
 async function squareJpeg(file) {
   const url = URL.createObjectURL(file), img = new Image();
@@ -1335,9 +1370,9 @@ document.addEventListener('submit', async e => {
   } catch (x) { err.textContent = 'No connection. Try again when online.'; btn.disabled = false; }
 });
 function signedOut(msg) {
-  SYNC.token = null; SYNC.loaded = false; SYNC.base = {}; SYNC.rev = {}; SYNC.seq = 0; SYNC.rosterBase = ''; SYNC.chairBase = '';
+  SYNC.token = null; SYNC.loaded = false; SYNC.base = {}; SYNC.rev = {}; SYNC.seq = 0; SYNC.rosterBase = ''; SYNC.chairBase = ''; SYNC.adminBase = '';
   store.del('token'); store.del('acct'); store.del('who'); store.del('cache');
-  EVENTS = []; ROSTER = {}; CHAIRS = []; S.acct = null; S.who = null; S.stack = []; S.sheet = null; S.menu = null; S.alert = null; S.edit = false; S.find = '';
+  EVENTS = []; ROSTER = {}; CHAIRS = []; ADMINS = []; S.acct = null; S.who = null; S.stack = []; S.sheet = null; S.menu = null; S.alert = null; S.edit = false; S.find = '';
   render(); if (msg) toast(msg);
 }
 function signOut() {
