@@ -1,6 +1,6 @@
-"""Build Scripts from page.src.html and gen.js.
+"""Build Scripts from page.src.html and gen.js, and the Event Centre from events.src.html.
 
-  python3 build/build.py    writes src/index.html (the page the worker serves)
+  python3 build/build.py    writes src/index.html and src/events.html (the pages the worker serves)
                             and build/Scripts.html (local-only copy for claude.ai)
 """
 import base64, os
@@ -25,6 +25,8 @@ open(os.path.join(root, 'src', 'index.html'), 'w', encoding='utf-8').write(std)
 names = ['陳加森', '梁穎晞', '何秉諾', '曾崧茵', '鄭校長', '黃詩琦', '王姿曼', 'Carson', '王希澄', '胡尊', '劉桓瑜', '蔡杏兒']
 bad = [w for w in names if w in std]
 print('built', len(std), 'real names found:', bad)
-# The events page (src/events.html) is edited directly; its data comes from the server, never from this repository.
-ev = open(os.path.join(root, 'src', 'events.html'), encoding='utf-8').read()
-print('events page real names found:', [w for w in names if w in ev])
+# The events page: build/events.src.html with the same Word generator and template, written to src/events.html.
+# Its data comes from the server, never from this repository.
+ev = open(os.path.join(here, 'events.src.html'), encoding='utf-8').read().replace('%%GEN%%', g).replace('%%TPL%%', tpl)
+open(os.path.join(root, 'src', 'events.html'), 'w', encoding='utf-8').write(ev)
+print('events page built', len(ev), 'real names found:', [w for w in names if w in ev])

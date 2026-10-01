@@ -1,8 +1,8 @@
 // Events: accounts, sessions, rosters and one record per event, with rights checked here.
-// Rights come only from being on duty (Decision Record A5): the Event Lead edits everything; a Group Lead
-// edits their own group's roles, Acting Group Lead and attendance, the tasks given to their own group's roles
-// or members, and their group's kind of document; a small group edits its kind of document; the teacher reads.
-// An event is compared with the stored one piece by piece ("units"), and every changed piece must be allowed.
+// Rights (Decision Record Part A): the Event Lead edits everything; a Group Lead on duty puts names on their group's
+// tasks and sets its roles, Acting Group Lead, attendance and On Leave; on-duty members and Group Leads edit their
+// kind of document; the teacher reads. An event is compared with the stored one piece by piece ("units"), and every
+// changed piece must be allowed. The server also records who changed what, for the yellow update dots.
 import { SEED } from "./accounts-seed.js";
 
 const GROUPS = ["MC", "Backstage", "Reception"].flatMap((m) => ["A", "B", "C", "D"].map((x) => `${m} Group ${x}`));
@@ -11,7 +11,7 @@ export const ACCOUNTS = [
   ...GROUPS.map((g) => ({ id: g, type: "group", group: g })),
   ...GROUPS.map((g) => ({ id: g + " Lead", type: "gl", group: g }))
 ];
-const DOC_OF = { MC: "script", Backstage: "awardees", Reception: "guests" };
+const DOC_OF = { MC: "script", Backstage: "awards", Reception: "guests" };
 const kindOf = (g) => g.split(" ")[0];
 const MAX_EVENT = 900000, SESSION_DAYS = 180, ROUNDS = 100000, MIN_PASSWORD = 8, MAX_FAILS = 5, LOCK_MS = 15 * 60000;
 // Passwords ignore capitals and spaces, so a phone keyboard that capitalises or adds a space does not lock anyone out.
@@ -98,30 +98,103 @@ async function mayChangePhoto(env, acct, name, data) {
   return acct.who === name && (r.people || []).some((p) => p.name === name);
 }
 
+// ---------- Old events: the shape before 26/10/01, read as the new one ----------
+// An event stored in the old shape (Rundown lines holding their tasks, documents in a list, roles on each group)
+// is upgraded every time it is read; the stored row changes only when someone saves the event.
+// The upgrade depends only on the stored event, so every read gives the same result.
+const lastSentence = (text) => {
+  const s = String(text || "").trim(), parts = s.split(/(?<=[。！？!?])/).map((x) => x.trim()).filter(Boolean);
+  const last = parts.length ? parts[parts.length - 1] : s;
+  return last.length > 40 ? "…" + last.slice(-40) : last;
+};
+export function upgrade(ev) {
+  if (!ev || typeof ev !== "object" || ev.v === 4) return ev;
+  const arr = (x) => (Array.isArray(x) ? x.filter((y) => typeof y === "string") : []);
+  const out = { id: ev.id, v: 4, date: ev.date || "", name: ev.name || "", asmTime: ev.asmTime || ev.start || "", venue: ev.venue || "",
+    leading: arr(ev.leading), support: arr(ev.support), lead: ev.lead || "", remarks: ev.remarks || "",
+    groups: [], mcs: [], rows: [], tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: Array.isArray(ev.log) ? ev.log : [], upd: {} };
+  const groups = Array.isArray(ev.groups) ? ev.groups : [];
+  const holder = (gn, rid) => { const g = groups.find((x) => x.name === gn); const r = g && (g.roles || []).find((x) => x.id === rid); return r && r.who ? r.who : ""; };
+  groups.forEach((g) => out.groups.push({ name: g.name, ...(g.covers ? { covers: g.covers } : {}), ...(g.acting ? { acting: g.acting } : {}) }));
+  let k = 0;
+  groups.forEach((g) => (g.roles || []).filter((r) => r.who).forEach((r) => out.tasks.push({ id: "o" + ++k, text: r.name || r.id, role: true, to: [g.name], names: [r.who] })));
+  const lines = Array.isArray(ev.lines) ? ev.lines : [], docs = Array.isArray(ev.docs) ? ev.docs : [];
+  lines.filter((l) => !l.before).forEach((l) => out.rows.push({ id: l.id, time: l.time || "", title: l.title || "", place: l.place || "",
+    remark: [l.end ? "至 " + l.end : "", l.remarks || ""].filter(Boolean).join("；"), say: [] }));
+  // The MC who speaks a paragraph: the name written on it, or whoever held its role in the MC group
+  const mcGroup = (groups.find((g) => (g.roles || []).some((r) => r.id === "Host 1")) || {}).name;
+  const speaker = (b) => b.name || (mcGroup ? holder(mcGroup, b.sp) : "");
+  const paraOf = (bid) => { for (const d of docs) if (d.type === "script" && Array.isArray(d.blocks)) { const b = d.blocks.find((x) => x.id === bid); if (b) return b; } return null; };
+  // A task tied to a script paragraph: its moment in words. After an MC line, the line's last sentence; after a stage direction, the direction.
+  const momentOf = (bid) => { const b = paraOf(bid); if (!b || !String(b.text || "").trim()) return "";
+    const said = lastSentence(b.text); return b.type === "line" ? "司儀說「" + said + "」後" : /^【.*】$/.test(said) ? said + "後" : "「" + said + "」後"; };
+  lines.forEach((l) => (l.tasks || []).forEach((t) => {
+    const to = [], names = [];
+    String(t.to || "").split(",").filter(Boolean).forEach((x) => {
+      if (x === "all") { to.push("All"); return; }
+      const [kind, gn, r] = x.split(":"); if (!gn) return;
+      to.push(gn);
+      if (kind === "p" && r) names.push(r);
+      if (kind === "r") (r === "Hosts" ? ["Host 1", "Host 2"] : [r]).map((id) => holder(gn, id)).filter(Boolean).forEach((n) => names.push(n));
+    });
+    const all = to.includes("All");
+    out.tasks.push({ id: t.id, text: t.text || "", ...(l.before ? { date: "" } : { row: l.id }), to: all ? ["All"] : [...new Set(to)],
+      names: all ? [] : [...new Set(names)], remark: t.at ? momentOf(t.at) : "" });
+  }));
+  // Documents: one Script (each old script joins its Rundown line, or a line of its own), one Awardee List, one Guest List
+  const mcs = [];
+  docs.filter((d) => d.type === "script").forEach((d) => {
+    let row = out.rows.find((r) => r.id === d.line);
+    if (!row && d.q) { row = { id: "q" + d.id, time: "", title: d.q, place: "", remark: "", say: [] }; out.rows.push(row); }
+    if (!row) row = out.rows[0];
+    if (!row) { row = { id: "s" + d.id, time: out.asmTime, title: "", place: out.venue, remark: "", say: [] }; out.rows.push(row); }
+    (d.blocks || []).forEach((b) => {
+      if (b.type === "line") { const n = speaker(b); if (n && !mcs.includes(n)) mcs.push(n); row.say.push({ id: b.id, type: "line", sp: n, text: b.text || "" }); }
+      else if (b.type === "award") row.say.push({ id: b.id, type: "award", list: "aw", award: b.award });
+      else row.say.push({ id: b.id, type: "cue", text: b.text || "" });
+    });
+  });
+  out.mcs = mcs.map((n) => ["", n]);
+  const aw = docs.filter((d) => d.type === "awardees").flatMap((d) => (d.awards || []).map((a) => ({ id: a.id, award: [d.q, a.award].filter(Boolean).join(" "),
+    rows: (a.rows || []).map((r) => [String(r.cls || "").toUpperCase(), r.name || ""]) })));
+  if (docs.some((d) => d.type === "awardees")) out.awards = { aw: { name: "Awardee List", awards: aw } };
+  if (docs.some((d) => d.type === "guests")) out.guests = docs.filter((d) => d.type === "guests").flatMap((d) => (d.guests || []).map((g) => ({ id: g.id, name: g.name || "", role: g.role || "" })));
+  // Attendance: a tick keeps the time it was made; Off before the day becomes On Leave
+  Object.entries(ev.attendance || {}).forEach(([g, m]) => Object.entries(m || {}).forEach(([n, s]) => {
+    if (s === "Attended") (out.att[g] = out.att[g] || {})[n] = ((ev.attTime || {})[g] || {})[n] || out.asmTime || "✓";
+    if (s === "Off") (out.leave[g] = out.leave[g] || {})[n] = true;
+  }));
+  Object.entries(ev.leave || {}).forEach(([g, m]) => Object.entries(m || {}).forEach(([n, v]) => { if (v) (out.leave[g] = out.leave[g] || {})[n] = true; }));
+  return out;
+}
+
 // ---------- Units: the pieces of an event that rights are checked on ----------
-const FIELDS = ["date", "name", "start", "end", "asmTime", "asmPlace", "venue", "leading", "support", "lead", "status", "remarks", "hv"];
-const KNOWN = new Set([...FIELDS, "id", "groups", "lines", "docs", "log", "attendance", "attTime", "leave"]);
+// Event Lead: everything. A Group Lead on duty (or the Acting Group Lead on the day): names on their group's tasks,
+// roles in their group, Acting Group Lead, attendance and On Leave. On-duty members and Group Lead: their kind of
+// document (MC the Script, Backstage the Awardee List, Reception the Guest List). The teacher reads.
+const FIELDS = ["date", "name", "asmTime", "venue", "leading", "support", "lead", "remarks"];
+const KNOWN = new Set([...FIELDS, "id", "v", "groups", "mcs", "rows", "tasks", "awards", "guests", "att", "leave", "log", "upd"]);
 function units(ev) {
   const u = new Map(), put = (k, v) => u.set(k, JSON.stringify(v === undefined ? null : v));
   if (!ev) return u;
   FIELDS.forEach((f) => put("f:" + f, ev[f]));
   Object.keys(ev).filter((k) => !KNOWN.has(k)).forEach((k) => put("x:" + k, ev[k]));
   put("groups", (ev.groups || []).map((g) => g.name).sort());
-  (ev.groups || []).forEach((g) => { put(`g:${g.name}:lead`, g.lead); put(`g:${g.name}:roles`, g.roles); put(`g:${g.name}:acting`, g.acting || null); put(`g:${g.name}:covers`, g.covers || null); });
-  (ev.lines || []).forEach((l) => {
-    put("l:" + l.id, { time: l.time, end: l.end || "", title: l.title, place: l.place, remarks: l.remarks, before: !!l.before });
-    (l.tasks || []).forEach((t) => put("t:" + t.id, { line: l.id, text: t.text, to: t.to, at: t.at || "", chk: !!t.chk }));
+  (ev.groups || []).forEach((g) => { put(`g:${g.name}`, { covers: g.covers || null, since: g.since || null, x: Object.keys(g).filter((k) => !["name", "covers", "since", "acting"].includes(k)).sort() }); put(`g:${g.name}:acting`, g.acting || null); });
+  put("rows", (ev.rows || []).map((r) => r.id));
+  (ev.rows || []).forEach((r) => {
+    put("r:" + r.id, { time: r.time, title: r.title, place: r.place, remark: r.remark || "" });
+    put("so:" + r.id, (r.say || []).map((s) => s.id));
+    (r.say || []).forEach((s) => put("s:" + s.id, { ...s, row: r.id }));
   });
-  (ev.docs || []).forEach((d) => put("d:" + d.id, d));
-  const some = (x) => !!x && Object.keys(x).length > 0;
-  GROUPS.forEach((g) => { const a = (ev.attendance || {})[g], t = (ev.attTime || {})[g]; if (some(a) || some(t)) put("a:" + g, { a: a || {}, t: t || {} }); });
-  // On Leave, marked before the event: set by the Event Lead or that group's Group Lead
-  GROUPS.forEach((g) => { const v = (ev.leave || {})[g]; if (some(v)) put("v:" + g, v); });
+  put("mcs", ev.mcs || []);
+  (ev.tasks || []).forEach((t) => { const { names, ...rest } = t; put("t:" + t.id, rest); put("tn:" + t.id, names || []); });
+  Object.entries(ev.awards || {}).forEach(([id, l]) => put("aw:" + id, l));
+  put("gu", ev.guests === undefined ? null : ev.guests);
+  GROUPS.forEach((g) => { const a = (ev.att || {})[g], v = (ev.leave || {})[g]; if (a && Object.keys(a).length) put("a:" + g, a); if (v && Object.keys(v).length) put("v:" + g, v); });
   return u;
 }
 const onDuty = (ev, g) => !!ev && (ev.groups || []).some((x) => x.name === g);
-// The group whose Group Lead rights this session has in this event: a Group Lead on duty, or the member a
-// Group Lead named Acting Group Lead, signed in on the group's account.
 // An Acting Group Lead has the Group Lead's rights only on the day of the event (the Group Lead does the work before it).
 const todayHK = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, "/");
 function leadsGroup(acct, ev) {
@@ -130,36 +203,37 @@ function leadsGroup(acct, ev) {
   const g = ev.groups.find((x) => x.name === acct.group);
   return acct.type === "group" && acct.who && g && g.acting === acct.who && ev.date === todayHK() ? acct.group : null;
 }
-function taskOf(ev, id) { for (const l of (ev && ev.lines) || []) for (const t of l.tasks || []) if (t.id === id) return t; return null; }
-function docOf(ev, id) { return ((ev && ev.docs) || []).find((d) => d.id === id) || null; }
-// A Group Lead's task: every one of its targets is their own group, one of its roles or one of its members.
-// A task given to no one, to All or to another group belongs to the Event Lead.
-const ownTask = (t, g) => !t || (!!t.to && t.to.split(",").every((x) => /^[grp]:/.test(x) && x.split(":")[1] === g));
+const taskOf = (ev, id) => ((ev && ev.tasks) || []).find((t) => t.id === id) || null;
+const DOC_KEY = { script: ["s:", "so:", "mcs"], awards: ["aw:"], guests: ["gu"] };
+const docOfKey = (key) => Object.keys(DOC_KEY).find((d) => DOC_KEY[d].some((p) => (p.endsWith(":") ? key.startsWith(p) : key === p)));
 function allowed(acct, old, key) {
   if (acct.type === "lead") return true;
   if (acct.type === "teacher" || !old) return false;
   const g = leadsGroup(acct, old), mine = acct.group && onDuty(old, acct.group) ? DOC_OF[kindOf(acct.group)] : null;
-  return (nw) => {
-    if (key.startsWith("d:")) { const a = docOf(old, key.slice(2)), b = docOf(nw, key.slice(2)); return !!mine && (!a || a.type === mine) && (!b || b.type === mine); }
-    if (!g) return false;
-    if (key === `g:${g}:roles` || key === `g:${g}:acting` || key === "a:" + g || key === "v:" + g) return true;
-    if (key.startsWith("t:")) return ownTask(taskOf(old, key.slice(2)), g) && ownTask(taskOf(nw, key.slice(2)), g);
-    return false;
-  };
+  const d = docOfKey(key);
+  if (d) return mine === d;
+  // The first Rundown line, made with a new Script when the Rundown is still empty
+  if ((key === "rows" || key.startsWith("r:")) && mine === "script" && !(old.rows || []).length) return true;
+  if (!g) return false;
+  if (key === `g:${g}:acting` || key === "a:" + g || key === "v:" + g) return true;
+  // Names on a task given to their group; a role (a task with role) in their group
+  if (key.startsWith("tn:")) return (nw) => [taskOf(old, key.slice(3)), taskOf(nw, key.slice(3))].every((t) => !t || (t.to || []).includes(g));
+  if (key.startsWith("t:")) return (nw) => [taskOf(old, key.slice(2)), taskOf(nw, key.slice(2))].every((t) => !t || (t.role === true && JSON.stringify(t.to) === JSON.stringify([g])));
+  return false;
 }
 // What an account may read: attendance and On Leave only for the Event Lead and the group's own Group Lead.
 function visible(acct, ev) {
   if (!ev || acct.type === "lead") return ev;
-  const g = leadsGroup(acct, ev), out = { ...ev, attendance: {}, attTime: {}, leave: {} };
-  if (g) { out.attendance[g] = (ev.attendance || {})[g] || {}; out.attTime[g] = (ev.attTime || {})[g] || {}; out.leave[g] = (ev.leave || {})[g] || {}; }
+  const g = leadsGroup(acct, ev), out = { ...ev, att: {}, leave: {} };
+  if (g) { out.att[g] = (ev.att || {})[g] || {}; out.leave[g] = (ev.leave || {})[g] || {}; }
   return out;
 }
 // A write keeps what the writer could not see.
 function withHidden(acct, old, nw) {
   if (acct.type === "lead" || !old) return nw;
-  const g = leadsGroup(acct, old), a = { ...(old.attendance || {}) }, t = { ...(old.attTime || {}) }, v = { ...(old.leave || {}) };
-  if (g) { a[g] = (nw.attendance || {})[g] || {}; t[g] = (nw.attTime || {})[g] || {}; v[g] = (nw.leave || {})[g] || {}; }
-  return { ...nw, attendance: a, attTime: t, leave: v };
+  const g = leadsGroup(acct, old), a = { ...(old.att || {}) }, v = { ...(old.leave || {}) };
+  if (g) { a[g] = (nw.att || {})[g] || {}; v[g] = (nw.leave || {})[g] || {}; }
+  return { ...nw, att: a, leave: v };
 }
 function checkWrite(acct, old, nw) {
   const a = units(old), b = units(nw);
@@ -172,12 +246,47 @@ function checkWrite(acct, old, nw) {
   }
   return null;
 }
+// What changed, and who changed it: the yellow dots. Keys: event id; id:f:field; id:t:task; id:d:document;
+// id:s:paragraph; id:mcs; id:r:line; id:a:award; id:g:guest. Role tasks, attendance and On Leave make no dot.
+function stamp(old, nw, by) {
+  const upd = { ...((old && old.upd) || {}) }, at = Date.now(), id = nw.id, J = (x) => JSON.stringify(x === undefined ? null : x);
+  let any = false;
+  const bump = (k) => { upd[`${id}:${k}`] = { by, at }; any = true; };
+  const o = old || {};
+  FIELDS.forEach((f) => { if (J(o[f]) !== J(nw[f])) bump("f:" + (f === "support" ? "leading" : f)); });
+  const byId = (list) => new Map((list || []).map((x) => [x.id, J(x)]));
+  const diff = (oldList, newList, k) => { const m = byId(oldList); let c = false; (newList || []).forEach((x) => { if (m.get(x.id) !== J(x)) { bump(k + ":" + x.id); c = true; } }); return c || (oldList || []).length !== (newList || []).length; };
+  if (diff((o.tasks || []).filter((t) => !t.role), (nw.tasks || []).filter((t) => !t.role), "t")) any = true;
+  const says = (e) => (e.rows || []).flatMap((r) => r.say || []);
+  const mcs = J(o.mcs || []) !== J(nw.mcs || []);
+  if (mcs) bump("mcs");
+  if (diff(says(o), says(nw), "s") || mcs) bump("d:script");
+  const bare = (e) => (e.rows || []).map((r) => ({ ...r, say: 0 }));
+  if (diff(bare(o), bare(nw), "r")) bump("d:rundown");
+  const lists = new Set([...Object.keys(o.awards || {}), ...Object.keys(nw.awards || {})]);
+  lists.forEach((l) => { const x = (o.awards || {})[l], y = (nw.awards || {})[l]; if (y && (diff(x ? x.awards : [], y.awards, "a") || J(x) !== J(y))) bump("d:aw:" + l); });
+  if (nw.guests && (diff(o.guests || [], nw.guests, "g") || J(o.guests) !== J(nw.guests))) bump("d:guests");
+  if (J((o.groups || []).map((g) => g.name)) !== J((nw.groups || []).map((g) => g.name))) any = true;
+  if (any) upd[id] = { by, at };
+  // Keep the newest 400
+  const keys = Object.keys(upd);
+  if (keys.length > 400) keys.sort((x, y) => upd[y].at - upd[x].at).slice(400).forEach((k) => delete upd[k]);
+  return upd;
+}
 // History keeps every entry, but only the latest entries keep a copy to restore from, so an event stays small.
 function trimLog(ev) {
   if (!Array.isArray(ev.log)) ev.log = [];
   ev.log = ev.log.slice(0, 300).map((e, i) => (i < 12 ? e : { ...e, snap: undefined }));
   return ev;
 }
+
+// The person a change is credited to (the yellow dots are not shown to them)
+async function whoOf(env, acct) {
+  if (acct.type === "gl") { const r = ((await settingOf(env, "rosters")) || {})[acct.group]; return (r && r.lead && r.lead.name) || acct.id; }
+  return acct.who || acct.id;
+}
+// Pages from before 26/10/01 read events in the old shape; they get nothing new until they are reloaded.
+const PAGE = "4";
 
 export async function handleEvents(request, env, url, path) {
   await ensureEventTables(env.DB);
@@ -192,9 +301,10 @@ export async function handleEvents(request, env, url, path) {
   }
 
   if (path === "state" && request.method === "GET") {
+    if (request.headers.get("x-page") !== PAGE) return json({ error: "reload" }, 503);
     const since = Math.max(0, Number(url.searchParams.get("since")) || 0);
     const { results } = await env.DB.prepare("SELECT id, data, deleted, seq FROM events WHERE seq > ? ORDER BY seq").bind(since).all();
-    const rows = results.map((r) => ({ id: r.id, rev: r.seq, deleted: !!r.deleted, data: r.deleted ? null : JSON.stringify(visible(acct, JSON.parse(r.data))) }));
+    const rows = results.map((r) => ({ id: r.id, rev: r.seq, deleted: !!r.deleted, data: r.deleted ? null : JSON.stringify(visible(acct, upgrade(JSON.parse(r.data)))) }));
     const out = { account: { id: acct.id, type: acct.type, group: acct.group || null }, rows, photos: await photoVersions(env) };
     if (!since || url.searchParams.get("full")) {
       const s = await env.DB.prepare("SELECT k, v FROM settings WHERE k IN ('rosters', 'chairs')").all();
@@ -211,8 +321,8 @@ export async function handleEvents(request, env, url, path) {
     let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
     const id = m[1], rev = Number(body.rev) || 0;
     const row = await env.DB.prepare("SELECT data, deleted, seq FROM events WHERE id = ?").bind(id).first();
-    if ((row ? row.seq : 0) !== rev) return json({ error: "conflict", rev: row ? row.seq : 0, deleted: row ? !!row.deleted : false, data: row && !row.deleted ? JSON.stringify(visible(acct, JSON.parse(row.data))) : null }, 409);
-    const old = row && !row.deleted ? JSON.parse(row.data) : null;
+    if ((row ? row.seq : 0) !== rev) return json({ error: "conflict", rev: row ? row.seq : 0, deleted: row ? !!row.deleted : false, data: row && !row.deleted ? JSON.stringify(visible(acct, upgrade(JSON.parse(row.data)))) : null }, 409);
+    const old = row && !row.deleted ? upgrade(JSON.parse(row.data)) : null;
     const next = "(SELECT COALESCE(MAX(seq), 0) + 1 FROM events)";
     if (body.deleted) {
       if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
@@ -222,9 +332,13 @@ export async function handleEvents(request, env, url, path) {
     if (typeof body.data !== "string" || body.data.length > MAX_EVENT) return json({ error: "bad request" }, 400);
     let nw; try { nw = JSON.parse(body.data); } catch { return json({ error: "bad request" }, 400); }
     if (!nw || typeof nw !== "object" || nw.id !== id) return json({ error: "bad request" }, 400);
+    if (nw.v !== 4) return json({ error: "reload" }, 403);  // a page from before 26/10/01
     nw = trimLog(withHidden(acct, old, nw));
+    // One document of each kind per event
+    if (Object.keys(nw.awards || {}).length > Math.max(1, Object.keys((old && old.awards) || {}).length)) return json({ error: "one list" }, 400);
     const denied = checkWrite(acct, old, nw);
     if (denied) return json({ error: "forbidden", unit: denied }, 403);
+    nw.upd = stamp(old, nw, await whoOf(env, acct));
     const data = JSON.stringify(nw);
     if (data.length > MAX_EVENT) return json({ error: "too large" }, 413);
     const saved = row
