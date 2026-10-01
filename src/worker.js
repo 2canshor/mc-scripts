@@ -56,7 +56,7 @@ export default {
     }
     await moveDatabase(env);
     const path = url.pathname.slice("/api/".length);
-    if (/^(login|logout|state|events\/[A-Za-z0-9_-]+|rosters|chairs|admins|accounts|password|photos|photo|applications)$/.test(path)) return handleEvents(request, env, url, path);
+    if (/^(login|logout|state|events\/[A-Za-z0-9_-]+|rosters|chairs|admins|accounts|passwords|password|photos|photo|applications)$/.test(path)) return handleEvents(request, env, url, path);
     // The script editor: the CA passcode, or a signed-in account of the event tool (not the teacher's, which only reads)
     const expected = env.PASSCODE ? await sha256(String(env.PASSCODE).replace(/\s+/g, "").toLowerCase()) : PASSCODE_SHA256;
     let given = request.headers.get("x-passcode") || "";

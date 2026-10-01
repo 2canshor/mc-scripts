@@ -707,7 +707,11 @@ function pGuests(ev) {
 }
 
 /* ---------- Members (Event Lead) ---------- */
-const pwView = (id, ed) => ed ? `<span class="pw">${fld('pw:' + id, PASSWORDS[id] || '', 'New Password')}</span>` : `<span class="pw"><span class="pv mask">••••••</span></span>`;
+// A password reads as dots; the eye shows it (as the server last saw it: set here, or used to sign in), and hides it again
+let PWSHOW = null;  // fetched when an eye is first tapped; never kept on the device
+const pwView = (id, ed) => { if (ed) return `<span class="pw">${fld('pw:' + id, PASSWORDS[id] || '', 'New Password')}</span>`;
+  const on = (S.pwOpen || new Set()).has(id), v = on && PWSHOW ? PWSHOW[id] : '';
+  return `<span class="pw"><span class="pv${on ? '' : ' mask'}">${on ? (v ? esc(v) : '—') : '••••••'}</span><button class="ib eye" data-a="pweye:${esc(id)}" aria-label="${on ? 'Hide' : 'Show'} Password">${ic(on ? 'eye-off' : 'eye')}</button></span>`; };
 const acctRow = (id, ed) => `<div class="row g-acct">${sym('key', 'Account')}<span>${esc(id)}</span>${pwView(id, ed)}</div>`;
 function pMembers() {
   return {l: backBtn(), title: 'Members', body: `<h1>Members</h1>
@@ -910,7 +914,7 @@ function replaceGroup(ev, from, g) {
 }
 
 /* ---------- Actions ---------- */
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
   const b = e.target.closest('[data-a]'); if (!b) return;
   if (b.dataset.a === 'bg' && e.target !== b) return;
   if (b.closest('.sw') && b.closest('.sw').dataset.dragged) { delete b.closest('.sw').dataset.dragged; return; }
@@ -989,6 +993,8 @@ document.addEventListener('click', e => {
     case 'switch': S.who = arg; store.set('who', arg); S.sheet = null; S.toSee = new Set(); render(); break;
     // Applications: the CA Support form's sheet. The row says whether it is read; tapping it shows the link to change it.
     case 'appsopen': S.appsOpen = !S.appsOpen; layer(); break;
+    case 'pweye': { S.pwOpen = S.pwOpen || new Set(); if (S.pwOpen.has(arg)) { S.pwOpen.delete(arg); render(); break; }
+      S.pwOpen.add(arg); if (!PWSHOW) { try { const r = await api('passwords'); PWSHOW = r.ok ? await r.json() : {}; } catch (x) { toast('No connection'); S.pwOpen.delete(arg); break; } } render(); break; }
     case 'export': exportAttendance(); break;
     case 'exportdoc': exportDoc(ev, cur().id); break;
     case 'askdoc': S.alert = {t: `Delete This ${arg === 'script' ? 'Script' : arg === 'guests' ? 'Guest List' : 'Participant List'}?`, m: 'It goes for everyone.', verb: 'Delete', act: 'deldocpage:' + arg}; layer(); break;
@@ -1313,7 +1319,7 @@ async function pushList(path, value) {
 // Passwords: the Event Lead sets them on a Members page; they are kept scrambled, so no one can read one back
 async function savePasswords() {
   const typed = Object.entries(PASSWORDS).filter(([, v]) => v && v.trim());
-  PASSWORDS = {};
+  PASSWORDS = {}; PWSHOW = null;
   for (const [account, password] of typed) {
     try { const r = await api('password', {method: 'POST', body: JSON.stringify({account, password})}); toast(r.ok ? 'Password changed' : 'Password not changed'); }
     catch (e) { toast('No connection. Password not changed'); }
@@ -1384,7 +1390,7 @@ document.addEventListener('submit', async e => {
 function signedOut(msg) {
   SYNC.token = null; SYNC.loaded = false; SYNC.base = {}; SYNC.rev = {}; SYNC.seq = 0; SYNC.rosterBase = ''; SYNC.chairBase = ''; SYNC.adminBase = '';
   store.del('token'); store.del('acct'); store.del('who'); store.del('cache');
-  EVENTS = []; ROSTER = {}; CHAIRS = []; ADMINS = []; S.acct = null; S.who = null; S.stack = []; S.sheet = null; S.menu = null; S.alert = null; S.edit = false; S.find = '';
+  EVENTS = []; ROSTER = {}; CHAIRS = []; ADMINS = []; PWSHOW = null; S.pwOpen = new Set(); S.acct = null; S.who = null; S.stack = []; S.sheet = null; S.menu = null; S.alert = null; S.edit = false; S.find = '';
   render(); if (msg) toast(msg);
 }
 function signOut() {

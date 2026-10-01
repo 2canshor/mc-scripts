@@ -38,6 +38,7 @@ export function ensureEventTables(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS login_fail (account TEXT PRIMARY KEY, n INTEGER NOT NULL, since INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS photos (name TEXT PRIMARY KEY, data TEXT NOT NULL, updated INTEGER NOT NULL)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS vault (id TEXT PRIMARY KEY, sealed TEXT NOT NULL)"),
     // Admin and Teacher were renamed Editor and Viewer (Carson, 26/10/02): their password, sign-ins and wrong tries move with them
     ...[["Teacher", "Viewer"], ["Admin", "Editor"]].flatMap(([from, to]) => [
       db.prepare("UPDATE OR IGNORE accounts SET id = ? WHERE id = ?").bind(to, from),
@@ -64,6 +65,27 @@ async function hashOf(env, id) {
   const row = await env.DB.prepare("SELECT hash FROM accounts WHERE id = ?").bind(id).first();
   return row ? row.hash : SEED[id === "Viewer" ? "Teacher" : id] || null;
 }
+// Passwords the Event Lead and Editor can read back on the Members page, behind an eye (Carson, the CA admin, 26/10/02:
+// "the eye should be there. And this is not something very secret"). Sign-in still checks the one-way hash; this copy is
+// encrypted with a key derived from the Worker secret FONT_KEY, and is written when a password is set, or when someone signs
+// in with it (passwords set before this exist only as hashes).
+async function vaultKey(env) {
+  if (!env.FONT_KEY) return null;
+  const raw = Uint8Array.from(atob(String(env.FONT_KEY).trim()), (c) => c.charCodeAt(0));
+  const base = await crypto.subtle.importKey("raw", raw, "HKDF", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(16), info: new TextEncoder().encode("event-centre passwords") }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function seal(env, id, pw) {
+  const key = await vaultKey(env); if (!key) return;
+  const iv = crypto.getRandomValues(new Uint8Array(12)), ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: new TextEncoder().encode(id) }, key, new TextEncoder().encode(pw)));
+  await env.DB.prepare("INSERT INTO vault (id, sealed) VALUES (?1, ?2) ON CONFLICT (id) DO UPDATE SET sealed = ?2").bind(id, hex(iv) + hex(ct)).run();
+}
+async function unsealAll(env) {
+  const key = await vaultKey(env); if (!key) return {};
+  const { results } = await env.DB.prepare("SELECT id, sealed FROM vault").all(), out = {};
+  for (const r of results) { try { const b = unhex(r.sealed); out[r.id] = new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b.slice(0, 12), additionalData: new TextEncoder().encode(r.id) }, key, b.slice(12))); } catch { /* sealed under another key */ } }
+  return out;
+}
 async function login(request, env) {
   let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
   const typed = String(body.account || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -82,6 +104,7 @@ async function login(request, env) {
     return json({ error: "Wrong account or password" }, 401);
   }
   if (fail) await env.DB.prepare("DELETE FROM login_fail WHERE account = ?").bind(acct.id).run();
+  try { await seal(env, acct.id, pw); } catch { /* signing in does not depend on it */ }
   const token = hex(crypto.getRandomValues(new Uint8Array(24)));
   await env.DB.prepare("INSERT INTO sessions (token, account, created) VALUES (?, ?, ?)").bind(await sha(token), acct.id, Date.now()).run();
   return json({ token, account: acct });
@@ -484,6 +507,10 @@ export async function handleEvents(request, env, url, path) {
     const changed = Object.fromEntries(results.map((r) => [r.id, r.changed]));
     return json({ accounts: ACCOUNTS.map((a) => ({ id: a.id, type: a.type, changed: changed[a.id] || 0 })) });
   }
+  if (path === "passwords" && request.method === "GET") {
+    if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
+    return json(await unsealAll(env));
+  }
   if (path === "password" && request.method === "POST") {
     if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
     let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
@@ -491,6 +518,7 @@ export async function handleEvents(request, env, url, path) {
     if (!target || [...pw].length < MIN_PASSWORD || pw.length > 200) return json({ error: "bad request" }, 400);
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
     await env.DB.prepare("INSERT INTO accounts (id, hash, changed) VALUES (?1, ?2, ?3) ON CONFLICT (id) DO UPDATE SET hash = ?2, changed = ?3").bind(target.id, salt + ":" + await pbkdf2(pw, salt), Date.now()).run();
+    try { await seal(env, target.id, pw); } catch { /* the hash above is what signs in */ }
     await env.DB.prepare("DELETE FROM sessions WHERE account = ?").bind(target.id).run();  // everyone on the old password signs in again
     await env.DB.prepare("DELETE FROM login_fail WHERE account = ?").bind(target.id).run();
     return json({ ok: true });
