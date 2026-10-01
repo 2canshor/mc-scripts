@@ -253,16 +253,13 @@ html.locked,html.locked body{overflow:hidden}
 .sbar>:last-child{justify-self:end}
 .sheet .note{margin:-6px 0 12px;color:var(--secondary);font-size:15px;text-align:center}
 .sheet .sh{margin-top:4px}
+.sheet .sbar+.sec{margin-top:0}
 .sheet .st{font-size:22px;font-weight:600;line-height:1.3;margin:0 0 12px}
 /* A switch, as iOS: on is green */
 .switch{-webkit-appearance:none;appearance:none;width:51px;height:31px;border-radius:999px;background:var(--field);position:relative;cursor:pointer;transition:background .2s;margin:0}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:transform .2s} /* tell-ok: the switch knob is white in both themes, as iOS */
 .switch:checked{background:var(--present)}
 .switch:checked::after{transform:translateX(20px)}
-.srch{display:flex;align-items:center;gap:8px;background:var(--field);border-radius:12px;padding:0 12px;height:44px;margin:8px 0}
-.srch svg.i{color:var(--caption)}
-.srch input{flex:1;min-width:0;background:transparent;border:0;outline:none;font-size:17px}
-.srch input::placeholder{color:var(--caption)}
 .av{position:relative;border-radius:50%;background:var(--field);display:grid;place-items:center;font-weight:600;overflow:hidden;flex:none}
 .av img{width:100%;height:100%;object-fit:cover}
 .av .ov{position:absolute;inset:0;display:grid;place-items:center;background:rgba(26,26,24,.5);color:#FBFAF7;opacity:0;transition:opacity .15s} /* tell-ok: white symbol over a dimmed photo */
@@ -365,7 +362,6 @@ const uid = () => 'x' + Date.now().toString(36) + Math.random().toString(36).sli
 const ALL_GROUPS = ['MC', 'Backstage', 'Reception'].flatMap(k => ['A', 'B', 'C', 'D'].map(x => `${k} Group ${x}`));
 const kind = g => g === 'All' ? 'All' : g.split(' ')[0];
 const SYM = {MC: 'mic', Backstage: 'curtain', Reception: 'wave', All: 'all'};
-const SUGGEST = {MC: ['Host 1', 'Host 2', 'Writer', 'Pronunciation', 'Stage Cue', 'Backup MC'], Backstage: ['Roll Call', 'Props', 'Stage Reset', 'Photo Positions', 'IG Footage'], Reception: ['Check-in', 'Seating', 'Handoff', 'Send-off']};
 // The chairs keep the rosters (copied from List of Members). The server stores {lead: {cls, name}, people: [{cls, name}]};
 // this page keeps [class, name] pairs.
 let CHAIRS = [], ROSTER = {}, EVENTS = [], PHOTOS = {};
@@ -381,7 +377,7 @@ const ACCOUNTS = [{id: 'Event Lead', type: 'lead'}, {id: 'Teacher', type: 'teach
   ...ALL_GROUPS.map(g => ({id: g, type: 'group', group: g})), ...ALL_GROUPS.map(g => ({id: g + ' Lead', type: 'gl', group: g}))];
 
 /* ---------- Who is looking: the account signed in on this device, and the person who picked their name ---------- */
-const S = {acct: null, who: null, seen: {}, toSee: new Set(), stack: [], edit: false, snap: null, sheet: null, menu: null, alert: null, open: {}, toast: '', q: '', find: ''};
+const S = {acct: null, who: null, seen: {}, toSee: new Set(), stack: [], edit: false, snap: null, sheet: null, menu: null, alert: null, open: {}, toast: '', find: ''};
 const ACCT = () => ACCOUNTS.find(a => a.id === S.acct);
 function V() {
   const a = ACCT(); if (!a) return null;
@@ -414,8 +410,6 @@ const fromIso = s => s ? s.slice(2).replace(/-/g, '/') : '';
 const wd = d => d ? '（' + WEEK[new Date(iso(d) + 'T12:00').getDay()] + '）' : '';
 const md = d => d ? d.slice(3) : '';   // 26/10/05 -> 10/05 in a date column
 const rowOf = (ev, id) => ev.rows.find(r => r.id === id);
-const roleTasks = (ev, g) => ev.tasks.filter(t => t.role && t.to.includes(g));
-const rolesOf = (ev, g, n) => roleTasks(ev, g).filter(t => t.names.includes(n));
 const onLeave = (ev, g, n) => !!(((ev.leave || {})[g] || {})[n]);
 const tasksOf = (ev, g) => ev.tasks.filter(t => !t.role && t.to.includes(g));
 const openCount = (ev, g) => g === 'All' ? 0 : tasksOf(ev, g).filter(t => !t.names.length).length;
@@ -444,7 +438,6 @@ const hasScript = ev => ev.rows.some(r => r.say.length);
 // the line itself is named above the task, so a line without a time still shows where the task is.
 const whenOf = (ev, t) => !t.row ? md(t.date || '') : (rowOf(ev, t.row) || {}).time || '';
 const lineOf = (ev, t) => t.row ? `<span class="lnm">${esc((rowOf(ev, t.row) || {}).title || '')}</span>` : '';
-const lineTime = (ev, t) => t.row ? (rowOf(ev, t.row) || {}).time || '' : '';
 // Order: by date, then by Rundown line; tasks of one date or one line keep the order they were put in (dragged by their handle)
 const order = (ev, t) => !t.row ? '0' + (t.date || '') : '1' + String(ev.rows.findIndex(r => r.id === t.row)).padStart(3, '0');
 const sorted = (ev, list) => list.map((t, i) => [t, i]).sort((a, b) => order(ev, a[0]).localeCompare(order(ev, b[0])) || a[1] - b[1]).map(x => x[0]);
@@ -571,14 +564,11 @@ function facts(ev, ed) {
     ${ev.lead ? row('flag', 'Event Lead', esc(ev.lead)) : ''}
     ${ev.remarks ? row('note', 'Remarks', `<span class="pre">${linked(ev.remarks)}</span>`, true) : ''}</section>`;
 }
-// A list of tasks holds one kind of time only: on the event's day, the day's tasks by time;
-// on any other day, Before the Event by date. The day's tasks are always on the Rundown, under their lines.
-const forToday = (ev, tasks) => tasks.filter(t => ev.date === TODAY ? !!t.row : !t.row);
-// The time column. Today, the next one is marked.
+// A list of tasks holds one kind of time only, dates: the work before the event. On the event's day the page shows the
+// Rundown in its place (lines and their tasks, by time), and the Rundown leaves Documents; after the day it is back as before.
+const isDay = ev => ev.date === TODAY;
 function taskRows(ev, tasks, render) {
-  const list = sorted(ev, forToday(ev, tasks));
-  const next = ev.date === TODAY ? list.find(t => lineTime(ev, t) >= NOW()) : null;
-  return list.map(t => render(t, whenOf(ev, t), t === next)).join('');
+  return sorted(ev, tasks.filter(t => !t.row)).map(t => render(t, whenOf(ev, t), false)).join('');
 }
 const taskSec = (ev, head, tasks, render) => { const rows = taskRows(ev, tasks, render);
   return rows ? `<section class="sec"><p class="sh">${head}</p><div class="list">${rows}</div></section>` : tasks.length ? '' : `<section class="sec"><p class="sh">${head}</p><p class="empty">No tasks yet</p></section>`; };
@@ -597,68 +587,67 @@ function allTasks(ev, ed) {
 function yourPart(ev, ed) {
   const v = V(), type = vt(ev);
   if (type === 'member') {
-    const mine = ev.tasks.filter(t => !t.role && forMe(t)), roles = rolesOf(ev, v.group, v.name);
+    const mine = ev.tasks.filter(t => !t.role && forMe(t));
     const render = (t, when, now) => { const others = t.to.includes('All') ? [] : t.names.filter(n => n !== v.name);
       return `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${others.length ? `<span class="who">${others.map(n => `<span class="nw">${esc(n)}</span>`).join('、')}</span>` : ''}</span></div>`; };
-    // A Role is a task for the whole event: a row of its own, without a time
-    return taskSec(ev, 'My Tasks', mine, render);
+    return isDay(ev) ? daySec(ev) : taskSec(ev, 'My Tasks', mine, render);
   }
   if (type === 'gl') {
     const g = v.group, mine = groupTasks(ev, g);
     const render = (t, when, now) => t.to.includes('All') ? `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}<span class="who">Everyone</span></span></div>` : `<button class="row g-tm${now ? ' current' : ''}" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
-    return taskSec(ev, 'Tasks', mine, render) + memberList(ev, g);
+    return (isDay(ev) ? daySec(ev) : taskSec(ev, 'Tasks', mine, render)) + memberList(ev, g);
   }
   if (type === 'lead') {
     // Duty groups: who is on duty, with the number of tasks still without a name. Their tasks are in Tasks below.
     const rows = ev.groups.map(gr => { const g = gr.name, n = openCount(ev, g), cov = gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
       if (ed) return `<div class="row g-p" tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto">${sym(SYM[kind(g)], kind(g))}<span><span class="fl">${pick(`dg:${g}`, gname(g), dutyOpts(ev, kind(g), g), 'Group')}</span>${cov}</span>${rmB('askgroup:' + g, 'Remove duty group')}</div>`;
       return `<div class="row g-p" style="grid-template-columns:22px minmax(0,1fr) auto">${sym(SYM[kind(g)], kind(g))}<span>${gname(g)}${cov}</span><span>${n ? badge(n) : ''}</span></div>`; }).join('');
-    return `<section class="sec"><p class="sh">Duty Groups</p><div class="list">${rows}${ed ? addB('menu:addgroup', 'Add Duty Group') : ''}</div>${!rows && !ed ? '<p class="empty">No duty groups yet</p>' : ''}</section>` + allTasks(ev, ed);
+    return `<section class="sec"><p class="sh">Duty Groups</p><div class="list">${rows}${ed ? addB('menu:addgroup', 'Add Duty Group') : ''}</div>${!rows && !ed ? '<p class="empty">No duty groups yet</p>' : ''}</section>` + (ed ? (isDay(ev) ? `<section class="sec"><p class="sh">Rundown</p>${runEdit(ev)}</section>` : '') + allTasks(ev, true) : isDay(ev) ? daySec(ev) : allTasks(ev, false));
   }
-  // Teacher: who is responsible, with their roles
+  // Teacher: who is responsible
   const who = ev.groups.map(gr => { const g = gr.name, ns = [...new Set(ev.tasks.filter(t => t.to.includes(g)).flatMap(t => t.names))];
-    const lines = ns.map(n => { const rs = rolesOf(ev, g, n).map(r => r.text); return `<span class="nw">${esc(n)}${rs.length ? ' (' + esc(rs.join(', ')) + ')' : ''}</span>`; });
+    const lines = ns.map(n => `<span class="nw">${esc(n)}</span>`);
     return `<div class="row g-p top">${sym(SYM[kind(g)], kind(g))}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('、')}</span>` : ''}</span></div>`; }).join('');
-  return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + allTasks(ev, false);
+  return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + (isDay(ev) ? daySec(ev) : allTasks(ev, false));
 }
-// A group's members: attendance | name, time, roles | ›. Each is ticked one by one. The row opens their roles.
+// A group's members: attendance | name, time, Group Lead or Acting Group Lead | ›. Each is ticked one by one. The row opens their tasks.
 function memberList(ev, g) {
   const lead = roster(g).lead[1], gr = ev.groups.find(x => x.name === g) || {}, at = ev.att[g] || {};
-  const rows = members(g).map(n => { const t = at[n], lv = onLeave(ev, g, n), rs = rolesOf(ev, g, n).map(r => r.text).concat(gr.acting === n ? ['Acting Group Lead'] : []).concat(n === lead ? ['Group Lead'] : []);
+  const rows = members(g).map(n => { const t = at[n], lv = onLeave(ev, g, n), rs = (gr.acting === n ? ['Acting Group Lead'] : []).concat(n === lead ? ['Group Lead'] : []);
     const ck = lv && !t ? `<span class="ck" role="img" aria-label="On Leave">${ic('leave')}</span>` : `<button class="ck${t ? ' on' : ''}" data-a="here:${g}:${n}" aria-pressed="${!!t}" aria-label="${esc(n)} is here">${ic(t ? 'check-fill' : 'circle')}</button>`;
     const inner = `<span class="nw">${esc(n)}${t ? `<span class="tm">${t}</span>` : ''}</span><span class="tags">${rs.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</span>`;
-    const row = `<div class="row g-mem">${ck}${n === lead ? `<span class="nmb" style="grid-template-columns:minmax(0,1fr) auto">${inner}</span>` : `<button class="nmb" data-a="sheet:role:${g}:${n}">${inner}${ic('chev-r', 'go')}</button>`}</div>`;
+    const row = `<div class="row g-mem">${ck}${n === lead ? `<span class="nmb" style="grid-template-columns:minmax(0,1fr) auto">${inner}</span>` : `<button class="nmb" data-a="sheet:person:${g}:${n}">${inner}${ic('chev-r', 'go')}</button>`}</div>`;
     return n === lead ? row : `<div class="sw">${row}<div class="swa"><button data-a="leave:${g}:${n}">${lv ? 'Back' : 'On Leave'}</button></div></div>`; }).join('');
   return `<section class="sec"><p class="sh">Members</p><div class="list">${rows}</div></section>`;
 }
 function documents(ev, ed) {
-  const items = [['rundown', 'list', 'Rundown', '']];
+  const items = isDay(ev) ? [] : [['rundown', 'list', 'Rundown', '']];
   if (hasScript(ev) || (ev.mcs || []).length) items.push(['script', 'doc', 'Script', ed ? 'delscript' : '']);
   Object.entries(ev.awards || {}).forEach(([id, d]) => items.push(['aw:' + id, 'users', 'Participant List', ed ? 'deldoc:aw:' + id : '']));
   if (ev.guests) items.push(['guests', 'guests', 'Guest List', ed ? 'deldoc:guests' : '']);
   const rows = items.map(([id, n, name, del]) => ed
     ? `<div class="row g-ic">${sym(n, '')}<span>${esc(name)}</span><span></span><span></span></div>`
     : `<button class="row g-ic" data-a="doc:${id}">${dot(`${ev.id}:d:${id}`, true)}${sym(n, '')}<span>${esc(name)}</span><span></span>${ic('chev-r', 'go')}</button>`).join('');
-  return `<section class="sec"><p class="sh">Documents</p><div class="list">${rows}${ed && menuItems('adddoc').length ? addB('menu:adddoc', 'Add Document') : ''}</div></section>`;
+  const add = ed && menuItems('adddoc').length ? addB('menu:adddoc', 'Add Document') : '';
+  return rows || add ? `<section class="sec"><p class="sh">Documents</p><div class="list">${rows}${add}</div></section>` : '';
 }
 
 /* ---------- Documents: each its own page ---------- */
 const docHead = (name, ev, extra = '') => `<h1>${esc(name)}</h1><p class="sub">${evLine(ev)}</p>${extra}`;
-// Rundown: time | line, place, tasks. Tasks come from the duty groups' sheets; Edit changes only the lines.
-// The Event Lead and Teacher see every task; a member or Group Lead sees their own.
-function pRundown(ev) {
-  const ed = S.edit, v = V(), all = v.type === 'lead' || v.type === 'teacher';
-  const shown = t => !t.role;
-  const mineGl = t => vt(ev) === 'gl' && !t.to.includes('All') && t.to.includes(v.group);
+// Rundown: time | line, place, tasks. Everyone sees every line and every task; a Group Lead taps their group's task to add names.
+// On the event's day the next line is marked.
+function runLines(ev) {
+  const v = V(), mineGl = t => vt(ev) === 'gl' && !t.to.includes('All') && t.to.includes(v.group);
   const tk = t => `<${mineGl(t) ? `button data-a="sheet:assign:${t.id}"` : 'div'} class="tk">${dot(`${ev.id}:t:${t.id}`)}${owner(t)}<span>${esc(t.text)}${remark(t)}${names(t)}</span>${mineGl(t) ? ic('chev-r', 'go') : ''}</${mineGl(t) ? 'button' : 'div'}>`;
-  if (ed) {
-    const lines = ev.rows.map(r => `<div class="ln e" data-drag="rows" data-id="${r.id}"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span><span class="rg">${rmB('askrow:' + r.id, 'Delete line')}${grip('Move line')}</span></div>`).join('');
-    return {...docBar(true), title: 'Rundown', body: docHead('Rundown', ev) + `<section class="sec"><div class="list">${lines}${addB('addrow', 'Add Line', 'var(--tc)')}</div></section>`};
-  }
-  const next = ev.date === TODAY ? ev.rows.find(r => r.time >= NOW()) : null;
-  const lines = ev.rows.map(r => `<div class="ln${r === next ? ' current' : ''}">${dot(`${ev.id}:r:${r.id}`)}<span class="t">${r.time}</span><div class="lb"><span class="lt">${esc(r.title)}</span>　<span class="muted">${esc(r.place)}</span>${r.remark ? `<span class="cap">${esc(r.remark)}</span>` : ''}${ev.tasks.filter(t => t.row === r.id && shown(t)).map(tk).join('')}</div></div>`).join('');
-  const body = docHead('Rundown', ev) + `<section class="sec"><div class="list">${lines}</div>${lines ? '' : '<p class="empty">No lines yet</p>'}</section>`;
-  return {...docBar(isLead()), title: 'Rundown', body};
+  const next = isDay(ev) ? ev.rows.find(r => r.time >= NOW()) : null;
+  const lines = ev.rows.map(r => `<div class="ln${r === next ? ' current' : ''}">${dot(`${ev.id}:r:${r.id}`)}<span class="t">${r.time}</span><div class="lb"><span class="lt">${esc(r.title)}</span>　<span class="muted">${esc(r.place)}</span>${r.remark ? `<span class="cap">${esc(r.remark)}</span>` : ''}${ev.tasks.filter(t => t.row === r.id && !t.role).map(tk).join('')}</div></div>`).join('');
+  return `<div class="list">${lines}</div>${lines ? '' : '<p class="empty">No lines yet</p>'}`;
+}
+const runEdit = ev => `<div class="list">${ev.rows.map(r => `<div class="ln e" data-drag="rows" data-id="${r.id}"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span><span class="rg">${rmB('askrow:' + r.id, 'Delete line')}${grip('Move line')}</span></div>`).join('')}${addB('addrow', 'Add Line', 'var(--tc)')}</div>`;
+const daySec = ev => `<section class="sec"><p class="sh">Rundown</p>${runLines(ev)}</section>`;
+function pRundown(ev) {
+  if (S.edit) return {...docBar(true), title: 'Rundown', body: docHead('Rundown', ev) + `<section class="sec">${runEdit(ev)}</section>`};
+  return {...docBar(isLead()), title: 'Rundown', body: docHead('Rundown', ev) + `<section class="sec">${runLines(ev)}</section>`};
 }
 // Script: the CA script format. The MCs first (class and name); each paragraph's MC is chosen from them.
 function pScript(ev) {
@@ -741,19 +730,15 @@ function sheet() {
     const t = ev.tasks.find(x => x.id === s.id), g = V().group;
     h = bar(close, `People<span class="s2">${esc(t.text)}</span>`, '') + `<div class="list">${members(g).map(n => onLeave(ev, g, n) && !t.names.includes(n) ? `<div class="row g-opt" aria-disabled="true"><span class="muted">${esc(n)}</span>${sym('leave', 'On Leave')}</div>` : `<button class="row g-opt" data-a="pickn:${t.id}:${n}"><span>${esc(n)}</span>${check(t.names.includes(n))}</button>`).join('')}</div>`;
   }
-  // Roles of one member: the roles they hold, each removable; type to add one. Others' roles appear only when they match.
-  if (s.k === 'role') {
-    const [g, n] = [s.g, s.n], q = (S.q || '').trim(), gr = ev.groups.find(x => x.name === g) || {};
-    const mine = rolesOf(ev, g, n).map(r => r.text).concat(gr.acting === n ? ['Acting Group Lead'] : []);
-    const holder = x => x === 'Acting Group Lead' ? gr.acting : (roleTasks(ev, g).find(y => y.text === x) || {names: []}).names[0];
-    const pool = [...new Set([...SUGGEST[kind(g)], ...roleTasks(ev, g).map(t => t.text), ...(vt(ev) !== 'member' ? ['Acting Group Lead'] : [])])];
-    const hits = q ? pool.filter(x => !mine.includes(x) && x.toLowerCase().includes(q.toLowerCase())) : [];
-    const exact = pool.some(x => x.toLowerCase() === q.toLowerCase()) || mine.some(x => x.toLowerCase() === q.toLowerCase());
-    h = bar(close, `Roles<span class="s2">${esc(n)}</span>`, '') + `<label class="srch">${ic('plus')}<input data-q placeholder="Add Role" value="${esc(q)}" aria-label="Add role" autocomplete="off"></label>
-      <div class="list">${q && !exact ? `<button class="row g-opt" data-a="tag:${g}:${n}:${esc(q)}"><span>${esc(q)}</span>${ic('plus')}</button>` : ''}${hits.map(x => { const by = holder(x);
-        return by && by !== n ? `<div class="row g-opt" aria-disabled="true"><span class="muted">${esc(x)}<span class="cap">${esc(by)}</span></span><span></span></div>` : `<button class="row g-opt" data-a="${x === 'Acting Group Lead' ? `acting:${g}:${n}` : `tag:${g}:${n}:${x}`}"><span>${esc(x)}</span>${ic('plus')}</button>`; }).join('')}</div>
-      <div class="list">${mine.map(x => `<div class="row" tabindex="-1" style="grid-template-columns:minmax(0,1fr) 24px"><span>${esc(x)}</span>${rmB(x === 'Acting Group Lead' ? `acting:${g}:${n}` : `tag:${g}:${n}:${x}`, 'Remove ' + x)}</div>`).join('')}</div>
-      <section class="sec"><p class="sh">Attendance</p><div class="list"><label class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:pointer"><span>On Leave</span><input type="checkbox" class="switch" data-a="leave:${g}:${n}"${onLeave(ev, g, n) ? ' checked' : ''}></label></div></section>`;
+  // A member's tasks: the group's tasks, ticked for this member (as People, from the member's side); then Acting Group Lead and On Leave
+  if (s.k === 'person') {
+    const [g, n] = [s.g, s.n], gr = ev.groups.find(x => x.name === g) || {};
+    const list = sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g)));
+    // Before the Event (dates) and On the Day (lines) are the sheet's two sections, so a date and a time never share a place
+    const one = (t, when) => `<button class="row g-opt" data-a="pickn:${t.id}:${esc(n)}"><span>${esc(t.text)}<span class="cap">${when}</span></span>${check(t.names.includes(n))}</button>`;
+    const sec = (head, l, when) => l.length ? `<section class="sec"><p class="sh">${head}</p><div class="list">${l.map(t => one(t, when(t))).join('')}</div></section>` : '';
+    h = bar(close, `Tasks<span class="s2">${esc(n)}</span>`, '') + (list.length ? sec('Before the Event', list.filter(t => !t.row), t => md(t.date || '')) + sec('On the Day', list.filter(t => t.row), t => esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' '))) : '<p class="empty">No tasks yet</p>') +
+      `<section class="sec"><div class="list">${vt(ev) !== 'member' ? `<label class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:pointer"><span>Acting Group Lead</span><input type="checkbox" class="switch" data-a="acting:${g}:${n}"${gr.acting === n ? ' checked' : ''}></label>` : ''}<label class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:pointer"><span>On Leave</span><input type="checkbox" class="switch" data-a="leave:${g}:${n}"${onLeave(ev, g, n) ? ' checked' : ''}></label></div></section>`;
   }
   if (s.k === 'account') {
     const v = V(), others = peopleOf(ACCT()).filter(x => x !== v.name), pn = photoName();
@@ -767,7 +752,7 @@ function sheet() {
   if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map((e, i) => { const txt = `<span>${esc(e.what)}<span class="cap">${esc(e.at)} · ${esc(e.who)}</span></span>`;
     return e.snap && isLead() ? `<button class="row" data-a="askrestore:${i}" style="grid-template-columns:minmax(0,1fr) auto">${txt}<span class="muted">Restore</span></button>` : `<div class="row">${txt}</div>`; }).join('') || '<p class="empty">No changes yet</p>'}</div>`; // tell-ok: history time and person
   if (s.k === 'delete') h = bar(cancel(), 'Delete Event?', '') + `<p class="note">${esc(ev.name)}: its Rundown, tasks and documents go for everyone.</p><button class="nb glass danger" style="width:100%;font-weight:600" data-a="delevent">Delete Event</button>`;
-  return `<div class="dimbg" data-a="bg"><div class="sheet${s.k === 'role' ? ' tall' : ''}" role="dialog" aria-modal="true">${h}</div></div>`;
+  return `<div class="dimbg" data-a="bg"><div class="sheet" role="dialog" aria-modal="true">${h}</div></div>`;
 }
 // Menus: glass, a symbol before each item (MC Scripts' add menu)
 function menuItems(k, arg) {
@@ -913,20 +898,15 @@ document.addEventListener('click', e => {
     case 'menu': { const rc = b.getBoundingClientRect(), up = rc.top > innerHeight - rc.bottom, x = Math.min(rc.left, innerWidth - 244);
       S.menu = {k: r[0], arg: r.slice(1).join(':'), x: Math.max(16, x), y: up ? innerHeight - rc.top + 6 : rc.bottom + 6, up, h: Math.floor((up ? rc.top : innerHeight - rc.bottom) - 6 - 16)}; layer(); break; }
     case 'closemenu': S.menu = null; layer(); break;
-    case 'sheet': { const [k, x, y] = arg.split(':'); S.q = '';
+    case 'sheet': { const [k, x, y] = arg.split(':');
       if (k === 'new') S.draft = {name: '', date: '', asmTime: '', venue: '', leading: ''};
-      S.sheet = k === 'role' ? {k, g: x, n: y} : {k, id: x}; layer(); break; }
+      S.sheet = k === 'person' ? {k, g: x, n: y} : {k, id: x}; layer(); break; }
     case 'close': case 'bg': S.sheet = null; render(); break;
     case 'create': { const n = S.draft, id = uid();
       EVENTS.push({id, v: 4, date: n.date, name: n.name.trim(), asmTime: n.asmTime, venue: n.venue, leading: n.leading ? n.leading.split(/[、,，]/).map(x => x.trim()).filter(Boolean) : [], support: [], lead: CHAIRS.includes(V().name) ? V().name : '', remarks: '', groups: [], mcs: [], rows: [], tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: [], upd: {}});
       log(EVENTS[EVENTS.length - 1], 'Created the event'); S.sheet = null; go({p: 'event', ev: id}); break; }
     case 'pickn': { const [tid, n] = arg.split(':'), t = ev.tasks.find(x => x.id === tid); t.names = t.names.includes(n) ? t.names.filter(x => x !== n) : [...t.names, n]; log(ev, `${t.text}: ${t.names.join('、') || 'no one'}`); render(); break; }
-    case 'tag': { const [g, n, x] = arg.split(':'); let t = roleTasks(ev, g).find(y => y.text === x);
-      if (!t) { t = {id: uid(), text: x, role: true, to: [g], names: []}; ev.tasks.push(t); }
-      if (t.names.includes(n)) { t.names = []; if (!SUGGEST[kind(g)].includes(t.text)) ev.tasks = ev.tasks.filter(y => y !== t); log(ev, `${x}: no one`); }
-      else if (!t.names.length) { t.names = [n]; log(ev, `${x}: ${n}`); }
-      S.q = ''; render(); break; }
-    case 'acting': { const [g, n] = arg.split(':'), gr = ev.groups.find(x => x.name === g); gr.acting = gr.acting === n ? null : n; log(ev, `Acting Group Lead: ${gr.acting || 'none'}`); S.q = ''; render(); break; }
+    case 'acting': { const [g, n] = arg.split(':'), gr = ev.groups.find(x => x.name === g); gr.acting = gr.acting === n ? null : n; log(ev, `Acting Group Lead: ${gr.acting || 'none'}`); render(); break; }
     case 'here': { const [g, n] = arg.split(':'), a2 = ev.att[g] = ev.att[g] || {}; if (a2[n]) delete a2[n]; else a2[n] = NOW(); render(); break; }
     case 'leave': { const [g, n] = arg.split(':'), l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
     case 'offduty': ev.groups = ev.groups.filter(g => g.name !== arg); dropTasks(ev, arg); log(ev, 'Took ' + arg + ' off duty'); render(); break;
@@ -984,7 +964,6 @@ const focus = sel => { const f = app.querySelector(sel) || lay.querySelector(sel
 document.addEventListener('input', e => {
   const t = e.target, d = t.dataset || {};
   if (d.find !== undefined) { S.find = t.value; const o = route(); app.innerHTML = `<main class="page root">${o.body}</main>`; return; }
-  if (d.q !== undefined) { if (e.isComposing) return; S.q = t.value; const pos = t.selectionStart; layer(); const f = lay.querySelector('[data-q]'); f.focus(); f.setSelectionRange(pos, pos); return; }
   if (!d.b) return;
   if (t.tagName === 'TEXTAREA') fit(t);
   if (t.closest('.tline')) indent(t.closest('.tline'));
@@ -998,13 +977,11 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && S.menu) { S.menu = null; layer(); return; }
   if (e.key === 'Escape' && S.sheet) { S.sheet = null; render(); }
   if (t.classList && t.classList.contains('fit') && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); t.blur(); }
-  if (t.dataset && t.dataset.q !== undefined && e.key === 'Enter' && !e.isComposing) { if (!t.value.trim()) return; const btn = lay.querySelector('.sheet .g-opt[data-a]'); if (btn) btn.click(); }
 });
 // Leaving the teachers: empty names go, and a new empty field appears for the next teacher
 document.addEventListener('focusout', e => { const m = e.target.closest && e.target.closest('[data-teach]'); if (!m || (e.relatedTarget && m.contains(e.relatedTarget))) return;
   setTimeout(() => { const ev = EV(); if (!ev || m.contains(document.activeElement)) return; ev.leading = ev.leading.filter(Boolean); ev.support = ev.support.filter(Boolean); render(); }, 0); });
 document.addEventListener('focusout', e => { const m = e.target.closest && e.target.closest('[data-mcs]'); if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) setTimeout(() => { const ev = EV(); tidyMcs(ev); if (!m.contains(document.activeElement)) render(); }, 0); });
-document.addEventListener('compositionend', e => { if (e.target.dataset && e.target.dataset.q !== undefined) e.target.dispatchEvent(new Event('input', {bubbles: true})); });
 // A typed time or date: tidied when the field is left; something that is not a time or a date goes back to what it was
 document.addEventListener('change', e => {
   const t = e.target; if (!t.dataset || (t.dataset.time === undefined && t.dataset.date === undefined)) return;
