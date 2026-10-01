@@ -204,7 +204,7 @@ export function upgrade(ev) {
 // roles in their group, Acting Group Lead, attendance and On Leave. On-duty members and Group Lead: their kind of
 // document (MC the Script, Backstage the Participant List, Reception the Guest List). The teacher reads.
 const FIELDS = ["date", "name", "asmTime", "venue", "leading", "support", "lead", "remarks"];
-const KNOWN = new Set([...FIELDS, "id", "v", "groups", "mcs", "rows", "tasks", "awards", "guests", "att", "leave", "log", "upd"]);
+const KNOWN = new Set([...FIELDS, "id", "v", "groups", "mcs", "rows", "tasks", "awards", "guests", "att", "leave", "log", "upd", "roll"]);
 function units(ev) {
   const u = new Map(), put = (k, v) => u.set(k, JSON.stringify(v === undefined ? null : v));
   if (!ev) return u;
@@ -222,6 +222,8 @@ function units(ev) {
   (ev.tasks || []).forEach((t) => { const { names, ...rest } = t; put("t:" + t.id, rest); put("tn:" + t.id, names || []); });
   Object.entries(ev.awards || {}).forEach(([id, l]) => put("aw:" + id, l));
   put("gu", ev.guests === undefined ? null : ev.guests);
+  // Roll call (Carson, 26/10/02): who of the Participant List and the Guest List is here; the Script reads only those ticked
+  put("ra", (ev.roll || {}).aw || {}); put("rg", (ev.roll || {}).gu || {});
   GROUPS.forEach((g) => { const a = (ev.att || {})[g], v = (ev.leave || {})[g]; if (a && Object.keys(a).length) put("a:" + g, a); if (v && Object.keys(v).length) put("v:" + g, v); });
   return u;
 }
@@ -235,7 +237,7 @@ function leadsGroup(acct, ev) {
   return acct.type === "group" && acct.who && g && g.acting === acct.who && ev.date === todayHK() ? acct.group : null;
 }
 const taskOf = (ev, id) => ((ev && ev.tasks) || []).find((t) => t.id === id) || null;
-const DOC_KEY = { script: ["s:", "so:", "mcs"], awards: ["aw:"], guests: ["gu"] };
+const DOC_KEY = { script: ["s:", "so:", "mcs"], awards: ["aw:", "ra"], guests: ["gu", "rg"] };
 const docOfKey = (key) => Object.keys(DOC_KEY).find((d) => DOC_KEY[d].some((p) => (p.endsWith(":") ? key.startsWith(p) : key === p)));
 function allowed(acct, old, key) {
   if (acct.type === "lead") return true;

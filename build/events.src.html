@@ -467,6 +467,11 @@ const named = ev => (ev.mcs || []).filter(m => m[1]);
 const hasSource = (ev, s) => s.type === 'award' ? !!(ev.awards || {})[s.list] : s.type === 'guests' ? !!ev.guests : true;
 const awardOf = (ev, s) => { const l = (ev.awards || {})[s.list]; return (l && l.awards.find(x => x.id === s.award)) || {award: '', rows: []}; };
 const allRows = (ev, s) => s.type === 'award' ? awardOf(ev, s).rows : (ev.guests || []).map(g => [g.name, g.role]);
+// Roll call: Backstage ticks the Participant List and Reception the Guest List; the Script reads only those ticked
+const rollKey = (ev, s, i) => s.type === 'award' ? `${s.award}:${(allRows(ev, s)[i] || [])[1] || ''}` : ((ev.guests || [])[i] || {}).id;
+const isHere = (ev, s, i) => !!(((ev.roll || {})[s.type === 'award' ? 'aw' : 'gu'] || {})[rollKey(ev, s, i)]);
+const hereRows = (ev, s) => paraRows(ev, s).filter(x => isHere(ev, s, x[0]));
+const tick = (on, act, can, label) => can ? `<button class="ck${on ? ' on' : ''}" data-a="${act}" aria-pressed="${on}" aria-label="${esc(label)} is here">${ic(on ? 'check-fill' : 'circle')}</button>` : `<span class="ck${on ? ' on' : ''}" role="img" aria-label="${on ? 'Here' : 'Not here yet'}">${ic(on ? 'check-fill' : 'circle')}</span>`;
 const paraRows = (ev, s) => { const all = allRows(ev, s); return (s.rows || all.map((x, i) => i)).filter(i => all[i] && all[i][s.type === 'award' ? 1 : 0]).map(i => [i, ...all[i]]); };
 const sameList = (s, x) => x.type === s.type && (s.type === 'guests' || (x.list === s.list && x.award === s.award));
 const unread = (ev, s) => { const used = new Set(ev.rows.flatMap(r => r.say).filter(x => sameList(s, x)).flatMap(x => paraRows(ev, x).map(r => r[0]))); return allRows(ev, s).map((x, i) => i).filter(i => !used.has(i) && allRows(ev, s)[i][s.type === 'award' ? 1 : 0]); };
@@ -676,8 +681,8 @@ function pRundown(ev) {
 function pScript(ev) {
   const ed = S.edit, mcs = named(ev);
   const para = (r, s) => {
-    if (s.type === 'award' || s.type === 'guests') { const rows = paraRows(ev, s), head = s.type === 'award' ? [sym('users', 'Participant List', 'isym'), awardOf(ev, s).award] : [sym('guests', 'Guest List', 'isym'), 'Guest List'];
-      const line = ([i, a, b]) => s.type === 'award' ? `<span class="aws"><span class="c">${esc(a)}</span><span>${esc(b)}</span></span>` : `<span>${esc(a)}<span class="muted">　${esc(b)}</span></span>`;
+    if (s.type === 'award' || s.type === 'guests') { const rows = ed ? paraRows(ev, s) : hereRows(ev, s), head = s.type === 'award' ? [sym('users', 'Participant List', 'isym'), awardOf(ev, s).award] : [sym('guests', 'Guest List', 'isym'), 'Guest List'];
+      const line = ([i, a, b]) => s.type === 'award' ? `<span class="aws${isHere(ev, s, i) ? '' : ' muted'}"><span class="c">${esc(a)}</span><span>${esc(b)}</span></span>` : `<span class="${isHere(ev, s, i) ? '' : 'muted'}">${esc(a)}<span class="muted">　${esc(b)}</span></span>`;
       if (!ed) return `<div class="srow">${dot(`${ev.id}:s:${s.id}`)}<span></span><div><span class="awn">${head[0]} ${esc(head[1])}</span>${rows.map(x => `<div>${line(x)}</div>`).join('')}</div></div>`;
       return `<div class="srow e sub" tabindex="-1"><span></span><span class="awn">${head[0]} ${esc(head[1])}</span>${rmB(`delsay:${r.id}:${s.id}`, 'Remove')}</div>` +
         rows.map(x => `<div class="srow e sub" tabindex="-1"><span></span>${line(x)}${rmB(`unrow:${r.id}:${s.id}:${x[0]}`, 'Take off this paragraph')}</div>`).join(''); }
@@ -696,14 +701,14 @@ function pAwards(ev, id) {
   const awards = d.awards.map(a => `<section class="award">${ed ? `<div class="row g-tme" style="grid-template-columns:minmax(0,1fr) 24px;margin-bottom:2px"><span class="fl">${fld(`aw:${id}:${a.id}`, a.award, 'Award or Role', '')}</span>${rmB(`delaward:${id}:${a.id}`, 'Delete')}</div>` : `<h2>${dot(`${ev.id}:a:${a.id}`)}${esc(a.award)}</h2>`}
     <div class="list">${a.rows.map((r, i) => ed
       ? `<div class="row g-kv"><span class="fl">${fld(`ar:${id}:${a.id}:${i}:0`, r[0], 'Class', 'upper')}</span><span class="fl">${fld(`ar:${id}:${a.id}:${i}:1`, r[1], 'Name')}</span>${rmB(`delawardee:${id}:${a.id}:${i}`, 'Delete')}</div>`
-      : `<div class="row g-kv"><span class="t">${esc(r[0])}</span><span>${esc(r[1])}</span></div>`).join('')}${ed ? addB(`addawardee:${id}:${a.id}`, 'Add Person', '4.2em') : ''}</div></section>`).join('');
+      : `<div class="row" style="grid-template-columns:22px 4.2em minmax(0,1fr)">${tick(!!((ev.roll || {}).aw || {})[`${a.id}:${r[1]}`], `rollaw:${id}:${a.id}:${i}`, canDoc(ev, 'awards'), r[1])}<span class="t">${esc(r[0])}</span><span>${esc(r[1])}</span></div>`).join('')}${ed ? addB(`addawardee:${id}:${a.id}`, 'Add Person', '4.2em') : ''}</div></section>`).join('');
   return {...docBar(canDoc(ev, 'awards'), 'askdoc:aw:' + id), title: 'Participant List', body: docHead('Participant List', ev) + `<div class="sec">${awards}${ed ? `<div class="list" style="margin-top:20px">${addB('addaward:' + id, 'Add Award or Role')}</div>` : ''}</div>`};
 }
 function pGuests(ev) {
   const ed = S.edit, g = ev.guests || [];
   const rows = g.map(x => ed
     ? `<div class="row" style="grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) 24px"><span class="fl">${fld(`gu:${x.id}:name`, x.name, 'Name')}</span><span class="fl">${fld(`gu:${x.id}:role`, x.role, 'Title')}</span>${rmB('delguest:' + x.id, 'Delete guest')}</div>`
-    : `<div class="row" style="grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)">${dot(`${ev.id}:g:${x.id}`)}<span>${esc(x.name)}</span><span class="muted">${esc(x.role)}</span></div>`).join('');
+    : `<div class="row" style="grid-template-columns:22px minmax(0,1fr) minmax(0,1.2fr)">${dot(`${ev.id}:g:${x.id}`)}${tick(!!((ev.roll || {}).gu || {})[x.id], `rollgu:${x.id}`, canDoc(ev, 'guests'), x.name)}<span>${esc(x.name)}</span><span class="muted">${esc(x.role)}</span></div>`).join('');
   return {...docBar(canDoc(ev, 'guests'), 'askdoc:guests'), title: 'Guest List', body: docHead('Guest List', ev) + `<section class="sec"><div class="list">${rows}${ed ? addB('addguest', 'Add Guest') : ''}</div>${!rows && !ed ? '<p class="empty">No guests yet</p>' : ''}</section>`};
 }
 
@@ -953,6 +958,8 @@ document.addEventListener('click', async e => {
     case 'pickn': { const [tid, n] = arg.split(':'), t = ev.tasks.find(x => x.id === tid); t.names = t.names.includes(n) ? t.names.filter(x => x !== n) : [...t.names, n]; log(ev, `${t.text}: ${t.names.join('、') || 'no one'}`); render(); break; }
     case 'acting': { const [g, n] = arg.split(':'), gr = ev.groups.find(x => x.name === g); gr.acting = gr.acting === n ? null : n; log(ev, `Acting Group Lead: ${gr.acting || 'none'}`); render(); break; }
     case 'here': { const [g, n] = arg.split(':'), a2 = ev.att[g] = ev.att[g] || {}; if (a2[n]) delete a2[n]; else a2[n] = NOW(); render(); break; }
+    case 'rollaw': { const [lid, aid, i] = arg.split(':'), a2 = ev.awards[lid].awards.find(x => x.id === aid), k = `${aid}:${a2.rows[+i][1]}`, m = ((ev.roll = ev.roll || {}).aw = ev.roll.aw || {}); if (m[k]) delete m[k]; else m[k] = NOW(); render(); break; }
+    case 'rollgu': { const m = ((ev.roll = ev.roll || {}).gu = ev.roll.gu || {}); if (m[arg]) delete m[arg]; else m[arg] = NOW(); render(); break; }
     case 'leave': { const [g, n] = arg.split(':'), l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
     case 'offduty': ev.groups = ev.groups.filter(g => g.name !== arg); dropTasks(ev, arg); log(ev, 'Took ' + arg + ' off duty'); render(); break;
     // A new task goes to the only duty group, or waits for its group to be chosen
@@ -1195,7 +1202,7 @@ function merge3(b, m, t) {
     awards: (B, M, T) => { const o = {}; new Set([...Object.keys(M || {}), ...Object.keys(T || {})]).forEach(k => { const b2 = (B || {})[k], m2 = (M || {})[k], t2 = (T || {})[k];
       if (m2 && t2) o[k] = mergeObj(b2, m2, t2, {awards: (B3, M3, T3) => mergeList(B3, M3, T3, 'id')}); else if (m2) { if (!b2 || J(m2) !== J(b2)) o[k] = m2; } else if (t2 && !b2) o[k] = t2; }); return o; },
     guests: (B, M, T) => M && T ? mergeList(B, M, T, 'id') : pickM(B, M, T),
-    att: perGroup, leave: perGroup,
+    att: perGroup, leave: perGroup, roll: perGroup,
     upd: (B, M, T) => { const o = {...(M || {})}; Object.entries(T || {}).forEach(([k, v]) => { if (!o[k] || o[k].at < v.at) o[k] = v; }); return o; },
     log: (B, M, T) => { const seen = new Set(); return [...(M || []), ...(T || [])].filter(e => { const id = (e.ts || e.at) + '|' + e.who + '|' + e.what; if (seen.has(id)) return false; seen.add(id); return true; }).sort((x, y) => (y.ts || 0) - (x.ts || 0)); }
   });
@@ -1489,8 +1496,8 @@ async function wordFile(ev, id) {
     const mcs = named(ev).map((m, i) => ({id: 'm' + i, cls: m[0], name: m[1]})), byName = n => (mcs.find(m => m.name === n) || {}).id;
     const blocks = ev.rows.filter(r => r.say.length).flatMap(r => [{id: 'h' + r.id, type: 'cue', text: [r.time, r.title].filter(Boolean).join('　')},
       ...r.say.flatMap(s => s.type === 'line' ? [{id: s.id, type: 'line', mc: byName(s.sp), text: s.text}] : s.type === 'cue' ? [{id: s.id, type: 'cue', text: s.text}]
-        : s.type === 'award' ? [{id: s.id + 'n', type: 'cue', text: awardOf(ev, s).award}, {id: s.id, type: 'award', text: paraRows(ev, s).map(x => x[1] + ' ' + x[2]).join('\n')}]
-        : [{id: s.id, type: 'cue', text: paraRows(ev, s).map(x => x[1] + (x[2] ? '　' + x[2] : '')).join('\n')}])]);
+        : s.type === 'award' ? [{id: s.id + 'n', type: 'cue', text: awardOf(ev, s).award}, {id: s.id, type: 'award', text: hereRows(ev, s).map(x => x[1] + ' ' + x[2]).join('\n')}]
+        : [{id: s.id, type: 'cue', text: hereRows(ev, s).map(x => x[1] + (x[2] ? '　' + x[2] : '')).join('\n')}])]);
     bytes = await ScriptGen.buildDocx(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});
   } else {
     const title = [ev.date, ev.name, docName].join('｜');
