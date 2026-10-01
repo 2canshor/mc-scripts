@@ -550,7 +550,8 @@ function pEvents() {
     body: `<h1>Events</h1>
     ${up.length || !q ? `<section class="sec"><p class="sh">Upcoming</p>${up.length ? `<div class="list">${rows(up)}</div>` : '<p class="empty">No events yet</p>'}</section>` : ''}
     ${past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${rows(past)}</div></section>` : ''}
-    ${q && !list.length ? '<p class="empty sec">No results</p>' : ''}`};
+    ${q && !list.length ? '<p class="empty sec">No results</p>' : ''}
+    ${isLead() && !q ? `<section class="sec"><div class="list"><button class="row g-ic" data-a="sheet:deleted">${sym('trash', '')}<span>Recently Deleted</span><span></span>${ic('chev-r', 'go')}</button></div></section>` : ''}`};
 }
 
 // The event: title, its facts, your part, its documents. The same order for everyone.
@@ -778,6 +779,8 @@ function sheet() {
       (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Members</span>${ic('chev-r', 'go')}</button><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}` : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
       `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="signout"><span class="ic" style="color:inherit">${ic('logout')}</span><span>Sign Out</span></button></div></section>`;
   }
+  // Recently Deleted: events deleted in the last 30 days; Restore brings one back as it was
+  if (s.k === 'deleted') h = bar(close, 'Recently Deleted', '') + (!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? `<div class="list">${S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('')}</div>` : '<p class="empty">No deleted events</p>');
   if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map((e, i) => { const txt = `<span>${esc(e.what)}<span class="cap">${esc(dmy(e.at.slice(0, 8)) + e.at.slice(8))} · ${esc(e.who)}</span></span>`;
     return e.snap && isLead() ? `<button class="row" data-a="askrestore:${i}" style="grid-template-columns:minmax(0,1fr) auto">${txt}<span class="muted">Restore</span></button>` : `<div class="row">${txt}</div>`; }).join('') || '<p class="empty">No changes yet</p>'}</div>`; // tell-ok: history time and person
   if (s.k === 'delete') h = bar(cancel(), 'Delete Event?', '') + `<p class="note">${esc(ev.name)}: its Rundown, tasks and documents go for everyone.</p><button class="nb glass danger" style="width:100%;font-weight:600" data-a="delevent">Delete Event</button>`;
@@ -940,7 +943,9 @@ document.addEventListener('click', async e => {
     case 'closemenu': S.menu = null; layer(); break;
     case 'sheet': { const [k, x, y] = arg.split(':');
       if (k === 'new') S.draft = {name: '', date: '', asmTime: '', venue: '', leading: ''};
-      S.sheet = k === 'person' ? {k, g: x, n: y} : {k, id: x}; layer(); break; }
+      S.sheet = k === 'person' ? {k, g: x, n: y} : {k, id: x}; layer();
+      if (k === 'deleted') { S.deleted = null; try { const r2 = await api('deleted'); S.deleted = r2.ok ? await r2.json() : []; } catch (err) { S.deleted = []; } layer(); }
+      break; }
     case 'close': case 'bg': S.sheet = null; render(); break;
     case 'create': { const n = S.draft, id = uid();
       EVENTS.push({id, v: 4, date: n.date, name: n.name.trim(), asmTime: n.asmTime, venue: n.venue, leading: n.leading ? n.leading.split(/[、,，]/).map(x => x.trim()).filter(Boolean) : [], support: [], lead: CHAIRS.includes(V().name) ? V().name : '', remarks: '', groups: [], mcs: [], rows: [], tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: [], upd: {}});
@@ -982,6 +987,10 @@ document.addEventListener('click', async e => {
     case 'delawardee': { const [lid, aid, i] = arg.split(':'); ev.awards[lid].awards.find(x => x.id === aid).rows.splice(+i, 1); render(); break; }
     case 'addguest': { const x = {id: uid(), name: '', role: ''}; ev.guests.push(x); render(); focus(`[data-b="gu:${x.id}:name"]`); break; }
     case 'delguest': ev.guests = ev.guests.filter(x => x.id !== arg); render(); break;
+    case 'askundelete': { const x = S.deleted[+arg]; S.alert = {t: 'Restore This Event?', m: `${dmy(x.date)}｜${x.name} comes back as it was when deleted.`, no: 'Cancel', verb: 'Restore', act: 'undelete:' + arg}; layer(); break; }
+    case 'undelete': { const x = S.deleted[+arg]; S.alert = null; layer();
+      try { const r2 = await api('events/' + x.id, {method: 'PUT', body: JSON.stringify({rev: x.rev, data: x.data})}); if (!r2.ok) throw new Error(); S.deleted.splice(+arg, 1); toast('Restored'); await pull(true); layer(); }
+      catch (err) { toast(SYNC.offline ? 'No connection. Not restored' : 'Not restored'); } break; }
     case 'delevent': EVENTS = EVENTS.filter(x => x !== ev); S.sheet = null; S.edit = false; S.stack = [{p: 'events'}]; render(); toast('Event deleted'); break;
     case 'addchair': CHAIRS.push(''); render(); focus(`[data-b="chair:${CHAIRS.length - 1}"]`); break;
     case 'delchair': CHAIRS.splice(+arg, 1); render(); break;

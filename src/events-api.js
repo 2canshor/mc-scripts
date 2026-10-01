@@ -417,6 +417,14 @@ export async function handleEvents(request, env, url, path) {
     return json(out);
   }
 
+  // Recently Deleted (Carson, 26/10/02: a deleted event must come back): a deleted event keeps its data; the Event Lead and
+  // Editor see those deleted in the last 30 days and restore one by saving it again (a save turns "deleted" off).
+  if (path === "deleted" && request.method === "GET") {
+    if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
+    const { results } = await env.DB.prepare("SELECT id, data, seq, updated FROM events WHERE deleted = 1 AND updated > ? ORDER BY updated DESC").bind(Date.now() - 30 * 864e5).all();
+    return json(results.map((r) => { let d = {}; try { d = upgrade(JSON.parse(r.data)); } catch { /* unreadable */ } return { id: r.id, rev: r.seq, at: r.updated, name: d.name || "", date: d.date || "", data: JSON.stringify(d) }; }).filter((x) => x.name || x.date));
+  }
+
   // Save one event. "rev" is the version the writer started from (0 for a new event); if someone else saved
   // in between, the answer is 409 with the current version, which the page merges and sends again.
   const m = /^events\/([A-Za-z0-9_-]{1,40})$/.exec(path);
