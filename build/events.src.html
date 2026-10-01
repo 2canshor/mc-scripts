@@ -251,6 +251,8 @@ textarea.fld{display:inline-block}
 .g-sw{grid-template-columns:32px minmax(0,1fr)}
 .g-sw .av{width:32px;height:32px;font-size:15px}
 .g-sw .ic{width:32px}
+/* Sign in, Loading and Who Are You? fit one screen: no page padding, so they never scroll */
+.page.fixed{padding:0}
 .gate{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;max-width:480px;margin:0 auto;padding-block:40px}
 .toast{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));padding:10px 18px;border-radius:999px;font-size:15px;max-width:calc(100vw - 48px)}
 .alert{position:fixed;z-index:45;inset:0;display:grid;place-items:center;background:var(--dim);padding:24px}
@@ -451,13 +453,13 @@ const evTitle = ev => { const n = [...ev.name]; return `<span class="nw">${esc(e
 
 /* ---------- Pages. Each returns {l, r, title, body, root, search}. ---------- */
 function pSignIn() {
-  return {body: `<div class="gate"><h1>Event Centre</h1><form id="signin" class="sec"><input class="in" id="acct" aria-label="Account" placeholder="Account" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false">
+  return {fixed: true, body: `<div class="gate"><h1>Event Centre</h1><form id="signin" class="sec"><input class="in" id="acct" aria-label="Account" placeholder="Account" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false">
     <input class="in" id="pw" type="password" aria-label="Password" placeholder="Password" autocomplete="current-password"><button class="nb pri" type="submit">Sign In</button></form><p class="err" role="alert"></p></div>`};
 }
-function pLoading() { return {body: `<div class="gate"><h1>Event Centre</h1><p class="sub">${SYNC.offline ? 'No connection yet' : 'Loading'}</p></div>`}; }
+function pLoading() { return {fixed: true, body: `<div class="gate"><h1>Event Centre</h1><p class="sub">${SYNC.offline ? 'No connection yet' : 'Loading'}</p></div>`}; }
 function pWho() {
   const a = ACCT();
-  return {body: `<div class="gate"><h1>Who Are You?</h1><p class="sub">${esc(a.id)}</p><div class="faces">${peopleOf(a).map(n => `<button class="face" data-a="be:${esc(n)}"><span class="av">${avatar(n)}</span><span>${esc(n)}</span></button>`).join('')}</div>
+  return {fixed: true, body: `<div class="gate"><h1>Who Are You?</h1><p class="sub">${esc(a.id)}</p><div class="faces">${peopleOf(a).map(n => `<button class="face" data-a="be:${esc(n)}"><span class="av">${avatar(n)}</span><span>${esc(n)}</span></button>`).join('')}</div>
     <button class="nb low" data-a="signout">Sign Out</button></div>`};
 }
 function pEvents() {
@@ -733,7 +735,7 @@ function route() {
 }
 function render() {
   S.toSee = new Set(); const o = route();
-  app.innerHTML = `<main class="page${o.root ? ' root' : ''}${S.edit ? ' editing' : ''}">${o.body}</main>`;
+  app.innerHTML = `<main class="page${o.root ? ' root' : ''}${o.fixed ? ' fixed' : ''}${S.edit ? ' editing' : ''}">${o.body}</main>`;
   const keep = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find !== undefined;
   if (!keep) barEl.innerHTML = (o.l ? `<div class="ctl l">${o.l}</div>` : '') + (o.r ? `<div class="ctl r">${o.r}</div>` : '') + `<div class="edge"></div><div class="bt" aria-hidden="true">${S.edit ? '' : esc(o.title || '')}</div>` +
     (o.fab ? `<button class="fab" data-a="${o.fab.act}" aria-label="${o.fab.label}">${ic('plus')}</button>` : '') + (o.fab && !o.search ? '<div class="edge b"></div>' : '') + (o.search ? `<div class="edge b"></div><label class="search glass${o.fab ? ' withfab' : ''}">${ic('search')}<input data-find placeholder="Search" value="${esc(S.find)}" aria-label="Search events" enterkeyhint="search"></label>` : '');
