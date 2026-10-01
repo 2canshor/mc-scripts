@@ -88,7 +88,8 @@ h1 .sep,.sep{color:var(--secondary);font-weight:400}
 .empty{color:var(--secondary);margin:6px 0}
 /* Rows sit on the canvas. A fill shows only when pressed, or for what is happening now. */
 .list{display:flex;flex-direction:column}
-.row{position:relative;display:grid;column-gap:14px;align-items:center;width:calc(100% + 24px);min-height:44px;margin:0 -12px;padding:9px 12px;border-radius:12px;background:transparent}
+/* A row's fill reaches 20 px beyond its text, so an update dot (12 px left of the text) sits inside it, as Mail's unread dot */
+.row{position:relative;display:grid;column-gap:14px;align-items:center;width:calc(100% + 40px);min-height:44px;margin:0 -20px;padding:9px 20px;border-radius:12px;background:transparent}
 button.row:active,[data-a].row:active{background:var(--current)}
 @media (hover:hover){button.row:hover,div.row[data-a]:hover{background:var(--current)}}
 [data-a].row{cursor:pointer}
@@ -113,7 +114,7 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .go{width:18px;height:18px;color:var(--caption)}
 .me{font-weight:600}
 /* An update not yet seen: a Strong Yellow dot in the margin, as Mail's unread dot (not for the person who made it) */
-.udot{position:absolute;left:-4px;top:calc(9px + .75em - 4px);width:8px;height:8px;border-radius:50%;background:var(--primary)}
+.udot{position:absolute;left:4px;top:calc(9px + .75em - 4px);width:8px;height:8px;border-radius:50%;background:var(--primary)}
 .tk{position:relative}
 .tk>.udot{left:-14px;top:calc(5px + .75em - 4px)}
 .ln>.udot{top:calc(10px + .75em - 4px)}
@@ -127,12 +128,13 @@ button.row:active,[data-a].row:active{background:var(--current)}
 /* Tasks under a Rundown line: owner's symbol | task, remark, people */
 .tk{display:grid;grid-template-columns:22px minmax(0,1fr);column-gap:10px;align-items:start;padding:5px 0;font-size:16px}
 .tk>.ic{margin-top:2px}
-button.tk{width:calc(100% + 16px);margin:0 -8px;padding:5px 8px;border-radius:10px}
+button.tk{width:calc(100% + 16px);margin:0 -8px;padding:5px 8px;border-radius:10px;grid-template-columns:22px minmax(0,1fr) 18px}
+button.tk>.go{align-self:center}
 button.tk:active{background:var(--current)}
 @media (hover:hover){button.tk:hover{background:var(--current)}}
 .tk>.ic svg.i{width:18px;height:18px}
 /* Rundown: time | line, its place and its tasks */
-.ln{display:grid;grid-template-columns:var(--tc) minmax(0,1fr);column-gap:14px;align-items:start;width:calc(100% + 24px);margin:0 -12px;padding:10px 12px;border-radius:12px}
+.ln{display:grid;grid-template-columns:var(--tc) minmax(0,1fr);column-gap:14px;align-items:start;width:calc(100% + 40px);margin:0 -20px;padding:10px 20px;border-radius:12px}
 .ln.e{grid-template-columns:var(--tc) minmax(0,1fr) auto}
 .ln.current{background:var(--current)}
 .ln>.t{padding-top:1px}
@@ -162,11 +164,11 @@ button.tk:active{background:var(--current)}
 .ck svg.i{width:24px;height:24px}
 .ck.on{color:var(--present)}
 .g-mem{grid-template-columns:22px minmax(0,1fr)}
-.nmb{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;column-gap:10px;align-items:center;min-height:44px;margin:-9px -12px -9px 0;padding:9px 12px 9px 0;border-radius:0 12px 12px 0}
+.nmb{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;column-gap:10px;align-items:center;min-height:44px;margin:-9px -20px -9px 0;padding:9px 20px 9px 0;border-radius:0 12px 12px 0}
 .nmb:active{background:var(--current)}
 .nmb .tm{font-size:15px;color:var(--secondary);margin-left:8px;font-variant-numeric:tabular-nums}
 /* Swipe a member left for On Leave (Group Lead) */
-.sw{position:relative;overflow:hidden;width:calc(100% + 24px);margin:0 -12px;border-radius:12px}
+.sw{position:relative;overflow:hidden;width:calc(100% + 40px);margin:0 -20px;border-radius:12px}
 .sw>.row{width:100%;margin:0;background:var(--canvas);transition:transform .2s ease;touch-action:pan-y;z-index:1}
 .swa{position:absolute;inset:0 0 0 auto;display:flex}
 .swa button{width:96px;display:grid;place-items:center;font-size:15px;background:var(--secondary);color:var(--canvas)}
@@ -648,7 +650,7 @@ function pRundown(ev) {
   const ed = S.edit, v = V(), all = v.type === 'lead' || v.type === 'teacher';
   const shown = t => !t.role;
   const mineGl = t => vt(ev) === 'gl' && !t.to.includes('All') && t.to.includes(v.group);
-  const tk = t => `<${mineGl(t) ? `button data-a="sheet:assign:${t.id}"` : 'div'} class="tk">${dot(`${ev.id}:t:${t.id}`)}${owner(t)}<span>${esc(t.text)}${remark(t)}${names(t)}</span></${mineGl(t) ? 'button' : 'div'}>`;
+  const tk = t => `<${mineGl(t) ? `button data-a="sheet:assign:${t.id}"` : 'div'} class="tk">${dot(`${ev.id}:t:${t.id}`)}${owner(t)}<span>${esc(t.text)}${remark(t)}${names(t)}</span>${mineGl(t) ? ic('chev-r', 'go') : ''}</${mineGl(t) ? 'button' : 'div'}>`;
   if (ed) {
     const lines = ev.rows.map(r => `<div class="ln e" data-drag="rows" data-id="${r.id}"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span><span class="rg">${rmB('askrow:' + r.id, 'Delete line')}${grip('Move line')}</span></div>`).join('');
     return {...docBar(true), title: 'Rundown', body: docHead('Rundown', ev) + `<section class="sec"><div class="list">${lines}${addB('addrow', 'Add Line', 'var(--tc)')}</div></section>`};
