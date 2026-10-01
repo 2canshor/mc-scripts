@@ -1508,7 +1508,8 @@ async function exportDoc(ev, id) {
 }
 
 /* ---------- Start: the last account on this device, its copy of the events, then the server ---------- */
-SYNC.token = store.get('token'); S.acct = ({Teacher: 'Viewer', Admin: 'Editor'})[store.get('acct')] || store.get('acct');  // accounts renamed 26/10/02 S.who = store.get('who'); S.seen = store.get('seen') || {};
+// A device signed in to Teacher or Admin before they were renamed (26/10/02) carries on as Viewer or Editor
+SYNC.token = store.get('token'); S.acct = ({Teacher: 'Viewer', Admin: 'Editor'})[store.get('acct')] || store.get('acct'); S.who = store.get('who'); S.seen = store.get('seen') || {};
 PHOTOS = store.get('photos') || {};
 if (SYNC.token && ACCT()) {
   if (cacheLoad()) { SYNC.loaded = true; S.stack = [{p: 'events'}]; }
