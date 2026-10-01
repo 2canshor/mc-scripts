@@ -74,6 +74,7 @@ h1 .sep,.sep{color:var(--secondary);font-weight:400}
 .mcl{margin:4px 0 0;font-weight:600}
 .sec{margin-top:32px}
 .sh{margin:0 0 2px;font-size:15px;color:var(--secondary)}
+.fld.apps{width:100%;text-overflow:ellipsis}
 .cap{display:block;font-size:15px;color:var(--secondary);line-height:1.45;margin-top:1px;white-space:pre-line}
 .pre,.srow .body{white-space:pre-line}
 /* A Remark is edited where it reads: caption size and colour, as wide as its text (only the event's Remarks is a box) */
@@ -569,6 +570,7 @@ if (typeof module !== "undefined") module.exports = ScriptGen;
 <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
 <symbol id="i-photo" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17.5l5-4.5 4 3.5 3-2.5 4 3.5"/></symbol>
 <symbol id="i-award" viewBox="0 0 24 24"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
 <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></symbol>
 <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
@@ -608,6 +610,7 @@ const members = g => ROSTER[g] ? [ROSTER[g].lead[1], ...ROSTER[g].people.map(p =
 const rosterIn = o => Object.fromEntries(Object.entries(o || {}).map(([g, r]) => [g, {lead: [((r || {}).lead || {}).cls || '', ((r || {}).lead || {}).name || ''], people: ((r || {}).people || []).map(p => [p.cls || '', p.name || ''])}]));
 const rosterOut = o => Object.fromEntries(Object.entries(o).map(([g, r]) => [g, {lead: {cls: r.lead[0].trim(), name: r.lead[1].trim()}, people: r.people.filter(p => p[1].trim()).map(p => ({cls: p[0].trim(), name: p[1].trim()}))}]));
 const clsOf = (g, n) => { const r = roster(g); return r.lead[1] === n ? r.lead[0] : ((r.people.find(p => p[1] === n) || [])[0] || ''); };
+let APPS = null;  // the Event Lead's link to the CA Support form's sheet: {url, error}
 let PASSWORDS = {};  // new passwords typed on a Members page, sent on Done
 // One account per small group (members pick their name), one per Group Lead, one for the chairs, one for teachers
 const ACCOUNTS = [{id: 'Event Lead', type: 'lead'}, {id: 'Teacher', type: 'teacher'},
@@ -957,7 +960,7 @@ function sheet() {
     h = bar(close, 'Account', '') +
       `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === 'Event Lead' ? '' : 'Event Lead') : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
       (others.length ? `<section class="sec"><p class="sh">Switch Person</p><div class="list">${others.map(x => `<button class="row g-sw" data-a="switch:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
-      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Members</span>${ic('chev-r', 'go')}</button>` : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
+      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Members</span>${ic('chev-r', 'go')}</button><div class="row g-sw">${sym('inbox', 'Applications')}<span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="Applications Sheet" aria-label="Applications Sheet" autocomplete="off">${APPS && APPS.error ? '<span class="cap danger">Cannot read this sheet</span>' : ''}</span></div>` : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
       `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="signout"><span class="ic" style="color:inherit">${ic('logout')}</span><span>Sign Out</span></button></div></section>`;
   }
   if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map(e => `<div class="row"><span>${esc(e.what)}<span class="cap">${esc(e.at)} · ${esc(e.who)}</span></span></div>`).join('') || '<p class="empty">No changes yet</p>'}</div>`; // tell-ok: history time and person
@@ -1053,6 +1056,7 @@ function setVal(b, val, el) {
     case 'aw': ev.awards[p[1]].awards.find(x => x.id === p[2]).award = val; return false;
     case 'ar': ev.awards[p[1]].awards.find(x => x.id === p[2]).rows[+p[3]][+p[4]] = p[4] === '0' ? val.toUpperCase() : val; return false;
     case 'gu': ev.guests.find(x => x.id === p[1])[p[2]] = val; return false;
+    case 'apps': (APPS = APPS || {url: '', error: false}).url = val; return false;
     case 'pw': PASSWORDS[p.slice(1).join(':')] = val; return false;
     case 'chair': CHAIRS[+p[1]] = val; return false;
     case 'rc': (p[2] === 'lead' ? ROSTER[p[1]].lead : ROSTER[p[1]].people[+p[2]])[+p[3]] = p[3] === '0' ? val.toUpperCase() : val; return false;
@@ -1177,6 +1181,12 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('focusout', e => { const m = e.target.closest && e.target.closest('[data-mcs]'); if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) setTimeout(() => { const ev = EV(); tidyMcs(ev); if (!m.contains(document.activeElement)) render(); }, 0); });
 document.addEventListener('compositionend', e => { if (e.target.dataset && e.target.dataset.q !== undefined) e.target.dispatchEvent(new Event('input', {bubbles: true})); });
+// The applications sheet: saved when its field is left, read at once by the server
+document.addEventListener('change', async e => {
+  if (!e.target.dataset || e.target.dataset.b !== 'apps') return;
+  try { const r = await api('applications', {method: 'PUT', body: JSON.stringify({url: e.target.value.trim()})}); APPS = {url: e.target.value.trim(), error: !r.ok}; } catch (x) { return; }
+  if (S.sheet) layer(); await pull(true);
+});
 // Swipe a member left for On Leave
 let sw = null;
 document.addEventListener('pointerdown', e => { const w = e.target.closest('.sw'); document.querySelectorAll('.sw.open').forEach(x => { if (x !== w) { x.classList.remove('open'); x.firstElementChild.style.transform = ''; } }); if (!w || e.target.closest('.swa')) return; sw = {w, x: e.clientX, y: e.clientY, dx: 0, on: w.classList.contains('open')}; });
@@ -1285,6 +1295,7 @@ function takeLists(b) {
   const rosterDirty = SYNC.rosterBase && J(rosterOut(ROSTER)) !== SYNC.rosterBase;
   if (b.rosters && !rosterDirty && !(cur() && cur().p === 'group' && S.edit)) { ROSTER = rosterIn(b.rosters); SYNC.rosterBase = J(rosterOut(ROSTER)); }
   const chairDirty = SYNC.chairBase && J(CHAIRS) !== SYNC.chairBase;
+  if (b.apps && !(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.b === 'apps')) APPS = b.apps;
   if (b.chairs && !chairDirty && !(cur() && cur().p === 'group' && S.edit)) { CHAIRS = b.chairs; SYNC.chairBase = J(CHAIRS); }
 }
 async function loadAll() {

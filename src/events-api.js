@@ -287,6 +287,76 @@ async function whoOf(env, acct) {
   if (acct.type === "gl") { const r = ((await settingOf(env, "rosters")) || {})[acct.group]; return (r && r.lead && r.lead.name) || acct.id; }
   return acct.who || acct.id;
 }
+// ---------- CA Support applications: the Google Sheet of the form, read as CSV ----------
+// The Event Lead pastes the sheet's link once (Account). Every 5 minutes at most, the first page that loads makes the
+// Worker read the sheet, and each application not seen before becomes an event with its basic information: date, name,
+// Assembly (CA's default), Leading and Supporting Teachers, a Rundown line at the start and end times, and the
+// teacher's Remark. An application whose date and name match an event already there (made by hand) is only marked seen.
+const APPS_EVERY = 5 * 60000;
+function csv(text) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; continue; }
+    if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows;
+}
+// "07/10/2026" or "7/10/2026" (day first, as the form writes it) -> "26/10/07"
+const ymd = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(s).trim()); return m ? `${m[3].slice(2)}/${m[2].padStart(2, "0")}/${m[1].padStart(2, "0")}` : ""; };
+// "07:50:00", "7:50" or "4:00:00 PM" -> "07:50"
+const hm = (s) => { const m = /^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/.exec(String(s).trim()); if (!m) return "";
+  let h = +m[1]; if (m[3]) h = (h % 12) + (/p/i.test(m[3]) ? 12 : 0); return `${String(h).padStart(2, "0")}:${m[2]}`; };
+const minus30 = (t) => { if (!t) return ""; const [h, m] = t.split(":").map(Number), x = (h * 60 + m - 30 + 1440) % 1440; return `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`; };
+const people = (s) => String(s || "").split(/[,，、\/]|\s{2,}/).map((x) => x.trim()).filter(Boolean);
+const hkNow = () => { const d = new Date(Date.now() + 8 * 3600e3).toISOString(); return d.slice(2, 10).replace(/-/g, "/") + " " + d.slice(11, 16); };
+async function saveSetting(env, k, v) {
+  await env.DB.prepare("INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v").bind(k, JSON.stringify(v)).run();
+}
+export async function importApplications(env, force) {
+  const cfg = await settingOf(env, "applications");
+  if (!cfg || !cfg.id || (!force && Date.now() - (cfg.at || 0) < APPS_EVERY)) return null;
+  cfg.at = Date.now(); await saveSetting(env, "applications", cfg);  // claimed first, so two pages loading together read it once
+  let rows;
+  try {
+    const r = await fetch(`https://docs.google.com/spreadsheets/d/${cfg.id}/export?format=csv${cfg.gid ? "&gid=" + cfg.gid : ""}`);
+    const text = r.ok ? await r.text() : "";
+    if (!text || /^\s*</.test(text)) throw new Error("unreadable");
+    rows = csv(text);
+  } catch { cfg.error = true; await saveSetting(env, "applications", cfg); return { error: "unreadable" }; }
+  const head = (rows.shift() || []).map((h) => h.trim().toLowerCase()), col = (w) => head.findIndex((h) => h.startsWith(w));
+  const C = { ts: col("timestamp"), name: col("event"), date: col("date"), start: col("start"), end: col("end"), lead: col("leading"), sup: col("supporting"), roles: col("roles"), rmk: col("remark") };
+  if (C.ts < 0 || C.name < 0 || C.date < 0) { cfg.error = true; await saveSetting(env, "applications", cfg); return { error: "unreadable" }; }
+  const seen = cfg.seen || {}, claimed = new Set(Object.values(seen));
+  const { results } = await env.DB.prepare("SELECT id, data FROM events").all();
+  const events = results.map((r) => { try { const e = JSON.parse(r.data); return { id: r.id, date: e.date || "", name: String(e.name || "").trim() }; } catch { return { id: r.id, date: "", name: "" }; } });
+  const apps = rows.map((row) => { const v = (k) => (C[k] < 0 ? "" : String(row[C[k]] || "").trim()); return { ts: v("ts"), date: ymd(v("date")), name: v("name"), v }; })
+    .filter((a) => a.ts && a.date && a.name && seen[a.ts] === undefined);
+  // Same date and same name first, then same date and the same first two characters (陸運會（頒獎台 黃色帳篷） is 陸運會（頒獎台）)
+  for (const same of [(e, a) => e.name === a.name, (e, a) => e.name.slice(0, 2) === a.name.slice(0, 2)])
+    apps.forEach((a) => { if (seen[a.ts] !== undefined) return; const e = events.find((x) => !claimed.has(x.id) && x.date === a.date && same(x, a)); if (e) { seen[a.ts] = e.id; claimed.add(e.id); } });
+  let added = 0;
+  for (const { ts, date, name, v } of apps) {
+    if (seen[ts] !== undefined) continue;
+    const start = hm(v("start")), end = hm(v("end"));
+    const id = "e" + date.replace(/\//g, "") + (await sha(ts)).slice(0, 4);
+    const ev = { id, v: 4, date, name, asmTime: /早會/.test(name) ? "07:35" : minus30(start), venue: "", leading: people(v("lead")), support: people(v("sup")), lead: "",
+      remarks: [v("rmk"), v("roles") ? "所需人力：" + v("roles") : ""].filter(Boolean).join("\n"), groups: [], mcs: [],
+      rows: [start ? { id: "r1", time: start, title: "開始", place: "", remark: "", say: [] } : null, end ? { id: "r2", time: end, title: "完結", place: "", remark: "", say: [] } : null].filter(Boolean),
+      tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: [{ at: hkNow(), ts: Date.now(), who: "CA Support Form", what: "Added from a CA Support application" }], upd: {} };
+    ev.upd = stamp(null, ev, "CA Support Form");
+    const saved = await env.DB.prepare("INSERT INTO events (id, data, deleted, updated, seq) VALUES (?1, ?2, 0, ?3, (SELECT COALESCE(MAX(seq), 0) + 1 FROM events)) ON CONFLICT (id) DO NOTHING RETURNING seq").bind(id, JSON.stringify(ev), Date.now()).first();
+    seen[ts] = id; claimed.add(id); events.push({ id, date, name });
+    if (saved) added++;
+  }
+  cfg.seen = seen; cfg.error = false; await saveSetting(env, "applications", cfg);
+  return { added };
+}
+
 // Pages from before 26/10/01 read events in the old shape; they get nothing new until they are reloaded.
 const PAGE = "4";
 
@@ -305,6 +375,7 @@ export async function handleEvents(request, env, url, path) {
   if (path === "state" && request.method === "GET") {
     if (request.headers.get("x-page") !== PAGE) return json({ error: "reload" }, 503);
     const since = Math.max(0, Number(url.searchParams.get("since")) || 0);
+    try { await importApplications(env, false); } catch (e) { /* the events already there still load */ }
     const { results } = await env.DB.prepare("SELECT id, data, deleted, seq FROM events WHERE seq > ? ORDER BY seq").bind(since).all();
     const rows = results.map((r) => ({ id: r.id, rev: r.seq, deleted: !!r.deleted, data: r.deleted ? null : JSON.stringify(visible(acct, upgrade(JSON.parse(r.data)))) }));
     const out = { account: { id: acct.id, type: acct.type, group: acct.group || null }, rows, photos: await photoVersions(env) };
@@ -312,6 +383,7 @@ export async function handleEvents(request, env, url, path) {
       const s = await env.DB.prepare("SELECT k, v FROM settings WHERE k IN ('rosters', 'chairs')").all();
       const map = Object.fromEntries(s.results.map((r) => [r.k, JSON.parse(r.v)]));
       out.rosters = map.rosters || {}; out.chairs = map.chairs || [];
+      if (acct.type === "lead") { const a = await settingOf(env, "applications"); out.apps = a ? { url: a.url || "", error: !!a.error } : { url: "", error: false }; }
     }
     return json(out);
   }
@@ -383,6 +455,20 @@ export async function handleEvents(request, env, url, path) {
     try { JSON.parse(text); } catch { return json({ error: "bad request" }, 400); }
     await env.DB.prepare("INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v").bind(path, text).run();
     return json({ ok: true });
+  }
+
+  // The CA Support form's sheet: the Event Lead pastes its link; it is read at once, then every 5 minutes at most.
+  if (path === "applications" && request.method === "PUT") {
+    if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
+    let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+    const link = String(body.url || "").trim().slice(0, 500);
+    if (!link) { await env.DB.prepare("DELETE FROM settings WHERE k = 'applications'").run(); return json({ ok: true }); }
+    const m = /docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/.exec(link), g = /[#&?]gid=(\d+)/.exec(link);
+    if (!m) return json({ error: "unreadable" }, 400);
+    const old = (await settingOf(env, "applications")) || {};
+    await saveSetting(env, "applications", { url: link, id: m[1], gid: g ? g[1] : "", seen: old.id === m[1] ? old.seen || {} : {}, at: 0 });
+    const r = await importApplications(env, true);
+    return json(r && r.error ? r : { ok: true, added: (r && r.added) || 0 }, r && r.error ? 400 : 200);
   }
 
   // Passwords: the Event Lead sets any account's password (8 characters or more; Carson 26/09/30: long ones were too hard to type).
