@@ -69,6 +69,7 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 h1{font-size:31px;font-weight:600;line-height:1.25;margin:0;word-break:normal;line-break:strict;text-wrap:pretty}
 .root h1{min-height:52px;display:flex;align-items:center;padding-right:64px}
 h1 .sep,.sep{color:var(--secondary);font-weight:400}
+.evn{display:inline-block;max-width:100%;vertical-align:top;text-wrap:balance}
 .nw{white-space:nowrap}
 .sub{margin:6px 0 0;color:var(--secondary)}
 .mcl{margin:4px 0 0;font-weight:600}
@@ -193,10 +194,10 @@ textarea.fld{display:inline-block}
 .fl>.f{margin-inline:-.45em}
 .fl>:first-child{margin-left:-.45em}
 /* Title in Edit: "date｜name" wraps as in reading. The name field runs on from the date (text-indent) and under it. */
-.tline{position:relative}
+.tline{position:relative;display:flow-root}
 .tpre{position:absolute;left:0;top:0;z-index:1;display:inline-block;white-space:nowrap}
 .tpre .sep{margin-left:.3em}
-.tline .tname{display:block;box-sizing:border-box;width:calc(100% + .9em);max-width:none}
+.tline .tname{display:block;overflow-wrap:normal;box-sizing:border-box;width:calc(100% + .9em);max-width:none}
 .pw .fld{max-width:none;white-space:nowrap}
 .tm{font-variant-numeric:tabular-nums}
 .tch{display:flex;flex-direction:column;gap:6px}
@@ -768,8 +769,10 @@ const pick = (b, shown, opts, ph) => `<label class="pk f${shown ? '' : ' empty'}
 const rmB = (act, label) => `<button class="ib rm" data-a="${act}" aria-label="${esc(label)}">${ic('minus-c')}</button>`;
 const addB = (act, label, cols) => `<button class="row add${cols ? ' cols' : ''}" data-a="${act}"${cols ? ` style="--c1:${cols}"` : ''}>${ic('plus-c')}<span>${label}</span></button>`;
 const evLine = ev => `<span class="nw">${esc(ev.date)}</span>｜${esc(ev.name)}`;
-// A title "date｜name" never breaks after the bar: the date, the bar and the first character stay together
-const evTitle = ev => { const n = [...ev.name]; return `<span class="nw">${esc(ev.date)}<span class="sep">｜</span>${esc(n[0] || '')}</span>${esc(n.slice(1).join(''))}`; };
+// A title "date｜name": a Chinese name stays whole. It follows the date when it fits there, moves whole to the next line
+// when it does not, and breaks inside only when it is longer than a line. A name in English breaks between words as usual.
+const CJK = /[\u3000-\u9fff\uff00-\uffef]/;
+const evTitle = ev => `<span class="nw">${esc(ev.date)}<span class="sep">｜</span></span><span class="${CJK.test(ev.name) ? 'evn' : ''}">${esc(ev.name)}</span>`;
 
 /* ---------- Pages. Each returns {l, r, title, body, root, search}. ---------- */
 function pSignIn() {
@@ -1093,8 +1096,13 @@ function fit(t) {
 }
 const fitAll = root => { root.querySelectorAll('textarea.fld').forEach(fit); root.querySelectorAll('.tline').forEach(indent); };
 // The name starts where "date｜" ends (the date sized first), and then takes the height that leaves it
+// In Edit the name keeps the reading rule: a Chinese name that does not fit after "date｜" starts on the next line
 function indent(l) { const pre = l.querySelector('.tpre'), t = l.querySelector('.tname'); if (!pre || !t) return;
-  const pad = parseFloat(getComputedStyle(t).paddingLeft); t.style.textIndent = (pre.getBoundingClientRect().right - t.getBoundingClientRect().left - pad + 4) + 'px'; fit(t); }
+  const cs = getComputedStyle(t), pad = parseFloat(cs.paddingLeft), ind = pre.getBoundingClientRect().right - t.getBoundingClientRect().left - pad + 4;
+  measure.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const w = Math.max(...(t.value || t.placeholder).split('\n').map(x => measure.measureText(x).width)), inner = t.clientWidth - pad - parseFloat(cs.paddingRight);
+  const drop = CJK.test(t.value || '') && w > inner - ind;
+  t.style.textIndent = (drop ? 0 : ind) + 'px'; t.style.marginTop = drop ? cs.lineHeight : ''; fit(t); }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitAll(app); fitAll(lay); });
 // Past the top, content fades under the controls; once the large title has gone, its name shows in the bar
 function onScroll() {
