@@ -143,7 +143,7 @@ export function upgrade(ev) {
     out.tasks.push({ id: t.id, text: t.text || "", ...(l.before ? { date: "" } : { row: l.id }), to: all ? ["All"] : [...new Set(to)],
       names: all ? [] : [...new Set(names)], remark: t.at ? momentOf(t.at) : "" });
   }));
-  // Documents: one Script (each old script joins its Rundown line, or a line of its own), one Awardee List, one Guest List
+  // Documents: one Script (each old script joins its Rundown line, or a line of its own), one Participant List (people who go on stage: awardees, office holders), one Guest List
   const mcs = [];
   docs.filter((d) => d.type === "script").forEach((d) => {
     let row = out.rows.find((r) => r.id === d.line);
@@ -159,7 +159,7 @@ export function upgrade(ev) {
   out.mcs = mcs.map((n) => ["", n]);
   const aw = docs.filter((d) => d.type === "awardees").flatMap((d) => (d.awards || []).map((a) => ({ id: a.id, award: [d.q, a.award].filter(Boolean).join(" "),
     rows: (a.rows || []).map((r) => [String(r.cls || "").toUpperCase(), r.name || ""]) })));
-  if (docs.some((d) => d.type === "awardees")) out.awards = { aw: { name: "Awardee List", awards: aw } };
+  if (docs.some((d) => d.type === "awardees")) out.awards = { aw: { name: "Participant List", awards: aw } };
   if (docs.some((d) => d.type === "guests")) out.guests = docs.filter((d) => d.type === "guests").flatMap((d) => (d.guests || []).map((g) => ({ id: g.id, name: g.name || "", role: g.role || "" })));
   // Attendance: a tick keeps the time it was made; Off before the day becomes On Leave
   Object.entries(ev.attendance || {}).forEach(([g, m]) => Object.entries(m || {}).forEach(([n, s]) => {
@@ -173,7 +173,7 @@ export function upgrade(ev) {
 // ---------- Units: the pieces of an event that rights are checked on ----------
 // Event Lead: everything. A Group Lead on duty (or the Acting Group Lead on the day): names on their group's tasks,
 // roles in their group, Acting Group Lead, attendance and On Leave. On-duty members and Group Lead: their kind of
-// document (MC the Script, Backstage the Awardee List, Reception the Guest List). The teacher reads.
+// document (MC the Script, Backstage the Participant List, Reception the Guest List). The teacher reads.
 const FIELDS = ["date", "name", "asmTime", "venue", "leading", "support", "lead", "remarks"];
 const KNOWN = new Set([...FIELDS, "id", "v", "groups", "mcs", "rows", "tasks", "awards", "guests", "att", "leave", "log", "upd"]);
 function units(ev) {

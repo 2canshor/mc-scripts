@@ -74,13 +74,14 @@ h1 .sep,.sep{color:var(--secondary);font-weight:400}
 .mcl{margin:4px 0 0;font-weight:600}
 .sec{margin-top:32px}
 .sh{margin:0 0 2px;font-size:15px;color:var(--secondary)}
+.sub{margin:14px 0 2px;font-size:13px;color:var(--caption)}
+.list>.sub:first-child{margin-top:4px}
 .lk{color:inherit;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
 .fld.apps{width:100%;text-overflow:ellipsis}
 .cap{display:block;font-size:15px;color:var(--secondary);line-height:1.45;margin-top:1px;white-space:pre-line}
 .pre,.srow .body{white-space:pre-line}
 /* A Remark is edited where it reads: caption size and colour, as wide as its text (only the event's Remarks is a box) */
-.rmkl{display:block;margin-top:4px}
-.fld.rmk{font-size:15px;color:var(--secondary);line-height:1.45}
+.rmkl{display:block;margin-top:6px}
 .who{display:block;font-size:15px;color:var(--secondary)}
 .muted,.t{color:var(--secondary)}
 .t,.tn{font-variant-numeric:tabular-nums}
@@ -193,6 +194,9 @@ textarea.fld{display:inline-block}
 .tpre .dt.f.empty{background:transparent}
 .tline .tname{display:block;box-sizing:border-box;width:calc(100% + .9em);max-width:none}
 .pw .fld{max-width:none;white-space:nowrap}
+.tm{font-variant-numeric:tabular-nums}
+.tch{display:flex;flex-direction:column;gap:6px}
+.fld.muted{color:var(--secondary)}
 .dt{position:relative;display:inline-flex;align-items:center;border-radius:8px;font-variant-numeric:tabular-nums;line-height:1.5}
 .dt input{position:absolute;inset:0;opacity:0;width:100%;height:100%;font-size:16px;cursor:pointer}
 .dt .ph,.pk .ph{color:var(--caption)}
@@ -634,7 +638,7 @@ const isLead = () => !!V() && V().type === 'lead';
 // An Acting Group Lead works as the Group Lead on the day of the event
 const vt = ev => { const v = V(); if (v.type !== 'member' || !ev) return v.type; const g = ev.groups.find(x => x.name === v.group); return g && g.acting === v.name && ev.date === TODAY ? 'gl' : 'member'; };
 const seen = ev => isLead() || V().type === 'teacher' || ev.groups.some(g => g.name === V().group);
-// Who changes a document: the Event Lead, and the on-duty group whose work it is (MC: Script; Backstage: Awardee List; Reception: Guest List)
+// Who changes a document: the Event Lead, and the on-duty group whose work it is (MC: Script; Backstage: Participant List; Reception: Guest List)
 const DOC_KIND = {script: 'MC', awards: 'Backstage', guests: 'Reception'};
 const canDoc = (ev, type) => isLead() || (['member', 'gl'].includes(V().type) && kind(V().group) === DOC_KIND[type] && ev.groups.some(g => g.name === V().group));
 
@@ -657,7 +661,14 @@ const onLeave = (ev, g, n) => !!(((ev.leave || {})[g] || {})[n]);
 const tasksOf = (ev, g) => ev.tasks.filter(t => !t.role && t.to.includes(g));
 const openCount = (ev, g) => g === 'All' ? 0 : tasksOf(ev, g).filter(t => !t.names.length).length;
 const forMe = t => t.names.includes(V().name) || (t.to.includes('All') && !t.role);
-const log = (ev, what) => ev.log.unshift({at: TODAY + ' ' + NOW(), ts: Date.now(), who: V().name, what});
+// History: a change to the event (not attendance) keeps a copy of the event as it was before, so the Event Lead can go back to it.
+// Copies stay on the newest 10 entries, within 400 KB.
+const BARE = o => { const x = {...o}; ['log', 'upd', 'att', 'leave'].forEach(k => delete x[k]); return x; };
+const log = (ev, what) => {
+  let snap = null; try { const b = SYNC.base[ev.id] && BARE(JSON.parse(SYNC.base[ev.id])); if (b && J(b) !== J(BARE(ev))) snap = b; } catch (e) {}
+  ev.log.unshift({at: TODAY + ' ' + NOW(), ts: Date.now(), who: V().name, what, ...(snap ? {snap} : {})});
+  let size = 0; ev.log.forEach((x, i) => { if (!x.snap) return; size += J(x.snap).length; if (i >= 10 || size > 400000) delete x.snap; });
+};
 const evOfKey = key => EVENTS.find(e => key === e.id || key.startsWith(e.id + ':'));
 const updOf = key => { const e = evOfKey(key); return e && e.upd ? e.upd[key] : null; };
 const mySeen = () => S.seen[V().name] = S.seen[V().name] || {};
@@ -699,7 +710,7 @@ function rotation(ev, k) {
 /* ---------- Controls and fields ---------- */
 const avatar = n => PHOTOS[n] && PHOTOS[n].d ? `<img src="${PHOTOS[n].d}" alt="">` : esc([...(n || '?')][0]);
 const backBtn = () => `<button class="nb round glass" data-a="back" aria-label="Back">${ic('back')}</button>`;
-const shareBtn = `<button class="nb round glass" data-a="exportdoc" aria-label="Export">${ic('share')}</button>`;
+const shareBtn = `<button class="nb round glass" data-a="exportdoc" aria-label="Export">${ic('download')}</button>`;
 const docBar = (canEdit, del) => { const b = editBar(canEdit, del ? `<div class="glass grp"><button class="nb danger" data-a="${del}" aria-label="Delete">${ic('trash')}</button></div>` : ''); return {...b, r: S.edit ? b.r : shareBtn + b.r}; };
 const editBar = (canEdit, extra = '') => ({
   l: S.edit ? `<button class="nb glass" data-a="cancel">Cancel</button>` : backBtn(),
@@ -708,7 +719,12 @@ const editBar = (canEdit, extra = '') => ({
 const fld = (b, v, ph, cls = '') => `<textarea class="fld f fit ${cls}" rows="1" data-b="${b}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(v)}</textarea>`;
 const box = (b, v, ph, cls = 'f') => `<textarea class="fld box ${cls}" rows="1" data-b="${b}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(v)}</textarea>`;
 const dateF = (b, v, ph = 'Date', short) => `<label class="dt f${v ? '' : ' empty'}"><span class="${v ? '' : 'ph'}">${v ? esc(short ? md(v) : v) : ph}</span><input type="date" data-b="${b}" value="${v ? iso(v) : ''}" aria-label="${ph}"></label>`;
-const timeF = (b, v, ph = 'Time') => `<label class="dt f${v ? '' : ' empty'}"><span class="${v ? '' : 'ph'}">${v ? esc(v) : ph}</span><input type="time" data-b="${b}" value="${esc(v)}" aria-label="${ph}"></label>`;
+// A time is typed (0750, 7:50 or 7.50 all become 07:50) and checked when the field is left
+const timeF = (b, v, ph = 'Time') => `<textarea class="fld f fit tm" rows="1" data-b="${b}" data-time inputmode="numeric" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(v)}</textarea>`;
+const normTime = raw => { const t = String(raw).trim().replace(/[：.\s]/g, ':'); if (!t) return '';
+  let m = /^(\d{1,2}):(\d{1,2})$/.exec(t), h, mi;
+  if (m) { h = +m[1]; mi = +m[2]; } else if (/^\d{1,4}$/.test(t)) { h = +(t.length > 2 ? t.slice(0, t.length - 2) : t); mi = t.length > 2 ? +t.slice(-2) : 0; } else return null;
+  return h < 24 && mi < 60 ? `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}` : null; };
 const pick = (b, shown, opts, ph) => `<label class="pk f${shown ? '' : ' empty'}"><span${shown ? '' : ' class="ph"'}>${shown || ph}</span>${ic('chev-ud')}<select data-b="${b}" aria-label="${esc(ph)}">${opts}</select></label>`;
 const rmB = (act, label) => `<button class="ib rm" data-a="${act}" aria-label="${esc(label)}">${ic('minus-c')}</button>`;
 const addB = (act, label, cols) => `<button class="row add${cols ? ' cols' : ''}" data-a="${act}"${cols ? ` style="--c1:${cols}"` : ''}>${ic('plus-c')}<span>${label}</span></button>`;
@@ -750,13 +766,15 @@ function pEvent(ev) {
   return {...bar, fab: own ? {act: own[0], label: 'New ' + own[2]} : null, title: ev.name, body: title + facts(ev, ed && isLead()) + yourPart(ev, ed && isLead()) + documents(ev, ed)};
 }
 // Facts: a symbol and a value, no labels (each label is the symbol's spoken name). The event begins at Assembly.
+// Teachers: one field each, and one empty field after them for the next (as the Script's MC line)
+const teachF = (k, list, ph) => [...list, ''].map((n, i) => fld(`teach:${k}:${i}`, n, ph, k === 'support' ? 'muted' : '')).join('');
 function facts(ev, ed) {
   const F = {assemble: 'asmTime', pin: 'venue', teacher: 'leading', flag: 'lead', note: 'remarks'};
   const row = (n, label, v, top) => `<div class="row g-p${top ? ' top' : ''}">${ed ? '' : dot(`${ev.id}:f:${F[n]}`)}${sym(n, label)}<span>${v}</span></div>`;
   if (ed) return `<section class="sec list">
     ${row('assemble', 'Assembly', `<span class="fl">${timeF('ev:asmTime', ev.asmTime, 'Assembly')}</span>`)}
     ${row('pin', 'Venue', `<span class="fl">${fld('ev:venue', ev.venue, 'Venue')}</span>`)}
-    ${row('teacher', 'Teachers', `<span class="fl">${fld('ev:leading', ev.leading.join('、'), 'Leading Teacher')}${fld('ev:support', ev.support.join('、'), 'Supporting Teachers')}</span>`)}
+    ${row('teacher', 'Teachers', `<span class="tch" data-teach><span class="fl">${teachF('leading', ev.leading, 'Leading Teacher')}</span><span class="fl">${teachF('support', ev.support, 'Supporting Teacher')}</span></span>`, true)}
     ${row('flag', 'Event Lead', `<span class="fl">${pick('ev:lead', esc(ev.lead), CHAIRS.map(n => `<option${n === ev.lead ? ' selected' : ''}>${esc(n)}</option>`).join(''), 'Event Lead')}</span>`)}
     ${row('note', 'Remarks', box('ev:remarks', ev.remarks, 'Remarks'), true)}</section>`;
   const t = [esc(ev.leading.join('、')), ev.support.length ? `<span class="muted">${esc(ev.support.join('、'))}</span>` : ''].filter(Boolean).join('　');
@@ -771,8 +789,11 @@ function facts(ev, ed) {
 function taskRows(ev, tasks, render) {
   const list = [...tasks].sort((a, b) => order(ev, a).localeCompare(order(ev, b)));
   const next = ev.date === TODAY ? list.find(t => t.row && whenOf(ev, t) >= NOW()) : null;
-  return list.map(t => render(t, whenOf(ev, t), t === next)).join('');
+  return twoGroups(list, t => render(t, whenOf(ev, t), t === next));
 }
+// Before the Event (a date) and On the Day (a Rundown line), each under its own heading, as on the Rundown
+const twoGroups = (list, one) => { const b = list.filter(t => !t.row), d = list.filter(t => t.row);
+  return (b.length ? `<p class="sub">Before the Event</p>${b.map(one).join('')}` : '') + (d.length ? `<p class="sub">On the Day</p>${d.map(one).join('')}` : ''); };
 function yourPart(ev, ed) {
   const v = V(), type = vt(ev);
   if (type === 'member') {
@@ -814,7 +835,7 @@ function memberList(ev, g) {
 function documents(ev, ed) {
   const items = [['rundown', 'list', 'Rundown', '']];
   if (hasScript(ev) || (ev.mcs || []).length) items.push(['script', 'doc', 'Script', ed ? 'delscript' : '']);
-  Object.entries(ev.awards || {}).forEach(([id, d]) => items.push(['aw:' + id, 'award', d.name, ed ? 'deldoc:aw:' + id : '']));
+  Object.entries(ev.awards || {}).forEach(([id, d]) => items.push(['aw:' + id, 'users', 'Participant List', ed ? 'deldoc:aw:' + id : '']));
   if (ev.guests) items.push(['guests', 'guests', 'Guest List', ed ? 'deldoc:guests' : '']);
   const rows = items.map(([id, n, name, del]) => ed
     ? `<div class="row g-ic">${sym(n, '')}<span>${esc(name)}</span><span></span><span></span></div>`
@@ -831,7 +852,7 @@ function pRundown(ev) {
   const shown = t => !t.role;
   const tk = t => `<div class="tk">${dot(`${ev.id}:t:${t.id}`)}${owner(t)}<span>${esc(t.text)}${remark(t)}${names(t)}</span></div>`;
   if (ed) {
-    const lines = ev.rows.map(r => `<div class="ln e"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${fld(`row:${r.id}:remark`, r.remark || '', 'Remark', 'rmk')}</span></span>${rmB('askrow:' + r.id, 'Delete line')}</div>`).join('');
+    const lines = ev.rows.map(r => `<div class="ln e"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span>${rmB('askrow:' + r.id, 'Delete line')}</div>`).join('');
     return {...docBar(true), title: 'Rundown', body: docHead('Rundown', ev) + `<section class="sec"><div class="list">${lines}${addB('addrow', 'Add Line', 'var(--tc)')}</div></section>`};
   }
   const before = ev.tasks.filter(t => !t.row && shown(t)).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -847,7 +868,7 @@ function pRundown(ev) {
 function pScript(ev) {
   const ed = S.edit, mcs = named(ev);
   const para = (r, s) => {
-    if (s.type === 'award' || s.type === 'guests') { const rows = paraRows(ev, s), head = s.type === 'award' ? [sym('award', 'Awardee List', 'isym'), awardOf(ev, s).award] : [sym('guests', 'Guest List', 'isym'), 'Guest List'];
+    if (s.type === 'award' || s.type === 'guests') { const rows = paraRows(ev, s), head = s.type === 'award' ? [sym('users', 'Participant List', 'isym'), awardOf(ev, s).award] : [sym('guests', 'Guest List', 'isym'), 'Guest List'];
       const line = ([i, a, b]) => s.type === 'award' ? `<span class="aws"><span class="c">${esc(a)}</span><span>${esc(b)}</span></span>` : `<span>${esc(a)}<span class="muted">　${esc(b)}</span></span>`;
       if (!ed) return `<div class="srow">${dot(`${ev.id}:s:${s.id}`)}<span></span><div><span class="awn">${head[0]} ${esc(head[1])}</span>${rows.map(x => `<div>${line(x)}</div>`).join('')}</div></div>`;
       return `<div class="srow e sub" tabindex="-1"><span></span><span class="awn">${head[0]} ${esc(head[1])}</span>${rmB(`delsay:${r.id}:${s.id}`, 'Remove')}</div>` +
@@ -864,11 +885,11 @@ function pScript(ev) {
 }
 function pAwards(ev, id) {
   const ed = S.edit, d = ev.awards[id];
-  const awards = d.awards.map(a => `<section class="award">${ed ? `<div class="row g-tme" style="grid-template-columns:minmax(0,1fr) 24px;margin-bottom:2px"><span class="fl">${fld(`aw:${id}:${a.id}`, a.award, 'Award', '')}</span>${rmB(`delaward:${id}:${a.id}`, 'Delete award')}</div>` : `<h2>${dot(`${ev.id}:a:${a.id}`)}${esc(a.award)}</h2>`}
+  const awards = d.awards.map(a => `<section class="award">${ed ? `<div class="row g-tme" style="grid-template-columns:minmax(0,1fr) 24px;margin-bottom:2px"><span class="fl">${fld(`aw:${id}:${a.id}`, a.award, 'Award or Role', '')}</span>${rmB(`delaward:${id}:${a.id}`, 'Delete')}</div>` : `<h2>${dot(`${ev.id}:a:${a.id}`)}${esc(a.award)}</h2>`}
     <div class="list">${a.rows.map((r, i) => ed
       ? `<div class="row g-kv"><span class="fl">${fld(`ar:${id}:${a.id}:${i}:0`, r[0], 'Class', 'upper')}</span><span class="fl">${fld(`ar:${id}:${a.id}:${i}:1`, r[1], 'Name')}</span>${rmB(`delawardee:${id}:${a.id}:${i}`, 'Delete')}</div>`
-      : `<div class="row g-kv"><span class="t">${esc(r[0])}</span><span>${esc(r[1])}</span></div>`).join('')}${ed ? addB(`addawardee:${id}:${a.id}`, 'Add Awardee', '4.2em') : ''}</div></section>`).join('');
-  return {...docBar(canDoc(ev, 'awards'), 'askdoc:aw:' + id), title: d.name, body: docHead(d.name, ev) + `<div class="sec">${awards}${ed ? `<div class="list" style="margin-top:20px">${addB('addaward:' + id, 'Add Award')}</div>` : ''}</div>`};
+      : `<div class="row g-kv"><span class="t">${esc(r[0])}</span><span>${esc(r[1])}</span></div>`).join('')}${ed ? addB(`addawardee:${id}:${a.id}`, 'Add Person', '4.2em') : ''}</div></section>`).join('');
+  return {...docBar(canDoc(ev, 'awards'), 'askdoc:aw:' + id), title: 'Participant List', body: docHead('Participant List', ev) + `<div class="sec">${awards}${ed ? `<div class="list" style="margin-top:20px">${addB('addaward:' + id, 'Add Award or Role')}</div>` : ''}</div>`};
 }
 function pGuests(ev) {
   const ed = S.edit, g = ev.guests || [];
@@ -927,16 +948,16 @@ function sheet() {
     const groupOpts = ['MC', 'Backstage', 'Reception'].map(k => `<optgroup label="${k}">${rotation(ev, k).filter(x => x.g === g || !ev.groups.some(y => y.name === x.g)).map((x, i) => `<option value="${x.g}"${x.g === g ? ' selected' : ''}>${x.g}${i === 0 && x.g !== g ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}</option>`).join('')}</optgroup>`).join('');
     const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc(r.time + ' ' + r.title)}</option>`).join('');
     const taskE = t => `<div class="row g-tme"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : pick(`task:${t.id}:row`, esc(whenOf(ev, t)), lineOpts(t), 'Line')}</span>
-      <span>${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="fl own${t.to.includes('All') ? ' all' : ''}" style="margin-top:4px;font-size:15px">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : gname(g), `<option value="${esc(g)}"${t.to.includes('All') ? '' : ' selected'}>${esc(g)}</option><option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`, 'For')}</span><span class="rmkl">${fld(`task:${t.id}:remark`, t.remark, 'Remark', 'rmk')}</span></span>${rmB('deltask:' + t.id, 'Delete task')}</div>`;
+      <span>${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="fl own${t.to.includes('All') ? ' all' : ''}" style="margin-top:4px;font-size:15px">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : gname(g), `<option value="${esc(g)}"${t.to.includes('All') ? '' : ' selected'}>${esc(g)}</option><option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`, 'For')}</span><span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span></span>${rmB('deltask:' + t.id, 'Delete task')}</div>`;
     const taskR = t => `<div class="row g-tm">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${whenOf(ev, t)}</span><span>${esc(t.text)}${remark(t)}${t.to.includes('All') ? '<span class="who">Everyone</span>' : names(t)}</span></div>`;
     const title = isNew ? 'New Duty Group' : g === 'All' ? 'Everyone' : 'Duty Group';
     if (ed) {
       h = bar(cancel('gcancel'), title, `<button class="nb pri" data-a="gdone"${g ? '' : ' disabled'}>${isNew ? 'Add' : 'Done'}</button>`) +
         (g === 'All' ? '' : `<div class="list"><div class="row g-p">${sym(g ? SYM[kind(g)] : 'users', 'Group')}<span class="fl">${pick('group', g ? gname(g) : '', `<option value="" disabled ${g ? '' : 'selected'}></option>` + groupOpts, 'Group')}</span></div></div>`) +
-        (g ? `<section class="sec" style="margin-top:20px"><p class="sh">Tasks</p><div class="list">${tasks.map(taskE).join('')}${addB('menu:addtask', 'Add Task', '5.2em')}</div></section>` : '') +
+        (g ? `<section class="sec" style="margin-top:20px"><p class="sh">Tasks</p><div class="list">${twoGroups(tasks, taskE)}${addB('menu:addtask', 'Add Task', '5.2em')}</div></section>` : '') +
         (g && !isNew ? `<button class="nb glass danger" style="width:100%;margin-top:28px" data-a="gremove">Remove Duty Group</button>` : '');
     } else {
-      h = bar(close, `${gname(g)}${gr && gr.covers ? `<span class="s2">Covering ${gname(gr.covers)}</span>` : ''}`, '') + `<div class="list">${tasks.map(taskR).join('')}</div>${tasks.length ? '' : '<p class="empty">No tasks yet</p>'}`;
+      h = bar(close, `${gname(g)}${gr && gr.covers ? `<span class="s2">Covering ${gname(gr.covers)}</span>` : ''}`, '') + `<div class="list">${twoGroups(tasks, taskR)}</div>${tasks.length ? '' : '<p class="empty">No tasks yet</p>'}`;
     }
   }
   if (s.k === 'assign') {
@@ -966,15 +987,16 @@ function sheet() {
       (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Members</span>${ic('chev-r', 'go')}</button><div class="row g-sw">${sym('inbox', 'Applications')}<span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="Applications Sheet" aria-label="Applications Sheet" autocomplete="off">${APPS && APPS.error ? '<span class="cap danger">Cannot read this sheet</span>' : ''}</span></div>` : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
       `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="signout"><span class="ic" style="color:inherit">${ic('logout')}</span><span>Sign Out</span></button></div></section>`;
   }
-  if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map(e => `<div class="row"><span>${esc(e.what)}<span class="cap">${esc(e.at)} · ${esc(e.who)}</span></span></div>`).join('') || '<p class="empty">No changes yet</p>'}</div>`; // tell-ok: history time and person
+  if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map((e, i) => { const txt = `<span>${esc(e.what)}<span class="cap">${esc(e.at)} · ${esc(e.who)}</span></span>`;
+    return e.snap && isLead() ? `<button class="row" data-a="askrestore:${i}" style="grid-template-columns:minmax(0,1fr) auto">${txt}<span class="muted">Restore</span></button>` : `<div class="row">${txt}</div>`; }).join('') || '<p class="empty">No changes yet</p>'}</div>`; // tell-ok: history time and person
   if (s.k === 'delete') h = bar(cancel(), 'Delete Event?', '') + `<p class="note">${esc(ev.name)}: its Rundown, tasks and documents go for everyone.</p><button class="nb glass danger" style="width:100%;font-weight:600" data-a="delevent">Delete Event</button>`;
   return `<div class="dimbg" data-a="bg"><div class="sheet${s.k === 'role' || s.k === 'group' ? ' tall' : ''}" role="dialog" aria-modal="true">${h}</div></div>`;
 }
 // Menus: glass, a symbol before each item (MC Scripts' add menu)
 function menuItems(k, arg) {
   const ev = EV();
-  if (k === 'adddoc') return [canDoc(ev, 'script') && !hasScript(ev) && !(ev.mcs || []).length ? ['newscript', 'doc', 'Script'] : null, canDoc(ev, 'awards') && !Object.keys(ev.awards || {}).length ? ['newawards', 'award', 'Awardee List'] : null, canDoc(ev, 'guests') && !ev.guests ? ['newguests', 'guests', 'Guest List'] : null].filter(Boolean);
-  if (k === 'addsay') { const lists = Object.entries(ev.awards || {}).flatMap(([lid, l]) => l.awards.filter(a => a.award && unread(ev, {type: 'award', list: lid, award: a.id}).length).map(a => [`addsay:${arg}:award:${lid}:${a.id}`, 'award', a.award]));
+  if (k === 'adddoc') return [canDoc(ev, 'script') && !hasScript(ev) && !(ev.mcs || []).length ? ['newscript', 'doc', 'Script'] : null, canDoc(ev, 'awards') && !Object.keys(ev.awards || {}).length ? ['newawards', 'users', 'Participant List'] : null, canDoc(ev, 'guests') && !ev.guests ? ['newguests', 'guests', 'Guest List'] : null].filter(Boolean);
+  if (k === 'addsay') { const lists = Object.entries(ev.awards || {}).flatMap(([lid, l]) => l.awards.filter(a => a.award && unread(ev, {type: 'award', list: lid, award: a.id}).length).map(a => [`addsay:${arg}:award:${lid}:${a.id}`, 'users', a.award]));
     const guests = ev.guests && unread(ev, {type: 'guests'}).length ? [[`addsay:${arg}:guests`, 'guests', 'Guest List']] : [];
     return [[`addsay:${arg}:line`, 'line', 'MC Line'], [`addsay:${arg}:cue`, 'cue', 'Stage Direction'], ...lists, ...guests]; }
   if (k === 'addtask') return [['addtask:date', 'calendar', 'Before the Event'], ...ev.rows.map(r => [`addtask:row:${r.id}`, 'list', `${r.time} ${r.title}`])];
@@ -1046,6 +1068,13 @@ const tidyMcs = ev => { if (!ev || !ev.mcs) return; if (canDoc(ev, 'script')) ev
 const nextMc = (ev, r) => { const ms = named(ev).map(m => m[1]); if (!ms.length) return ''; const last = [...ev.rows.flatMap(x => x.say)].reverse().find(s => s.type === 'line' && s.sp); return last ? ms[(ms.indexOf(last.sp) + 1) % ms.length] : ms[0]; };
 
 /* ---------- Writing a value: one place for every field ---------- */
+function getVal(b) {
+  const p = b.split(':'), ev = cur() && cur().ev ? EV() : null;
+  if (p[0] === 'row') return rowOf(ev, p[1])[p[2]] || '';
+  if (p[0] === 'ev') return ev[p[1]] || '';
+  if (p[0] === 'draft') return S.draft[p[1]] || '';
+  return '';
+}
 function setVal(b, val, el) {
   const p = b.split(':'), ev = cur() && cur().ev ? EV() : null, list = v => v.split(/[、,，]/).map(x => x.trim()).filter(Boolean);
   const date = el && el.type === 'date' ? fromIso(val) : null;
@@ -1060,6 +1089,7 @@ function setVal(b, val, el) {
     case 'ar': ev.awards[p[1]].awards.find(x => x.id === p[2]).rows[+p[3]][+p[4]] = p[4] === '0' ? val.toUpperCase() : val; return false;
     case 'gu': ev.guests.find(x => x.id === p[1])[p[2]] = val; return false;
     case 'apps': (APPS = APPS || {url: '', error: false}).url = val; return false;
+    case 'teach': { const l = ev[p[1]], i = +p[2]; l[i] = val.trim(); return false; }
     case 'pw': PASSWORDS[p.slice(1).join(':')] = val; return false;
     case 'chair': CHAIRS[+p[1]] = val; return false;
     case 'rc': (p[2] === 'lead' ? ROSTER[p[1]].lead : ROSTER[p[1]].people[+p[2]])[+p[3]] = p[3] === '0' ? val.toUpperCase() : val; return false;
@@ -1068,6 +1098,8 @@ function setVal(b, val, el) {
   return false;
 }
 // Choosing the group in a duty group's sheet: a new duty group, or Replace (its tasks move; within 7 days of the event it is Covering)
+// A group taken off duty takes its tasks with it; a task shared with another group stays with that group
+const dropTasks = (ev, g) => { ev.tasks = ev.tasks.filter(t => !(t.to.length === 1 && t.to[0] === g)).map(t => t.to.includes(g) ? {...t, to: t.to.filter(x => x !== g)} : t); };
 function chooseGroup(ev, g) {
   const s = S.sheet, from = s.g;
   if (!from) { ev.groups.push({name: g, since: TODAY}); s.g = g; return; }
@@ -1120,10 +1152,13 @@ document.addEventListener('click', e => {
     case 'acting': { const [g, n] = arg.split(':'), gr = ev.groups.find(x => x.name === g); gr.acting = gr.acting === n ? null : n; log(ev, `Acting Group Lead: ${gr.acting || 'none'}`); S.q = ''; render(); break; }
     case 'here': { const [g, n] = arg.split(':'), a2 = ev.att[g] = ev.att[g] || {}; if (a2[n]) delete a2[n]; else a2[n] = NOW(); render(); break; }
     case 'leave': { const [g, n] = arg.split(':'), l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
-    case 'offduty': ev.groups = ev.groups.filter(g => g.name !== arg); log(ev, 'Took ' + arg + ' off duty'); render(); break;
+    case 'offduty': ev.groups = ev.groups.filter(g => g.name !== arg); dropTasks(ev, arg); log(ev, 'Took ' + arg + ' off duty'); render(); break;
     case 'addtask': { const g = S.sheet.g, t = {id: uid(), text: '', to: [g], names: [], remark: ''};
       if (r[0] === 'date') { const d = new Date(iso(ev.date) + 'T12:00'); d.setDate(d.getDate() - 1); t.date = d.toISOString().slice(2, 10).replace(/-/g, '/'); } else t.row = r[1];
       ev.tasks.push(t); layer(); const f = lay.querySelector(`[data-b="task:${t.id}:text"]`); if (f && !matchMedia('(pointer:coarse)').matches) f.focus(); break; }
+    case 'askrestore': S.alert = {t: 'Restore This Version?', m: `The event goes back to how it was before “${ev.log[+arg].what}”. Later changes go too; History keeps them, so you can restore again.`, verb: 'Restore', act: 'restore:' + arg}; layer(); break;
+    case 'restore': { const e = ev.log[+arg]; if (!e || !e.snap) break; const keep = {log: ev.log, upd: ev.upd, att: ev.att, leave: ev.leave};
+      Object.keys(ev).forEach(k => delete ev[k]); Object.assign(ev, JSON.parse(J(e.snap)), keep); log(ev, 'Restored the version before “' + e.what + '”'); S.alert = null; S.sheet = null; S.edit = false; render(); catchUp(); break; }
     case 'deltask': ev.tasks = ev.tasks.filter(t => t.id !== arg); layer(); break;
     case 'addrow': { const rw = {id: uid(), time: '', title: '', place: ev.venue || '', say: []}; ev.rows.push(rw); render(); focus(`[data-b="row:${rw.id}:title"]`); break; }
     case 'askrow': { const n = ev.tasks.filter(t => t.row === arg).length; if (!n) { ev.rows = ev.rows.filter(x => x.id !== arg); render(); break; }
@@ -1137,7 +1172,7 @@ document.addEventListener('click', e => {
     case 'delsay': { const [rid, sid] = arg.split(':'), rw = rowOf(ev, rid); rw.say = rw.say.filter(s => s.id !== sid); render(); break; }
     case 'delscript': ev.rows.forEach(rw => rw.say = []); ev.mcs = []; render(); break;
     case 'newscript': { if (!ev.rows.length) ev.rows.push({id: uid(), time: ev.asmTime, title: '', place: ev.venue, say: []}); ev.mcs = [['', '']]; openNew('script'); break; }
-    case 'newawards': { const lid = uid(); ev.awards[lid] = {name: 'Awardee List', awards: [{id: uid(), award: '', rows: [['', '']]}]}; openNew('aw:' + lid); break; }
+    case 'newawards': { const lid = uid(); ev.awards[lid] = {name: 'Participant List', awards: [{id: uid(), award: '', rows: [['', '']]}]}; openNew('aw:' + lid); break; }
     case 'newguests': ev.guests = [{id: uid(), name: '', role: ''}]; openNew('guests'); break;
     case 'deldoc': if (arg === 'guests') ev.guests = null; else delete ev.awards[arg.slice(3)]; tidyMcs(ev); render(); break;
     case 'addaward': { const a2 = {id: uid(), award: '', rows: []}; ev.awards[arg].awards.push(a2); render(); focus(`[data-b="aw:${arg}:${a2.id}"]`); break; }
@@ -1155,10 +1190,10 @@ document.addEventListener('click', e => {
     case 'switch': S.who = arg; store.set('who', arg); S.sheet = null; S.toSee = new Set(); render(); break;
     case 'export': exportAttendance(); break;
     case 'exportdoc': exportDoc(ev, cur().id); break;
-    case 'askdoc': S.alert = {t: `Delete This ${arg === 'script' ? 'Script' : arg === 'guests' ? 'Guest List' : 'Awardee List'}?`, m: 'It goes for everyone.', verb: 'Delete', act: 'deldocpage:' + arg}; layer(); break;
+    case 'askdoc': S.alert = {t: `Delete This ${arg === 'script' ? 'Script' : arg === 'guests' ? 'Guest List' : 'Participant List'}?`, m: 'It goes for everyone.', verb: 'Delete', act: 'deldocpage:' + arg}; layer(); break;
     case 'deldocpage': if (arg === 'script') { ev.rows.forEach(rw => rw.say = []); ev.mcs = []; } else { if (arg === 'guests') ev.guests = null; else delete ev.awards[arg.slice(3)]; tidyMcs(ev); }
       S.alert = null; S.edit = false; S.stack.pop(); render(); toast('Deleted'); break;
-    case 'gremove': { const g = S.sheet.g; ev.groups = ev.groups.filter(x => x.name !== g); log(ev, 'Took ' + g + ' off duty'); S.sheet = null; render(); break; }
+    case 'gremove': { const g = S.sheet.g; ev.groups = ev.groups.filter(x => x.name !== g); dropTasks(ev, g); log(ev, 'Took ' + g + ' off duty'); S.sheet = null; render(); break; }
     case 'signout': signOut(); break;
   }
 });
@@ -1171,6 +1206,7 @@ document.addEventListener('input', e => {
   if (d.q !== undefined) { if (e.isComposing) return; S.q = t.value; const pos = t.selectionStart; layer(); const f = lay.querySelector('[data-q]'); f.focus(); f.setSelectionRange(pos, pos); return; }
   if (!d.b) return;
   if (t.tagName === 'TEXTAREA') fit(t);
+  if (d.time !== undefined) return;  // a time is set when its field is left
   const again = setVal(d.b, t.value, t);
   if (again) { if (S.sheet && lay.contains(t)) layer(); else render(); }
 });
@@ -1182,8 +1218,18 @@ document.addEventListener('keydown', e => {
   if (t.classList && t.classList.contains('fit') && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); t.blur(); }
   if (t.dataset && t.dataset.q !== undefined && e.key === 'Enter' && !e.isComposing) { if (!t.value.trim()) return; const btn = lay.querySelector('.sheet .g-opt[data-a]'); if (btn) btn.click(); }
 });
+// Leaving the teachers: empty names go, and a new empty field appears for the next teacher
+document.addEventListener('focusout', e => { const m = e.target.closest && e.target.closest('[data-teach]'); if (!m || (e.relatedTarget && m.contains(e.relatedTarget))) return;
+  setTimeout(() => { const ev = EV(); if (!ev || m.contains(document.activeElement)) return; ev.leading = ev.leading.filter(Boolean); ev.support = ev.support.filter(Boolean); render(); }, 0); });
 document.addEventListener('focusout', e => { const m = e.target.closest && e.target.closest('[data-mcs]'); if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) setTimeout(() => { const ev = EV(); tidyMcs(ev); if (!m.contains(document.activeElement)) render(); }, 0); });
 document.addEventListener('compositionend', e => { if (e.target.dataset && e.target.dataset.q !== undefined) e.target.dispatchEvent(new Event('input', {bubbles: true})); });
+// A typed time: tidied when the field is left; something that is not a time goes back to what it was
+document.addEventListener('change', e => {
+  const t = e.target; if (!t.dataset || t.dataset.time === undefined) return;
+  const v = normTime(t.value), old = getVal(t.dataset.b);
+  t.value = v === null ? old : v; fit(t);
+  if (v !== null && v !== old) setVal(t.dataset.b, v, t);  // no redraw: the field already shows it, and the next field keeps the focus
+});
 // The applications sheet: saved when its field is left, read at once by the server
 document.addEventListener('change', async e => {
   if (!e.target.dataset || e.target.dataset.b !== 'apps') return;
@@ -1380,7 +1426,7 @@ async function push(id, s) {
       // Something this account may not change: go back to the saved version
       if (local && SYNC.base[id]) replaceIn(local, JSON.parse(SYNC.base[id]));
       else if (local && s !== null) EVENTS.splice(EVENTS.indexOf(local), 1);
-      toast(b.error === 'reload' ? 'Reload this page' : b.error === 'one list' ? 'This event has an Awardee List already' : 'Only those responsible can change that'); refresh();
+      toast(b.error === 'reload' ? 'Reload this page' : b.error === 'one list' ? 'This event has a Participant List already' : 'Only those responsible can change that'); refresh();
     } else again = 5000;
   } catch (e) {
     if (String(e.message) !== 'signin') { SYNC.offline = true; again = 6000; }
@@ -1549,8 +1595,8 @@ function wtable(widths, rows) {
     `<w:tblGrid>${widths.map(w => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>` +
     rows.map(r => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${r.map((c, i) => `<w:tc><w:tcPr><w:tcW w:w="${c.span ? widths.slice(i).reduce((a, b) => a + b, 0) : widths[i]}" w:type="dxa"/>${c.span ? `<w:gridSpan w:val="${widths.length - i}"/>` : ''}</w:tcPr>${wp(c.t, c.s, c.after ?? 120, c.b)}</w:tc>`).join('')}</w:tr>`).join('') + '</w:tbl>';
 }
-const DOC_ZH = {rundown: '程序表', script: '講稿', awards: '得獎名單', guests: '嘉賓名單'};
-const DOC_EN = {rundown: 'Rundown', script: 'Script', awards: 'Awardee List', guests: 'Guest List'};
+const DOC_ZH = {rundown: '程序表', script: '講稿', awards: '參與者名單', guests: '嘉賓名單'};
+const DOC_EN = {rundown: 'Rundown', script: 'Script', awards: 'Participant List', guests: 'Guest List'};
 async function wordFile(ev, id) {
   const JSZip = await loadZip(), type = id.startsWith('aw:') ? 'awards' : id, zh = /[㐀-鿿]/.test(ev.name), docName = (zh ? DOC_ZH : DOC_EN)[type];
   const ymd = ev.date.replace(/\//g, ''), name = `${ev.name.trim() || 'Event'} ${ymd} ${docName}.docx`;
@@ -1592,9 +1638,6 @@ async function exportDoc(ev, id) {
   toast('Preparing the Word file');
   let f;
   try { f = await wordFile(ev, id); } catch (e) { toast(SYNC.offline ? 'No connection. Try again when online' : 'The Word file could not be made'); return; }
-  if (navigator.canShare && navigator.canShare({files: [f]})) {
-    try { await navigator.share({files: [f]}); return; } catch (e) { if (e && e.name === 'AbortError') return; }
-  }
   saveFile(f.name, f); toast('Saved ' + f.name);
 }
 
