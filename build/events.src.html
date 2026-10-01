@@ -103,7 +103,7 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .g-ev{grid-template-columns:var(--dw,max-content) minmax(0,1fr) 18px}       /* date | event | › */
 .g-kv{grid-template-columns:4.2em minmax(0,1fr) 24px}       /* class | name | − */
 .g-opt{grid-template-columns:minmax(0,1fr) 22px}
-.sheet .g-tme{grid-template-columns:5.2em minmax(0,1fr) auto}
+.sheet .g-tme{grid-template-columns:var(--tc) minmax(0,1fr) auto}
 .sheet .sbar+.sec{margin-top:0}
 .sheet .list+.sec{margin-top:20px}
 .sheet .sec.addsec{margin-top:4px}
@@ -212,6 +212,7 @@ textarea.fld{display:inline-block}
 /* Delete and move, at the end of a row in Edit; the handle is always there, as in Apple's lists */
 .rg{display:flex;align-items:center;justify-self:end;margin-right:-4px}
 .rg>.ib{margin:-4px 0}
+.rg>.grip{width:28px}
 .ib.grip{color:var(--caption);touch-action:none;cursor:grab}
 .ib.grip svg.i{width:20px;height:20px}
 .lift{position:relative;z-index:3;background:var(--canvas);box-shadow:var(--glass-shadow);transition:none!important}
@@ -743,7 +744,7 @@ function sheet() {
     if (ed) {
       h = bar(cancel('gcancel'), isNew ? 'New Duty Group' : `Tasks${g === 'All' ? subj : ''}`, `<button class="nb pri" data-a="gdone"${g ? '' : ' disabled'}>${isNew ? 'Add' : 'Done'}</button>`) +
         (g === 'All' ? '' : `<div class="list"><div class="row g-p">${sym(g ? SYM[kind(g)] : 'users', 'Group')}<span class="fl">${pick('group', g ? gname(g) : '', `<option value="" disabled ${g ? '' : 'selected'}></option>` + groupOpts, 'Group')}</span></div></div>`) +
-        (g ? taskSecs(tasks, taskE) + `<section class="sec addsec"><div class="list">${addB('menu:addtask', 'Add Task', '5.2em')}</div></section>` : '') +
+        (g ? taskSecs(tasks, taskE) + `<section class="sec addsec"><div class="list">${addB('menu:addtask', 'Add Task', 'var(--tc)')}</div></section>` : '') +
         (g && !isNew ? `<button class="nb glass danger" style="width:100%;margin-top:28px" data-a="gremove">Remove Duty Group</button>` : '');
     } else {
       h = bar(close, `Tasks${subj}`, '') + (tasks.length ? taskSecs(tasks, taskR) : '<p class="empty">No tasks yet</p>');
