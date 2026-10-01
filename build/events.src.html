@@ -221,6 +221,11 @@ textarea.fld{display:inline-block}
 .rg{display:flex;align-items:center;justify-self:end;margin-right:-4px}
 .rg>.ib{margin:-4px 0}
 .rg>.grip{width:28px}
+/* The insert line: gold, full width, with a ＋ fixed at the leading edge (mouse only) */
+.ins{position:absolute;left:-20px;right:-20px;height:0;z-index:4;pointer-events:none}
+.ins::before{content:"";position:absolute;left:20px;right:20px;top:-1px;height:2px;border-radius:1px;background:var(--primary)}
+.ins-b{position:absolute;left:-6px;top:-13px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--primary);color:var(--on-primary);pointer-events:auto;box-shadow:var(--glass-shadow)}
+.ins-b svg.i{width:16px;height:16px;stroke-width:2.4} /* stroke-ok: plus mark */
 .ib.grip{color:var(--caption);touch-action:none;cursor:grab}
 .ib.grip svg.i{width:20px;height:20px}
 .lift{position:relative;z-index:3;background:var(--canvas);box-shadow:var(--glass-shadow);transition:none!important}
@@ -939,7 +944,8 @@ document.addEventListener('click', async e => {
     case 'done': if (document.activeElement) document.activeElement.blur();
       if (cur().p === 'group') { const short = Object.values(PASSWORDS).find(x => x && x.trim() && [...x.replace(/\s+/g, '')].length < 8); if (short) { toast('A password needs 8 characters or more'); break; }
         CHAIRS = CHAIRS.map(x => x.trim()).filter(Boolean); ADMINS = ADMINS.map(x => x.trim()).filter(Boolean); S.edit = false; savePasswords(); render(); break; }
-      tidyMcs(ev); if (ev && cur().p === 'event') ev.tasks = ev.tasks.filter(t => t.role || t.text.trim()); S.edit = false; if (ev && snapOf() !== S.snap) log(ev, 'Edited ' + (cur().p === 'doc' ? 'a document' : 'the event')); render(); catchUp(); break;
+      tidyMcs(ev); if (ev && cur().p === 'event') ev.tasks = ev.tasks.filter(t => t.role || t.text.trim());
+      if (ev) ev.rows = ev.rows.filter(r => r.time || r.title.trim() || (r.remark || '').trim() || r.say.length || ev.tasks.some(t => t.row === r.id)); S.edit = false; if (ev && snapOf() !== S.snap) log(ev, 'Edited ' + (cur().p === 'doc' ? 'a document' : 'the event')); render(); catchUp(); break;
     case 'cancel': if (snapOf() === S.snap) { S.edit = false; render(); catchUp(); } else { S.alert = {t: 'Discard Changes?', m: 'Your changes will be lost.', no: 'Keep Editing', verb: 'Discard', act: 'discard'}; layer(); } break;
     case 'keep': S.alert = null; layer(); break;
     case 'discard': restore(S.snap); S.alert = null; S.edit = false; render(); catchUp(); break;
@@ -1038,6 +1044,9 @@ document.addEventListener('keydown', e => {
   const t = e.target;
   if (e.key === 'Escape' && S.menu) { S.menu = null; layer(); return; }
   if (e.key === 'Escape' && S.sheet) { S.sheet = null; render(); }
+  if (S.edit && e.key === 'Enter' && !e.isComposing && t.dataset && /^(row:[^:]+:title|task:[^:]+:text)$/.test(t.dataset.b || '')) {
+    e.preventDefault(); const row = t.closest('[data-drag]'), list = row.parentElement, sibs = [...list.children].filter(x => x.dataset && (x.dataset.drag || x.dataset.head));
+    t.blur(); insertAt(list, sibs.indexOf(row) + 1); return; }
   if (t.classList && t.classList.contains('fit') && e.key === 'Enter' && !e.isComposing) { e.preventDefault(); t.blur(); }
 });
 // Leaving the teachers: empty names go, and a new empty field appears for the next teacher
@@ -1066,6 +1075,45 @@ document.addEventListener('pointermove', e => { if (!sw) return; const dx = e.cl
 document.addEventListener('pointerup', () => { if (!sw) return; const w = sw.w, r = w.firstElementChild; r.style.transition = ''; w.classList.remove('moving');
   if (sw.moved) { const max = w.querySelector('.swa').offsetWidth, open = sw.dx < -max / 2; w.classList.toggle('open', open); r.style.transform = open ? `translateX(${-max}px)` : ''; w.dataset.dragged = '1'; setTimeout(() => delete w.dataset.dragged, 50); }
   sw = null; });
+
+/* ---------- Insert between two rows (Rundown lines; the event's tasks in Edit) ----------
+   With a mouse: near the gap between two rows a gold line appears with a ＋ at the leading edge (fixed there, as in
+   WordPress's between-block inserter and Word's row inserter, so it is easy to hit and never covers a field); the ＋
+   inserts a row right there and puts the cursor in it. With touch or a keyboard: Return in a line's title or a task
+   adds the next one below it, as in Notes. A new row takes the date or line of the row above it. */
+function insertAt(list, at) {  // at: the index among the list's rows and headings that the new row goes before
+  const ev = EV(), sibs = [...list.children].filter(x => x.dataset && (x.dataset.drag || x.dataset.head)), kindKey = (sibs.find(x => x.dataset.drag) || {}).dataset;
+  const before = sibs[at], above = (() => { for (let j = at - 1; j >= 0; j--) { if (sibs[j].dataset.head) return null; return sibs[j]; } return null; })();
+  const below = before && !before.dataset.head ? before : null;
+  if (list.querySelector('[data-drag="rows"]')) {
+    const rw = {id: uid(), time: '', title: '', place: ev.venue || '', remark: '', say: []};
+    const i = below ? ev.rows.findIndex(r => r.id === below.dataset.id) : above ? ev.rows.findIndex(r => r.id === above.dataset.id) + 1 : ev.rows.length;
+    ev.rows.splice(i < 0 ? ev.rows.length : i, 0, rw); render(); focus(`[data-b="row:${rw.id}:title"]`); return;
+  }
+  let head = null; for (let j = at - 1; j >= 0; j--) if (sibs[j].dataset.head) { head = sibs[j].dataset.head; break; }
+  const ref = above || below, rt = ref && ev.tasks.find(x => x.id === ref.dataset.id);
+  const t = {id: uid(), text: '', to: rt && rt.to.length ? [...rt.to] : ev.groups.length === 1 ? [ev.groups[0].name] : [], names: [], remark: ''};
+  if (head === 'day') { t.row = rt ? rt.row : (ev.rows[0] || {}).id; if (!t.row) { delete t.row; t.date = dayBefore(ev); } } else t.date = rt ? rt.date : dayBefore(ev);
+  const i = above ? ev.tasks.findIndex(x => x.id === above.dataset.id) + 1 : below ? ev.tasks.findIndex(x => x.id === below.dataset.id) : ev.tasks.length;
+  ev.tasks.splice(i < 0 ? ev.tasks.length : i, 0, t); render(); focus(`[data-b="task:${t.id}:text"]`);
+}
+let INS = null;
+if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.addEventListener('pointermove', e => {
+  if (!S.edit || DRAG || S.sheet || S.menu || S.alert) return;
+  if (e.target.closest && e.target.closest('.ins')) return;
+  const list = e.target.closest && e.target.closest('.list'), hide = () => { if (INS) { INS.remove(); INS = null; } };
+  if (!list || !list.querySelector('[data-drag]')) return hide();
+  const sibs = [...list.children].filter(x => x.dataset && (x.dataset.drag || x.dataset.head)), lr = list.getBoundingClientRect();
+  let best = null;
+  sibs.forEach((x, i) => { if (!i && x.dataset.head) return; const r = x.getBoundingClientRect(), prev = sibs[i - 1], y = prev ? (prev.getBoundingClientRect().bottom + r.top) / 2 : r.top;
+    if (Math.abs(e.clientY - y) <= 8 && (!best || Math.abs(e.clientY - y) < best.d)) best = {d: Math.abs(e.clientY - y), y, at: i}; });
+  if (!best) return hide();
+  if (getComputedStyle(list).position === 'static') list.style.position = 'relative';
+  if (!INS || INS.parentElement !== list) { hide(); INS = document.createElement('div'); INS.className = 'ins'; INS.innerHTML = `<button class="ins-b" aria-label="Insert here">${ic('plus')}</button>`; list.appendChild(INS); }
+  INS.style.top = (best.y - lr.top) + 'px'; INS.dataset.at = best.at;
+});
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ins-b'); if (!b) return; const ins = b.parentElement, list = ins.parentElement, at = +ins.dataset.at; ins.remove(); INS = null; insertAt(list, at); });
+document.addEventListener('pointerleave', () => { if (INS) { INS.remove(); INS = null; } });
 
 /* ---------- Move a row by its handle (Rundown lines; the event's tasks in Edit, across Before the Event and On the Day) ---------- */
 // The row lifts and follows the finger; the rows it passes make room; near the top or bottom the list scrolls.
