@@ -127,6 +127,9 @@ button.row:active,[data-a].row:active{background:var(--current)}
 /* Tasks under a Rundown line: owner's symbol | task, remark, people */
 .tk{display:grid;grid-template-columns:22px minmax(0,1fr);column-gap:10px;align-items:start;padding:5px 0;font-size:16px}
 .tk>.ic{margin-top:2px}
+button.tk{width:calc(100% + 16px);margin:0 -8px;padding:5px 8px;border-radius:10px}
+button.tk:active{background:var(--current)}
+@media (hover:hover){button.tk:hover{background:var(--current)}}
 .tk>.ic svg.i{width:18px;height:18px}
 /* Rundown: time | line, its place and its tasks */
 .ln{display:grid;grid-template-columns:var(--tc) minmax(0,1fr);column-gap:14px;align-items:start;width:calc(100% + 24px);margin:0 -12px;padding:10px 12px;border-radius:12px}
@@ -566,22 +569,27 @@ function facts(ev, ed) {
     ${ev.lead ? row('flag', 'Event Lead', esc(ev.lead)) : ''}
     ${ev.remarks ? row('note', 'Remarks', `<span class="pre">${linked(ev.remarks)}</span>`, true) : ''}</section>`;
 }
-// The time column: a date (before the day) or a time (on the day). Today, the next one is marked.
+// A list of tasks holds one kind of time only: on the event's day, the day's tasks by time;
+// on any other day, Before the Event by date. The day's tasks are always on the Rundown, under their lines.
+const forToday = (ev, tasks) => tasks.filter(t => ev.date === TODAY ? !!t.row : !t.row);
+// The time column. Today, the next one is marked.
 function taskRows(ev, tasks, render) {
-  const list = sorted(ev, tasks);
+  const list = sorted(ev, forToday(ev, tasks));
   const next = ev.date === TODAY ? list.find(t => lineTime(ev, t) >= NOW()) : null;
   return list.map(t => render(t, whenOf(ev, t), t === next)).join('');
 }
+const taskSec = (ev, head, tasks, render) => { const rows = taskRows(ev, tasks, render);
+  return rows ? `<section class="sec"><p class="sh">${head}</p><div class="list">${rows}</div></section>` : tasks.length ? '' : `<section class="sec"><p class="sh">${head}</p><p class="empty">No tasks yet</p></section>`; };
 // Who a task is for: the group (or Everyone), then the names the Group Lead has added
 const whoLine = t => t.to.includes('All') ? '<span class="who">Everyone</span>' : `<span class="who">${t.to.length ? gname(t.to[0]) + '　' : ''}${t.names.length ? t.names.map(n => `<span class="nw${n === V().name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`;
 // Every task of the event (Event Lead and Teacher). In Edit each task chooses when (Before the Event or a Rundown line) and which group.
 function allTasks(ev, ed) {
   const list = sorted(ev, ev.tasks.filter(t => !t.role));
-  if (!ed) return `<section class="sec"><p class="sh">Tasks</p>${list.length ? `<div class="list">${taskRows(ev, list, (t, when, now) => `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${whoLine(t)}</span></div>`)}</div>` : '<p class="empty">No tasks yet</p>'}</section>`;
+  if (!ed) return taskSec(ev, 'Tasks', list, (t, when, now) => `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${whoLine(t)}</span></div>`);
   const secOpts = t => `<option value=""${t.row ? '' : ' selected'}>Before the Event</option>` + ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
   const toOpts = t => `<option value="" disabled${t.to.length ? '' : ' selected'}></option>` + ev.groups.map(gr => `<option value="${esc(gr.name)}"${t.to[0] === gr.name ? ' selected' : ''}>${esc(gr.name)}</option>`).join('') + `<option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`;
-  const row = t => `<div class="row g-tme" data-drag="${t.row ? 'r:' + t.row : 'd:' + (t.date || '')}" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${whenOf(ev, t)}</span>`}</span>
-    <span><span class="fl lpk">${pick(`task:${t.id}:sec`, t.row ? esc((rowOf(ev, t.row) || {}).title || '') : 'Before the Event', secOpts(t), 'When')}</span>${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span><span class="fl lpk gpk">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : t.to.length ? gname(t.to[0]) : '', toOpts(t), 'Group')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
+  const row = t => `<div class="row g-tme" data-drag="${t.row ? 'r:' + t.row : 'd:' + (t.date || '')}" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : ''}</span>
+    <span><span class="fl lpk">${pick(`task:${t.id}:sec`, t.row ? esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' ')) : 'Before the Event', secOpts(t), 'When')}</span>${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span><span class="fl lpk gpk">${pick(`task:${t.id}:to`, t.to.includes('All') ? 'Everyone' : t.to.length ? gname(t.to[0]) : '', toOpts(t), 'Group')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
   return `<section class="sec"><p class="sh">Tasks</p><div class="list">${list.map(row).join('')}${addB('menu:addtask', 'Add Task', 'var(--tc)')}</div></section>`;
 }
 function yourPart(ev, ed) {
@@ -591,12 +599,12 @@ function yourPart(ev, ed) {
     const render = (t, when, now) => { const others = t.to.includes('All') ? [] : t.names.filter(n => n !== v.name);
       return `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${others.length ? `<span class="who">${others.map(n => `<span class="nw">${esc(n)}</span>`).join('、')}</span>` : ''}</span></div>`; };
     // A Role is a task for the whole event: a row of its own, without a time
-    return `<section class="sec"><p class="sh">My Tasks</p><div class="list">${taskRows(ev, mine, render)}</div>${!mine.length ? '<p class="empty">No tasks yet</p>' : ''}</section>`;
+    return taskSec(ev, 'My Tasks', mine, render);
   }
   if (type === 'gl') {
     const g = v.group, mine = groupTasks(ev, g);
     const render = (t, when, now) => t.to.includes('All') ? `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}<span class="who">Everyone</span></span></div>` : `<button class="row g-tm${now ? ' current' : ''}" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
-    return `<section class="sec"><p class="sh">Tasks</p>${mine.length ? `<div class="list">${taskRows(ev, mine, render)}</div>` : '<p class="empty">No tasks yet</p>'}</section>` + memberList(ev, g);
+    return taskSec(ev, 'Tasks', mine, render) + memberList(ev, g);
   }
   if (type === 'lead') {
     // Duty groups: who is on duty, with the number of tasks still without a name. Their tasks are in Tasks below.
@@ -639,7 +647,8 @@ const docHead = (name, ev, extra = '') => `<h1>${esc(name)}</h1><p class="sub">$
 function pRundown(ev) {
   const ed = S.edit, v = V(), all = v.type === 'lead' || v.type === 'teacher';
   const shown = t => !t.role;
-  const tk = t => `<div class="tk">${dot(`${ev.id}:t:${t.id}`)}${owner(t)}<span>${esc(t.text)}${remark(t)}${names(t)}</span></div>`;
+  const mineGl = t => vt(ev) === 'gl' && !t.to.includes('All') && t.to.includes(v.group);
+  const tk = t => `<${mineGl(t) ? `button data-a="sheet:assign:${t.id}"` : 'div'} class="tk">${dot(`${ev.id}:t:${t.id}`)}${owner(t)}<span>${esc(t.text)}${remark(t)}${names(t)}</span></${mineGl(t) ? 'button' : 'div'}>`;
   if (ed) {
     const lines = ev.rows.map(r => `<div class="ln e" data-drag="rows" data-id="${r.id}"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span><span class="rg">${rmB('askrow:' + r.id, 'Delete line')}${grip('Move line')}</span></div>`).join('');
     return {...docBar(true), title: 'Rundown', body: docHead('Rundown', ev) + `<section class="sec"><div class="list">${lines}${addB('addrow', 'Add Line', 'var(--tc)')}</div></section>`};
