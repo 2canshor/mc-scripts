@@ -613,6 +613,7 @@ if (typeof module !== "undefined") module.exports = ScriptGen;
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
 <symbol id="i-line" viewBox="0 0 24 24"><path d="M14 14a2 2 0 0 0 2-2V8h-2"/><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M8 14a2 2 0 0 0 2-2V8H8"/></symbol>
 <symbol id="i-cue" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.17 6.81a1 1 0 0 0-3.98-3.98L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/><path d="m15 5 4 4"/></symbol>
 <symbol id="i-grip" viewBox="0 0 24 24"><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/></symbol>
 <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
 </svg>
@@ -636,8 +637,8 @@ const clsOf = (g, n) => { const r = roster(g); return r.lead[1] === n ? r.lead[0
 let APPS = null;  // the Event Lead's link to the CA Support form's sheet: {url, error}
 let PASSWORDS = {};  // new passwords typed on a Members page, sent on Done
 // One account per small group (members pick their name), one per Group Lead, one for the chairs, one for teachers
-// Admin: CA's own teachers, with the Event Lead's rights; each picks their name, as the chairs do in Event Lead
-const ACCOUNTS = [{id: 'Event Lead', type: 'lead'}, {id: 'Admin', type: 'lead', admin: true}, {id: 'Teacher', type: 'teacher'},
+// Editor: CA's own teachers, with the Event Lead's rights; each picks their name, as the chairs do in Event Lead. Viewer: any teacher, to read.
+const ACCOUNTS = [{id: 'Event Lead', type: 'lead'}, {id: 'Editor', type: 'lead', admin: true}, {id: 'Viewer', type: 'teacher'},
   ...ALL_GROUPS.map(g => ({id: g, type: 'group', group: g})), ...ALL_GROUPS.map(g => ({id: g + ' Lead', type: 'gl', group: g}))];
 
 /* ---------- Who is looking: the account signed in on this device, and the person who picked their name ---------- */
@@ -646,7 +647,7 @@ const ACCT = () => ACCOUNTS.find(a => a.id === S.acct);
 function V() {
   const a = ACCT(); if (!a) return null;
   if (a.type === 'lead') return {type: 'lead', name: S.who || a.id};
-  if (a.type === 'teacher') return {type: 'teacher', name: 'Teacher'};
+  if (a.type === 'teacher') return {type: 'teacher', name: 'Viewer'};
   if (a.type === 'gl') return {type: 'gl', name: roster(a.group).lead[1] || a.id, group: a.group};
   return {type: 'member', name: S.who || a.id, group: a.group};
 }
@@ -966,14 +967,14 @@ function pMembers() {
   return {l: backBtn(), title: 'Members', body: `<h1>Members</h1>
     <section class="sec"><div class="list">
       <button class="row g-ic" data-a="group:Event Lead">${sym('flag', '')}<span>Event Lead</span><span class="t">${CHAIRS.length}</span>${ic('chev-r', 'go')}</button>
-      <button class="row g-ic" data-a="group:Admin">${sym('key', '')}<span>Admin</span><span class="t">${ADMINS.length}</span>${ic('chev-r', 'go')}</button>
-      <button class="row g-ic" data-a="group:Teacher">${sym('teacher', '')}<span>Teacher</span><span></span>${ic('chev-r', 'go')}</button></div></section>
+      <button class="row g-ic" data-a="group:Editor">${sym('pencil', '')}<span>Editor</span><span class="t">${ADMINS.length}</span>${ic('chev-r', 'go')}</button>
+      <button class="row g-ic" data-a="group:Viewer">${sym('eye', '')}<span>Viewer</span><span></span>${ic('chev-r', 'go')}</button></div></section>
     <section class="sec"><p class="sh">Groups</p><div class="list">${ALL_GROUPS.map(g => `<button class="row g-ic" data-a="group:${g}">${gsym(g)}<span>${gname(g)}</span><span class="t">${members(g).length}</span>${ic('chev-r', 'go')}</button>`).join('')}</div></section>`};
 }
 function pAccount(id) {
   const ed = S.edit, bar = editBar(true);
-  if (id === 'Teacher') return {...bar, title: 'Teacher', body: `<h1>Teacher</h1><section class="sec list">${acctRow('Teacher', ed)}</section>`};
-  if (id === 'Admin') return {...bar, title: 'Admin', body: `<h1>Admin</h1><section class="sec list">${acctRow('Admin', ed)}</section>
+  if (id === 'Viewer') return {...bar, title: 'Viewer', body: `<h1>Viewer</h1><section class="sec list">${acctRow('Viewer', ed)}</section>`};
+  if (id === 'Editor') return {...bar, title: 'Editor', body: `<h1>Editor</h1><section class="sec list">${acctRow('Editor', ed)}</section>
     <section class="sec"><p class="sh">Teachers</p><div class="list">${ADMINS.map((n, i) => ed ? `<div class="row" style="grid-template-columns:minmax(0,1fr) 24px"><span class="fl">${fld('admin:' + i, n, 'Name')}</span>${rmB('deladmin:' + i, 'Remove teacher')}</div>` : `<div class="row"><span>${esc(n)}</span></div>`).join('')}${ed ? addB('addadmin', 'Add Teacher') : ''}</div></section>`};
   if (id === 'Event Lead') return {...bar, title: 'Event Lead', body: `<h1>Event Lead</h1><section class="sec list">${acctRow('Event Lead', ed)}</section>
     <section class="sec"><p class="sh">Chairs</p><div class="list">${CHAIRS.map((n, i) => ed ? `<div class="row" style="grid-template-columns:minmax(0,1fr) 24px"><span class="fl">${fld('chair:' + i, n, 'Name')}</span>${rmB('delchair:' + i, 'Remove chair')}</div>` : `<div class="row"><span>${esc(n)}</span></div>`).join('')}${ed ? addB('addchair', 'Add Chair') : ''}</div></section>`};
@@ -1761,7 +1762,7 @@ async function exportDoc(ev, id) {
 }
 
 /* ---------- Start: the last account on this device, its copy of the events, then the server ---------- */
-SYNC.token = store.get('token'); S.acct = store.get('acct'); S.who = store.get('who'); S.seen = store.get('seen') || {};
+SYNC.token = store.get('token'); S.acct = ({Teacher: 'Viewer', Admin: 'Editor'})[store.get('acct')] || store.get('acct');  // accounts renamed 26/10/02 S.who = store.get('who'); S.seen = store.get('seen') || {};
 PHOTOS = store.get('photos') || {};
 if (SYNC.token && ACCT()) {
   if (cacheLoad()) { SYNC.loaded = true; S.stack = [{p: 'events'}]; }

@@ -7,7 +7,7 @@ import { SEED } from "./accounts-seed.js";
 
 const GROUPS = ["MC", "Backstage", "Reception"].flatMap((m) => ["A", "B", "C", "D"].map((x) => `${m} Group ${x}`));
 export const ACCOUNTS = [
-  { id: "Event Lead", type: "lead" }, { id: "Admin", type: "lead", admin: true }, { id: "Teacher", type: "teacher" },
+  { id: "Event Lead", type: "lead" }, { id: "Editor", type: "lead", admin: true }, { id: "Viewer", type: "teacher" },
   ...GROUPS.map((g) => ({ id: g, type: "group", group: g })),
   ...GROUPS.map((g) => ({ id: g + " Lead", type: "gl", group: g }))
 ];
@@ -37,7 +37,12 @@ export function ensureEventTables(db) {
     db.prepare("CREATE INDEX IF NOT EXISTS events_seq ON events (seq)"),
     db.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS login_fail (account TEXT PRIMARY KEY, n INTEGER NOT NULL, since INTEGER NOT NULL)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS photos (name TEXT PRIMARY KEY, data TEXT NOT NULL, updated INTEGER NOT NULL)")
+    db.prepare("CREATE TABLE IF NOT EXISTS photos (name TEXT PRIMARY KEY, data TEXT NOT NULL, updated INTEGER NOT NULL)"),
+    // Admin and Teacher were renamed Editor and Viewer (Carson, 26/10/02): their password, sign-ins and wrong tries move with them
+    ...[["Teacher", "Viewer"], ["Admin", "Editor"]].flatMap(([from, to]) => [
+      db.prepare("UPDATE OR IGNORE accounts SET id = ? WHERE id = ?").bind(to, from),
+      db.prepare("UPDATE sessions SET account = ? WHERE account = ?").bind(to, from),
+      db.prepare("UPDATE OR IGNORE login_fail SET account = ? WHERE account = ?").bind(to, from)])
   ]).catch((e) => { ready = null; throw e; });
   return ready;
 }
@@ -57,12 +62,13 @@ export async function sessionOf(request, env) {
 
 async function hashOf(env, id) {
   const row = await env.DB.prepare("SELECT hash FROM accounts WHERE id = ?").bind(id).first();
-  return row ? row.hash : SEED[id] || null;
+  return row ? row.hash : SEED[id === "Viewer" ? "Teacher" : id] || null;
 }
 async function login(request, env) {
   let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
   const typed = String(body.account || "").trim().toLowerCase().replace(/\s+/g, " ");
-  const acct = ACCOUNTS.find((a) => a.id.toLowerCase() === typed);
+  const OLD = { teacher: "viewer", admin: "editor" };  // the names before 26/10/02
+  const acct = ACCOUNTS.find((a) => a.id.toLowerCase() === (OLD[typed] || typed));
   if (!acct) { await new Promise((r) => setTimeout(r, 400)); return json({ error: "Wrong account or password" }, 401); }
   // Wrong tries wait longer each time, as an iPhone does (Carson, 26/10/01): after 5, 30 seconds; then 1, 5 and 15 minutes.
   // "since" is the last wrong try; an hour without one starts the count again.
