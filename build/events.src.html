@@ -179,8 +179,9 @@ textarea.fld{display:inline-block}
 .fo{display:block;box-sizing:border-box;width:calc(100% + .9em);max-width:none;padding:0 .45em;margin-inline:-.45em}
 .fo:placeholder-shown{background:var(--field)}
 .fo:focus{background:var(--current)}
-.fl{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 8px}
-.fl>.f{margin-inline:0}
+/* Fields side by side: each field's fill reaches .45em beyond its text on both sides, so a field that wraps to the next line starts on the same edge as the one above */
+.fl{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px calc(.9em + 4px)}
+.fl>.f{margin-inline:-.45em}
 .fl>:first-child{margin-left:-.45em}
 /* Title in Edit: "date｜name" wraps as in reading. The name field runs on from the date (text-indent) and under it. */
 .tline{position:relative}
