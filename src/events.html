@@ -92,7 +92,7 @@ h1 .sep,.sep{color:var(--secondary);font-weight:400}
 /* Rows sit on the canvas. A fill shows only when pressed, or for what is happening now. */
 .list{display:flex;flex-direction:column}
 /* A row's fill reaches 20 px beyond its text, so an update dot (12 px left of the text) sits inside it, as Mail's unread dot */
-.row{position:relative;display:grid;column-gap:14px;align-items:center;width:calc(100% + 40px);min-height:44px;margin:0 -20px;padding:9px 20px;border-radius:12px;background:transparent}
+.row{position:relative;display:grid;column-gap:14px;align-items:center;width:calc(100% + 40px);min-height:50px;margin:0 -20px;padding:12px 20px;border-radius:12px;background:transparent}
 button.row:active,[data-a].row:active{background:var(--current)}
 @media (hover:hover){button.row:hover,div.row[data-a]:hover{background:var(--current)}}
 [data-a].row{cursor:pointer}
@@ -1506,7 +1506,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '80a918e46496';
+const PAGE_VER = 'e0395284797a';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
