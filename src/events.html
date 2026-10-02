@@ -876,7 +876,9 @@ const taskSec = (ev, head, tasks, render) => { const rows = taskRows(ev, tasks, 
 // Who a task is for: the group (or Everyone), then the names the Group Lead has added
 // A group written out keeps its coloured symbol in front (Everyone its own symbol in grey)
 const gtag = g => g === 'All' ? `<span class="nw"><span class="isym gAll">${ic('all')}</span> Everyone</span>` : `<span class="nw"><span class="isym g${g.slice(-1)}">${ic(SYM[kind(g)])}</span> ${gname(g)}</span>`;
-const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}</span>` : `<span class="who">${t.to.length ? gtag(t.to[0]) + '　' : ''}${t.names.length ? t.names.map(n => `<span class="nw${n === V().name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`;
+// Under a task in reading, the group is its symbol alone (26/10/02), then the names; Everyone keeps its word, having no names after it
+const gicon = g => `<span class="isym g${g.slice(-1)}" role="img" aria-label="${esc(g)}" title="${esc(g)}">${ic(SYM[kind(g)])}</span>`;
+const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}</span>` : `<span class="who">${t.to.length ? gicon(t.to[0]) + ' ' : ''}${t.names.length ? t.names.map(n => `<span class="nw${n === V().name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`;
 // Every task of the event (Event Lead and Teacher). In Edit each task chooses when (Before the Event or a Rundown line) and which group.
 function allTasks(ev, ed) {
   const list = sorted(ev, ev.tasks.filter(t => !t.role));
@@ -1495,7 +1497,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = 'a7cc827c7288';
+const PAGE_VER = '12f83ae7d5a5';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
