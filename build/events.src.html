@@ -291,6 +291,10 @@ html.locked,html.locked body{overflow:hidden}
 .page.fixed{padding:0}
 .gate{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;max-width:480px;margin:0 auto;padding-block:40px}
 .toast{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));padding:10px 18px;border-radius:999px;font-size:15px;max-width:calc(100vw - 48px)}
+.toast.act{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 18px}
+.toast .msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast .tb{height:36px;padding:0 14px;border:0;border-radius:999px;background:none;color:inherit;font:inherit;font-weight:600;cursor:pointer}
+.toast .tb:hover{background:var(--current)}
 .alert{position:fixed;z-index:45;inset:0;display:grid;place-items:center;background:var(--dim);padding:24px}
 .alert>div{width:min(300px,100%);background:var(--glass-hi);border-radius:22px;padding:18px 16px 12px;text-align:center}
 .alert h2{margin:0;font-size:17px}
@@ -389,8 +393,8 @@ const rosterOut = o => Object.fromEntries(Object.entries(o).map(([g, r]) => [g, 
 const clsOf = (g, n) => { const r = roster(g); return r.lead[1] === n ? r.lead[0] : ((r.people.find(p => p[1] === n) || [])[0] || ''); };
 let APPS = null;  // the Event Lead's link to the CA Support form's sheet: {url, error}
 let PASSWORDS = {};  // new passwords typed on a Users & Groups page, sent on Done
-// Stand-ins in force ({id, grp, person, until}); teacher accounts just made, with their password, until passed on ({id, password})
-let STANDINS = [], FRESH = [];
+// Stand-ins in force ({id, grp, person, until})
+let STANDINS = [];
 // A time from the server as 05/10 20:03 (Hong Kong)
 const hkAt = ms => { const d = new Date(ms + 8 * 3600e3).toISOString(); return md(d.slice(2, 10).replace(/-/g, '/')) + ' ' + d.slice(11, 16); };
 // What a person needs to sign in, ready to paste into a message
@@ -464,7 +468,8 @@ const seeNow = key => { const u = updOf(key); if (u && V()) { mySeen()[key] = u.
 const seePage = () => { if (V()) S.toSee.forEach(seeNow); S.toSee = new Set(); };
 const nobody = () => `<span class="nob" role="img" aria-label="No one yet">${ic('nobody')}</span>`;
 const badge = n => `<span class="badge" aria-label="${n} without a name">${n}</span>`;
-const toast = m => { S.toast = m; layer(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; layer(); }, 2400); };
+// A toast says what just happened; it may carry one action (MC Scripts' 復原), and then stays 8 seconds
+const toast = (m, act) => { S.toast = m; S.toastAct = act || null; layer(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; S.toastAct = null; layer(); }, act ? 8000 : 2400); };
 const hasScript = ev => ev.rows.some(r => r.say.length);
 // When a task happens: its date before the day, or its Rundown line's time. The time column holds only dates and times;
 // the line itself is named above the task, so a line without a time still shows where the task is.
@@ -570,7 +575,6 @@ function pEvents() {
   return {root: true, title: 'Events', search: true,
     fab: isLead() ? {act: 'sheet:new', label: 'New Event'} : null, r: `<button class="nb round glass av" data-a="sheet:account" aria-label="Account">${avatar(V().name)}</button>`,
     body: `<h1>Events</h1>
-    ${isLead() && FRESH.length && !q ? `<section class="sec"><p class="sh">New Teacher Accounts</p><div class="list">${FRESH.map(x => `<div class="row" style="grid-template-columns:22px minmax(0,1fr) auto">${sym('teacher', '')}<span>${esc(x.id)}<span class="cap">${esc(x.password)}</span></span><button class="nb glass" data-a="copyacct:${esc(x.id)}">Copy</button></div>`).join('')}<button class="row" data-a="freshdone" style="grid-template-columns:minmax(0,1fr)"><span class="lk">Done</span></button></div><p class="note">Send each teacher their account. They see only the events they lead or support. Tap Done once all are sent; Users &amp; Groups keeps the accounts.</p></section>` : ''}
     ${up.length || !q ? `<section class="sec"><p class="sh">Upcoming</p>${up.length ? `<div class="list">${rows(up)}</div>` : '<p class="empty">No events yet</p>'}</section>` : ''}
     ${past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${rows(past)}</div></section>` : ''}
     ${q && !list.length ? '<p class="empty sec">No results</p>' : ''}
@@ -874,7 +878,7 @@ function layer() {
   if (S.menu) { const items = menuItems(S.menu.k, S.menu.arg);
     m = `<div class="mbg" data-a="closemenu"></div><div class="menu glass" role="menu" style="left:${S.menu.x}px;${S.menu.up ? `bottom:${S.menu.y}px` : `top:${S.menu.y}px`};max-height:${S.menu.h}px">${items.map(([a, i, l]) => `<button role="menuitem" data-a="${a}">${ic(...i.split(':'))}<span>${esc(l)}</span></button>`).join('')}</div>`; }
   const al = S.alert ? `<div class="alert" role="alertdialog" aria-modal="true"><div><h2>${esc(S.alert.t)}</h2><p>${esc(S.alert.m)}</p><div class="b"><button data-a="keep">${esc(S.alert.no || 'Cancel')}</button><button class="d" data-a="${S.alert.act}">${esc(S.alert.verb)}</button></div></div></div>` : '';
-  lay.innerHTML = sheet() + m + al + (S.toast ? `<div class="toast glass" role="status">${esc(S.toast)}</div>` : '');
+  lay.innerHTML = sheet() + m + al + (S.toast ? `<div class="toast glass${S.toastAct ? ' act' : ''}" role="status"><span class="msg">${esc(S.toast)}</span>${S.toastAct ? `<button class="tb" data-a="${esc(S.toastAct[0])}">${esc(S.toastAct[1])}</button>` : ''}</div>` : '');
   document.documentElement.classList.toggle('locked', !!(S.sheet || S.menu || S.alert));
   fitAll(lay);
 }
@@ -1065,13 +1069,12 @@ document.addEventListener('click', async e => {
         if (a === 'standinon') { S.made = {...b2, grp: g}; STANDINS.push({id: b2.id, grp: g, person: b2.person, until: b2.until}); } else toast('Stand-in ended');
         S.xaccts = null; render(); }
       catch (err) { toast(SYNC.offline ? 'No connection' : 'Not changed'); } break; }
-    case 'copyacct': { const x = arg === 'standin' ? S.made : FRESH.find(y => y.id === arg);
-      const more = arg === 'standin' ? `${x.person}：${x.grp} Stand-in，有效至 ${hkAt(x.until)}` : '登入後可查看 閣下任 Leading 或 Supporting Teacher 之活動。';
-      try { await navigator.clipboard.writeText(signInText(x.id, x.password, more)); toast('Copied'); } catch (err) { toast('Could not copy'); } break; }
-    case 'freshdone': try { const r2 = await api('fresh', {method: 'DELETE'}); if (!r2.ok) throw new Error(); FRESH = []; render(); } catch (err) { toast('No connection'); } break;
+    case 'copyacct': { const text = arg === 'standin' ? signInText(S.made.id, S.made.password, `${S.made.person}：${S.made.grp} Stand-in，有效至 ${hkAt(S.made.until)}`)
+        : S.newAccts.map(x => signInText(x.id, x.password, '登入後可查看 閣下任 Leading 或 Supporting Teacher 之活動。')).join('\n\n');
+      try { await navigator.clipboard.writeText(text); toast('Copied'); } catch (err) { toast('Could not copy'); } break; }
     case 'askdropacct': S.alert = {t: `Delete ${arg}'s Account?`, m: `${arg} can no longer sign in. Their events stay. Saving an event that names ${arg} makes a new account with a new password.`, verb: 'Delete', act: 'dropacct:' + arg}; layer(); break;
     case 'dropacct': S.alert = null;
-      try { const r2 = await api('account', {method: 'DELETE', body: JSON.stringify({id: arg})}); if (!r2.ok) throw new Error(); S.xaccts = null; FRESH = FRESH.filter(y => y.id !== arg); S.stack.pop(); render(); toast('Account deleted'); }
+      try { const r2 = await api('account', {method: 'DELETE', body: JSON.stringify({id: arg})}); if (!r2.ok) throw new Error(); S.xaccts = null; S.stack.pop(); render(); toast('Account deleted'); }
       catch (err) { layer(); toast('Not deleted'); } break;
   }
 });
@@ -1329,11 +1332,19 @@ function apply(rows) {
 }
 // What the server says about this account and the accounts it looks after; true when something shown changed
 function takeAccounts(b) {
-  const before = J([XACCT, STANDINS, FRESH]);
+  const before = J([XACCT, STANDINS]);
   if (b.account && !ACCOUNTS.some(x => x.id === b.account.id)) { XACCT = b.account; store.set('xacct', XACCT); }
   if (b.standins) STANDINS = b.standins;
-  if (isLead()) FRESH = b.fresh || [];
-  return J([XACCT, STANDINS, FRESH]) !== before;
+  if (isLead() && (b.fresh || []).length) newAccounts(b.fresh);
+  return J([XACCT, STANDINS]) !== before;
+}
+// Teacher accounts just made (by this device's save, or by an application): a toast with Copy, shown once
+const SHOWN = new Set();
+function newAccounts(all) {
+  const list = all.filter(x => !SHOWN.has(x.id)); if (!list.length) return;
+  list.forEach(x => SHOWN.add(x.id)); S.newAccts = list; S.xaccts = null;
+  toast(list.length === 1 ? `${list[0].id}'s account made` : `${list.length} teacher accounts made`, ['copyacct:new', 'Copy']);
+  api('fresh', {method: 'DELETE'}).catch(() => {});
 }
 // The Event Lead's list of added accounts (teachers and stand-ins), for Users & Groups
 async function loadXaccts() {
@@ -1418,7 +1429,7 @@ async function push(id, s) {
       SYNC.rev[id] = b.rev; SYNC.seq = Math.max(SYNC.seq, b.rev);
       if (s === null) delete SYNC.base[id];
       else { SYNC.base[id] = b.data; if (local && JSON.stringify(local) === s && id !== editingId()) { replaceIn(local, JSON.parse(b.data)); refresh(); } }
-      if (b.made) { S.xaccts = null; pull(); }  // teachers named for the first time got an account: show it with its password
+      if (b.made) newAccounts(b.made);  // teachers named for the first time got an account: a toast with Copy
       SYNC.offline = false;
     } else if (r.status === 409) {
       SYNC.rev[id] = b.rev;
@@ -1524,7 +1535,7 @@ document.addEventListener('submit', async e => {
 function signedOut(msg) {
   SYNC.token = null; SYNC.loaded = false; SYNC.base = {}; SYNC.rev = {}; SYNC.seq = 0; SYNC.rosterBase = ''; SYNC.chairBase = ''; SYNC.adminBase = '';
   store.del('token'); store.del('acct'); store.del('who'); store.del('cache'); store.del('xacct');
-  XACCT = null; STANDINS = []; FRESH = []; S.xaccts = null; S.made = null; EVENTS = []; ROSTER = {}; CHAIRS = []; ADMINS = []; PWSHOW = null; S.pwOpen = new Set(); S.acct = null; S.who = null; S.stack = []; S.sheet = null; S.menu = null; S.alert = null; S.edit = false; S.find = '';
+  XACCT = null; STANDINS = []; S.xaccts = null; S.made = null; EVENTS = []; ROSTER = {}; CHAIRS = []; ADMINS = []; PWSHOW = null; S.pwOpen = new Set(); S.acct = null; S.who = null; S.stack = []; S.sheet = null; S.menu = null; S.alert = null; S.edit = false; S.find = '';
   render(); if (msg) toast(msg);
 }
 function signOut() {
