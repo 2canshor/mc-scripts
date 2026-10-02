@@ -1233,11 +1233,12 @@ document.addEventListener('click', async e => {
     case 'members': S.sheet = null; go({p: 'members'}); break;
     case 'group': go({p: 'group', id: arg}); break;
     case 'edit': S.edit = true; S.snap = snapOf(); render(); break;
+    // Done saves at once (not after the usual pause), so a teacher's new account comes back while the page is still open
     case 'done': if (document.activeElement) document.activeElement.blur();
       if (cur().p === 'group') { const short = Object.values(PASSWORDS).find(x => x && x.trim() && [...x.replace(/\s+/g, '')].length < 8); if (short) { toast('A password needs 8 characters or more'); break; }
         CHAIRS = CHAIRS.map(x => x.trim()).filter(Boolean); ADMINS = ADMINS.map(x => x.trim()).filter(Boolean); S.edit = false; savePasswords(); render(); break; }
       tidyMcs(ev); if (ev && cur().p === 'event') ev.tasks = ev.tasks.filter(t => t.role || t.text.trim());
-      if (ev) ev.rows = ev.rows.filter(r => r.time || r.title.trim() || (r.remark || '').trim() || r.say.length || ev.tasks.some(t => t.row === r.id)); S.edit = false; if (ev && snapOf() !== S.snap) log(ev, 'Edited ' + (cur().p === 'doc' ? 'a document' : 'the event')); render(); catchUp(); break;
+      if (ev) ev.rows = ev.rows.filter(r => r.time || r.title.trim() || (r.remark || '').trim() || r.say.length || ev.tasks.some(t => t.row === r.id)); S.edit = false; if (ev && snapOf() !== S.snap) log(ev, 'Edited ' + (cur().p === 'doc' ? 'a document' : 'the event')); render(); persistSoon(0); catchUp(); break;
     case 'cancel': if (snapOf() === S.snap) { S.edit = false; render(); catchUp(); } else { S.alert = {t: 'Discard Changes?', m: 'Your changes will be lost.', no: 'Keep Editing', verb: 'Discard', act: 'discard'}; layer(); } break;
     case 'keep': S.alert = null; layer(); break;
     case 'discard': restore(S.snap); S.alert = null; S.edit = false; render(); catchUp(); break;
@@ -1252,7 +1253,7 @@ document.addEventListener('click', async e => {
     case 'close': case 'bg': S.sheet = null; render(); break;
     case 'create': { const n = S.draft, id = uid();
       EVENTS.push({id, v: 4, date: n.date, name: n.name.trim(), asmTime: n.asmTime, venue: n.venue, leading: n.leading ? n.leading.split(/[、,，]/).map(x => x.trim()).filter(Boolean) : [], support: [], lead: CHAIRS.includes(V().name) ? V().name : '', remarks: '', groups: [], mcs: [], rows: [], tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: [], upd: {}});
-      log(EVENTS[EVENTS.length - 1], 'Created the event'); S.sheet = null; go({p: 'event', ev: id}); break; }
+      log(EVENTS[EVENTS.length - 1], 'Created the event'); S.sheet = null; go({p: 'event', ev: id}); persistSoon(0); break; }
     case 'pickn': { const [tid, n] = arg.split(':'), t = ev.tasks.find(x => x.id === tid); t.names = t.names.includes(n) ? t.names.filter(x => x !== n) : [...t.names, n]; log(ev, `${t.text}: ${t.names.join('、') || 'no one'}`); render(); break; }
     case 'here': { const [g, n] = arg.split(':'), a2 = ev.att[g] = ev.att[g] || {}; if (a2[n]) delete a2[n]; else a2[n] = NOW(); render(); break; }
     case 'rollaw': { const [lid, aid, i] = arg.split(':'), a2 = ev.awards[lid].awards.find(x => x.id === aid), k = `${aid}:${a2.rows[+i][1]}`, m = ((ev.roll = ev.roll || {}).aw = ev.roll.aw || {}); if (m[k]) delete m[k]; else m[k] = NOW(); render(); break; }
@@ -1494,7 +1495,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '6146d8a9099d';
+const PAGE_VER = 'dcf73d6243c4';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
