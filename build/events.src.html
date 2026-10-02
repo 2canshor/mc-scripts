@@ -1341,10 +1341,11 @@ function takeAccounts(b) {
 }
 // Teacher accounts just made (by this device's save, or by an application): a toast with Copy, shown once
 const SHOWN = new Set();
-function newAccounts(all) {
+const goneText = g => g.length === 1 ? `${g[0]}'s account deleted` : `${g.length} teacher accounts deleted`;
+function newAccounts(all, gone) {
   const list = all.filter(x => !SHOWN.has(x.id)); if (!list.length) return;
   list.forEach(x => SHOWN.add(x.id)); S.newAccts = list; S.xaccts = null;
-  toast(list.length === 1 ? `${list[0].id}'s account made` : `${list.length} teacher accounts made`, ['copyacct:new', 'Copy']);
+  toast((list.length === 1 ? `${list[0].id}'s account made` : `${list.length} teacher accounts made`) + (gone && gone.length === 1 ? `, ${gone[0]}'s deleted` : gone && gone.length ? `, ${gone.length} deleted` : ''), ['copyacct:new', 'Copy']);
   api('fresh', {method: 'DELETE'}).catch(() => {});
 }
 // The Event Lead's list of added accounts (teachers and stand-ins), for Users & Groups
@@ -1428,9 +1429,10 @@ async function push(id, s) {
     const local = EVENTS.find(e => e.id === id);
     if (r.ok) {
       SYNC.rev[id] = b.rev; SYNC.seq = Math.max(SYNC.seq, b.rev);
-      if (s === null) delete SYNC.base[id];
+      if (s === null) { delete SYNC.base[id]; if (b.gone) { S.xaccts = null; toast(goneText(b.gone)); } }
       else { SYNC.base[id] = b.data; if (local && JSON.stringify(local) === s && id !== editingId()) { replaceIn(local, JSON.parse(b.data)); refresh(); } }
-      if (b.made) newAccounts(b.made);  // teachers named for the first time got an account: a toast with Copy
+      // Teachers named for the first time got an account (a toast with Copy); teachers no longer in any event lost theirs
+      if (b.made) newAccounts(b.made, b.gone); else if (b.gone) { S.xaccts = null; toast(goneText(b.gone)); }
       SYNC.offline = false;
     } else if (r.status === 409) {
       SYNC.rev[id] = b.rev;

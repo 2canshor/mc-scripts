@@ -96,6 +96,22 @@ async function ensureTeachers(env, ev, by) {
   if (made.length) { const f = (await settingOf(env, "fresh")) || []; await saveSetting(env, "fresh", [...f.filter((x) => !made.some((m) => m.id === x)), ...made.map((m) => m.id)]); }
   return made;
 }
+// A teacher's account goes when no event names them any more (Carson, 26/10/02): checked for the teachers an event
+// had before a save or a delete. Returns the ids deleted.
+async function dropTeachers(env, before, after) {
+  const now = new Set([...((after && after.leading) || []), ...((after && after.support) || [])].map(codeOf));
+  const gone = [...new Set([...((before && before.leading) || []), ...((before && before.support) || [])].map(codeOf))].filter((c) => isCode(c) && !now.has(c));
+  if (!gone.length) return [];
+  const { results } = await env.DB.prepare("SELECT data FROM events WHERE deleted = 0").all();
+  const named = new Set(results.flatMap((r) => { try { const e = JSON.parse(r.data); return [...(e.leading || []), ...(e.support || [])].map(codeOf); } catch { return []; } }));
+  const out = [];
+  for (const c of gone.filter((x) => !named.has(x))) {
+    const x = await env.DB.prepare("SELECT id FROM xaccounts WHERE id = ? AND kind = 'teacher'").bind(c).first();
+    if (x) { await dropAccount(env, c); out.push(c); }
+  }
+  if (out.length) { const f = (await settingOf(env, "fresh")) || []; if (f.some((x) => out.includes(x))) await saveSetting(env, "fresh", f.filter((x) => !out.includes(x))); }
+  return out;
+}
 // Which events an account receives: a group, its Group Lead or its stand-in only those it is on duty for; a teacher's own
 // account only those they lead or support; the Event Lead, Editor and Viewer every event.
 function canSee(acct, ev) {
@@ -508,7 +524,8 @@ export async function handleEvents(request, env, url, path) {
     if (body.deleted) {
       if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
       const saved = await env.DB.prepare("INSERT INTO events (id, data, deleted, updated, seq) VALUES (?1, ?2, 1, ?3, " + next + ") ON CONFLICT (id) DO UPDATE SET deleted = 1, updated = ?3, seq = " + next + " RETURNING seq").bind(id, row ? row.data : "{}", Date.now()).first();
-      return json({ rev: saved.seq });
+      const gone = await dropTeachers(env, old, null);
+      return json({ rev: saved.seq, ...(gone.length ? { gone } : {}) });
     }
     if (typeof body.data !== "string" || body.data.length > MAX_EVENT) return json({ error: "bad request" }, 400);
     let nw; try { nw = JSON.parse(body.data); } catch { return json({ error: "bad request" }, 400); }
@@ -526,8 +543,8 @@ export async function handleEvents(request, env, url, path) {
       ? await env.DB.prepare("UPDATE events SET data = ?1, deleted = 0, updated = ?2, seq = " + next + " WHERE id = ?3 AND seq = ?4 RETURNING seq").bind(data, Date.now(), id, rev).first()
       : await env.DB.prepare("INSERT INTO events (id, data, deleted, updated, seq) VALUES (?1, ?2, 0, ?3, " + next + ") ON CONFLICT (id) DO NOTHING RETURNING seq").bind(id, data, Date.now()).first();
     if (!saved) return json({ error: "conflict", rev: -1 }, 409);
-    const made = acct.type === "lead" ? await ensureTeachers(env, nw, await whoOf(env, acct)) : [];
-    return json({ rev: saved.seq, data: JSON.stringify(visible(acct, nw)), ...(made.length ? { made } : {}) });
+    const made = acct.type === "lead" ? await ensureTeachers(env, nw, await whoOf(env, acct)) : [], gone = await dropTeachers(env, old, nw);
+    return json({ rev: saved.seq, data: JSON.stringify(visible(acct, nw)), ...(made.length ? { made } : {}), ...(gone.length ? { gone } : {}) });
   }
 
   // Profile photos: every signed-in account sees them; each person changes their own, and the Event Lead can remove anyone's.
