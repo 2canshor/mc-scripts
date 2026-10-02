@@ -222,6 +222,8 @@ textarea.fld{display:inline-block}
 .rg>.ib{margin:-4px 0}
 .rg>.grip{width:28px}
 /* The insert line: gold, full width, with a ＋ fixed at the leading edge (mouse only) */
+/* With a mouse the insert line replaces Add Line and Add Task (kept by touch, and for an empty Rundown) */
+@media (hover:hover) and (pointer:fine){.row.add.ins-alt{display:none}.list:has(>[data-drag]){padding-bottom:16px}}
 .ins{position:absolute;left:-20px;right:-20px;height:0;z-index:4;pointer-events:none}
 .ins::before{content:"";position:absolute;left:20px;right:20px;top:-1px;height:2px;border-radius:1px;background:var(--primary)}
 .ins-b{position:absolute;left:-6px;top:-13px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--primary);color:var(--on-primary);pointer-events:auto;box-shadow:var(--glass-shadow)}
@@ -615,7 +617,7 @@ function allTasks(ev, ed) {
   const toOpts = t => `<option value="" disabled${t.to.length ? '' : ' selected'}></option>` + ev.groups.map(gr => `<option value="${esc(gr.name)}"${t.to[0] === gr.name ? ' selected' : ''}>${esc(gr.name)}</option>`).join('') + `<option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`;
   const row = t => `<div class="row g-tme" data-drag="task" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
     <span>${t.row ? `<span class="fl lpk">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span><span class="fl lpk gpk">${pick(`task:${t.id}:to`, t.to.includes('All') ? gtag('All') : t.to.length ? gtag(t.to[0]) : '', toOpts(t), 'Group')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
-  return `<section class="sec"><div class="list tasks"><p class="sh" data-head="before">Before the Event</p>${list.filter(t => !t.row).map(row).join('')}<p class="sh" data-head="day">On the Day</p>${list.filter(t => t.row).map(row).join('')}</div><div class="list">${addB('menu:addtask', 'Add Task', 'var(--tc)')}</div></section>`;
+  return `<section class="sec"><div class="list tasks"><p class="sh" data-head="before">Before the Event</p>${list.filter(t => !t.row).map(row).join('')}<p class="sh" data-head="day">On the Day</p>${list.filter(t => t.row).map(row).join('')}</div><div class="list">${addB('menu:addtask', 'Add Task', 'var(--tc)').replace('class="row add', 'class="row add ins-alt')}</div></section>`;
 }
 function yourPart(ev, ed) {
   const v = V(), type = vt(ev);
@@ -676,7 +678,7 @@ function runLines(ev) {
   const lines = ev.rows.map(r => `<div class="ln${r === next ? ' current' : ''}">${dot(`${ev.id}:r:${r.id}`)}<span class="t">${r.time}</span><div class="lb"><span class="lt">${esc(r.title)}</span>　<span class="muted">${esc(r.place)}</span>${r.remark ? `<span class="cap">${esc(r.remark)}</span>` : ''}${ev.tasks.filter(t => t.row === r.id && !t.role).map(tk).join('')}</div></div>`).join('');
   return `<div class="list">${lines}</div>${lines ? '' : '<p class="empty">No lines yet</p>'}`;
 }
-const runEdit = ev => `<div class="list">${ev.rows.map(r => `<div class="ln e" data-drag="rows" data-id="${r.id}"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span><span class="rg">${rmB('askrow:' + r.id, 'Delete line')}${grip('Move line')}</span></div>`).join('')}${addB('addrow', 'Add Line', 'var(--tc)')}</div>`;
+const runEdit = ev => `<div class="list">${ev.rows.map(r => `<div class="ln e" data-drag="rows" data-id="${r.id}"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span><span class="rg">${rmB('askrow:' + r.id, 'Delete line')}${grip('Move line')}</span></div>`).join('')}${addB('addrow', 'Add Line', 'var(--tc)').replace('class="row add', `class="row add${ev.rows.length ? ' ins-alt' : ''}`)}</div>`;
 const daySec = ev => `<section class="sec"><p class="sh">Rundown</p>${runLines(ev)}</section>`;
 function pRundown(ev) {
   if (S.edit) return {...docBar(true), title: 'Rundown', body: docHead('Rundown', ev) + `<section class="sec">${runEdit(ev)}</section>`};
@@ -1107,6 +1109,8 @@ if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.addEventL
   let best = null;
   sibs.forEach((x, i) => { if (!i && x.dataset.head) return; const r = x.getBoundingClientRect(), prev = sibs[i - 1], y = prev ? (prev.getBoundingClientRect().bottom + r.top) / 2 : r.top;
     if (Math.abs(e.clientY - y) <= 8 && (!best || Math.abs(e.clientY - y) < best.d)) best = {d: Math.abs(e.clientY - y), y, at: i}; });
+  const last = sibs[sibs.length - 1];
+  if (last) { const y = last.getBoundingClientRect().bottom + 6; if (Math.abs(e.clientY - y) <= 10 && (!best || Math.abs(e.clientY - y) < best.d)) best = {d: Math.abs(e.clientY - y), y, at: sibs.length}; }
   if (!best) return hide();
   if (getComputedStyle(list).position === 'static') list.style.position = 'relative';
   if (!INS || INS.parentElement !== list) { hide(); INS = document.createElement('div'); INS.className = 'ins'; INS.innerHTML = `<button class="ins-b" aria-label="Insert here">${ic('plus')}</button>`; list.appendChild(INS); }
