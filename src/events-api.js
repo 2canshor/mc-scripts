@@ -40,6 +40,8 @@ export function ensureEventTables(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS login_fail (account TEXT PRIMARY KEY, n INTEGER NOT NULL, since INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS photos (name TEXT PRIMARY KEY, data TEXT NOT NULL, updated INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS vault (id TEXT PRIMARY KEY, sealed TEXT NOT NULL)"),
+    // Accounts added while the site runs (Carson, 26/10/02): a Group Lead's stand-in for 3 days, and one per teacher
+    db.prepare("CREATE TABLE IF NOT EXISTS xaccounts (id TEXT PRIMARY KEY, kind TEXT NOT NULL, grp TEXT, code TEXT, person TEXT, until INTEGER, created INTEGER NOT NULL, by TEXT)"),
     // Admin and Teacher were renamed Editor and Viewer (Carson, 26/10/02): their password, sign-ins and wrong tries move with them
     ...[["Teacher", "Viewer"], ["Admin", "Editor"]].flatMap(([from, to]) => [
       db.prepare("UPDATE OR IGNORE accounts SET id = ? WHERE id = ?").bind(to, from),
@@ -49,13 +51,66 @@ export function ensureEventTables(db) {
   return ready;
 }
 
-// The session's account, or null. Group accounts send the member's chosen name in x-who (for Acting Group Lead).
+// An account by its id: one of the fixed accounts, or an added one still in force.
+// A stand-in works as its group's Group Lead until it ends; a teacher's account reads the events they teach.
+async function accountOf(env, id) {
+  const fixed = ACCOUNTS.find((a) => a.id === id); if (fixed) return fixed;
+  const r = await env.DB.prepare("SELECT * FROM xaccounts WHERE id = ?").bind(id).first();
+  if (!r || (r.until && r.until < Date.now())) return null;
+  return r.kind === "standin" ? { id: r.id, type: "gl", group: r.grp, person: r.person, until: r.until, standin: true } : { id: r.id, type: "teacher", code: r.code, tv: true };
+}
+const STANDIN_MS = 3 * 864e5;
+const WORDS = ["overture", "encore", "finale", "prelude", "sonata", "chorus", "aria", "cadenza", "rhapsody", "minuet", "tempo", "motif", "lantern", "harbour", "compass", "beacon", "meadow", "summit"];
+const newPassword = () => { const r = crypto.getRandomValues(new Uint8Array(2)); return WORDS[r[0] % WORDS.length] + String(10 + (r[1] % 90)); };
+async function setPassword(env, id, pw) {
+  const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+  await env.DB.prepare("INSERT INTO accounts (id, hash, changed) VALUES (?1, ?2, ?3) ON CONFLICT (id) DO UPDATE SET hash = ?2, changed = ?3").bind(id, salt + ":" + await pbkdf2(pw, salt), Date.now()).run();
+  try { await seal(env, id, pw); } catch { /* the hash is what signs in */ }
+}
+async function dropAccount(env, id) {
+  await env.DB.batch(["xaccounts", "accounts", "vault"].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE id = ?`).bind(id))
+    .concat([env.DB.prepare("DELETE FROM sessions WHERE account = ?").bind(id), env.DB.prepare("DELETE FROM login_fail WHERE account = ?").bind(id)]));
+}
+// A teacher code: two to five capital letters (LFL, SMK). CA's own teachers are the Editors (setting "admins").
+const codeOf = (s) => String(s || "").trim().toUpperCase().replace(/\s+/g, "");
+const isCode = (c) => /^[A-Z]{2,5}$/.test(c);
+// One Leading Teacher (Carson, 26/10/02): a CA teacher if one is given (the first of them), otherwise the first named;
+// the others become Supporting; LFL is added as Supporting when no CA teacher is named at all.
+function oneLeading(leading, support, ca) {
+  const L = (leading || []).map((x) => x.trim()).filter(Boolean), S = (support || []).map((x) => x.trim()).filter(Boolean), isCa = (x) => ca.includes(codeOf(x));
+  const lead = L.find(isCa) || L[0];
+  const sup = [...L.filter((x) => x !== lead), ...S];
+  if (![...L, ...S].some(isCa) && !sup.some((x) => codeOf(x) === "LFL") && codeOf(lead) !== "LFL") sup.push("LFL");
+  return { leading: lead ? [lead] : [], support: [...new Set(sup)].filter((x) => x !== lead) };
+}
+// Teachers named in an event who have no account yet get one (not CA's own teachers, who are Editors). The new ones are
+// kept in "fresh" for the Event Lead and Editors to see with their password until they say they have passed them on.
+async function ensureTeachers(env, ev, by) {
+  const ca = ((await settingOf(env, "admins")) || []).map(codeOf), made = [];
+  for (const c of [...new Set([...(ev.leading || []), ...(ev.support || [])].map(codeOf))].filter((c) => isCode(c) && !ca.includes(c))) {
+    if (await accountOf(env, c)) continue;
+    const pw = newPassword();
+    await env.DB.prepare("INSERT OR IGNORE INTO xaccounts (id, kind, code, created, by) VALUES (?1, 'teacher', ?1, ?2, ?3)").bind(c, Date.now(), by).run();
+    await setPassword(env, c, pw); made.push({ id: c, password: pw });
+  }
+  if (made.length) { const f = (await settingOf(env, "fresh")) || []; await saveSetting(env, "fresh", [...f.filter((x) => !made.some((m) => m.id === x)), ...made.map((m) => m.id)]); }
+  return made;
+}
+// Which events an account receives: a group, its Group Lead or its stand-in only those it is on duty for; a teacher's own
+// account only those they lead or support; the Event Lead, Editor and Viewer every event.
+function canSee(acct, ev) {
+  if (acct.tv) return [...(ev.leading || []), ...(ev.support || [])].some((x) => codeOf(x) === acct.code);
+  if (acct.type === "group" || acct.type === "gl") return (ev.groups || []).some((g) => g.name === acct.group);
+  return true;
+}
+
+// The session's account, or null. Group accounts send the member's chosen name in x-who.
 export async function sessionOf(request, env) {
   const m = /^Bearer ([A-Za-z0-9_-]{20,100})$/.exec(request.headers.get("authorization") || "");
   if (!m) return null;
   const row = await env.DB.prepare("SELECT account, created FROM sessions WHERE token = ?").bind(await sha(m[1])).first();
   if (!row || Date.now() - row.created > SESSION_DAYS * 864e5) return null;
-  const acct = ACCOUNTS.find((a) => a.id === row.account);
+  const acct = await accountOf(env, row.account);
   if (!acct) return null;
   let who = request.headers.get("x-who") || "";
   try { who = decodeURIComponent(who); } catch { who = ""; }
@@ -91,7 +146,9 @@ async function login(request, env) {
   let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
   const typed = String(body.account || "").trim().toLowerCase().replace(/\s+/g, " ");
   const OLD = { teacher: "viewer", admin: "editor" };  // the names before 26/10/02
-  const acct = ACCOUNTS.find((a) => a.id.toLowerCase() === (OLD[typed] || typed));
+  const want = OLD[typed] || typed, fixed = ACCOUNTS.find((a) => a.id.toLowerCase() === want);
+  const added = fixed ? null : await env.DB.prepare("SELECT id FROM xaccounts WHERE lower(id) = ?").bind(want).first();
+  const acct = fixed || (added && await accountOf(env, added.id));
   if (!acct) { await new Promise((r) => setTimeout(r, 400)); return json({ error: "Wrong account or password" }, 401); }
   // Wrong tries wait longer each time, as an iPhone does (Carson, 26/10/01): after 5, 30 seconds; then 1, 5 and 15 minutes.
   // "since" is the last wrong try; an hour without one starts the count again.
@@ -229,13 +286,9 @@ function units(ev) {
   return u;
 }
 const onDuty = (ev, g) => !!ev && (ev.groups || []).some((x) => x.name === g);
-// An Acting Group Lead has the Group Lead's rights only on the day of the event (the Group Lead does the work before it).
-const todayHK = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, "/");
+// The Group Lead's account, or its stand-in, leads the group (a stand-in replaced Acting Group Lead, Carson 26/10/02)
 function leadsGroup(acct, ev) {
-  if (!acct.group || !onDuty(ev, acct.group)) return null;
-  if (acct.type === "gl") return acct.group;
-  const g = ev.groups.find((x) => x.name === acct.group);
-  return acct.type === "group" && acct.who && g && g.acting === acct.who && ev.date === todayHK() ? acct.group : null;
+  return acct.group && acct.type === "gl" && onDuty(ev, acct.group) ? acct.group : null;
 }
 const taskOf = (ev, id) => ((ev && ev.tasks) || []).find((t) => t.id === id) || null;
 const DOC_KEY = { script: ["s:", "so:", "mcs"], awards: ["aw:", "ra"], guests: ["gu", "rg"] };
@@ -316,6 +369,7 @@ function trimLog(ev) {
 
 // The person a change is credited to (the yellow dots are not shown to them)
 async function whoOf(env, acct) {
+  if (acct.standin) return acct.person || acct.id;
   if (acct.type === "gl") { const r = ((await settingOf(env, "rosters")) || {})[acct.group]; return (r && r.lead && r.lead.name) || acct.id; }
   return acct.who || acct.id;
 }
@@ -380,9 +434,11 @@ export async function importApplications(env, force) {
       remarks: [v("rmk"), ...(v("files").match(/https?:\/\/[^\s,，]+/g) || []), v("roles") ? "所需人力：" + v("roles") : ""].filter(Boolean).join("\n"), groups: [], mcs: [],
       rows: [start ? { id: "r1", time: start, title: "開始", place: "", remark: "", say: [] } : null, end ? { id: "r2", time: end, title: "完結", place: "", remark: "", say: [] } : null].filter(Boolean),
       tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: [{ at: hkNow(), ts: Date.now(), who: "CA Support Form", what: "Added from a CA Support application" }], upd: {} };
+    Object.assign(ev, oneLeading(ev.leading, ev.support, ((await settingOf(env, "admins")) || []).map(codeOf)));
     ev.upd = stamp(null, ev, "CA Support Form");
     const saved = await env.DB.prepare("INSERT INTO events (id, data, deleted, updated, seq) VALUES (?1, ?2, 0, ?3, (SELECT COALESCE(MAX(seq), 0) + 1 FROM events)) ON CONFLICT (id) DO NOTHING RETURNING seq").bind(id, JSON.stringify(ev), Date.now()).first();
     seen[ts] = id; claimed.add(id); events.push({ id, date, name });
+    if (saved) await ensureTeachers(env, ev, "CA Support Form");
     if (saved) added++;
   }
   cfg.seen = seen; cfg.error = false; await saveSetting(env, "applications", cfg);
@@ -409,13 +465,24 @@ export async function handleEvents(request, env, url, path) {
     const since = Math.max(0, Number(url.searchParams.get("since")) || 0);
     try { await importApplications(env, false); } catch (e) { /* the events already there still load */ }
     const { results } = await env.DB.prepare("SELECT id, data, deleted, seq FROM events WHERE seq > ? ORDER BY seq").bind(since).all();
-    const rows = results.map((r) => ({ id: r.id, rev: r.seq, deleted: !!r.deleted, data: r.deleted ? null : JSON.stringify(visible(acct, upgrade(JSON.parse(r.data)))) }));
-    const out = { account: { id: acct.id, type: acct.type, group: acct.group || null }, rows, photos: await photoVersions(env), ver: PAGE_VERSION };
+    const rows = results.map((r) => { const ev = r.deleted ? null : upgrade(JSON.parse(r.data)), show = ev && canSee(acct, ev);
+      return { id: r.id, rev: r.seq, deleted: !show, data: show ? JSON.stringify(visible(acct, ev)) : null }; });
+    const out = { account: { id: acct.id, type: acct.type, group: acct.group || null, person: acct.person || null, until: acct.until || null, standin: !!acct.standin, code: acct.code || null }, rows, photos: await photoVersions(env), ver: PAGE_VERSION };
     if (!since || url.searchParams.get("full")) {
       const s = await env.DB.prepare("SELECT k, v FROM settings WHERE k IN ('rosters', 'chairs', 'admins')").all();
       const map = Object.fromEntries(s.results.map((r) => [r.k, JSON.parse(r.v)]));
       out.rosters = map.rosters || {}; out.chairs = map.chairs || []; out.admins = map.admins || [];
       if (acct.type === "lead") { const a = await settingOf(env, "applications"); out.apps = a ? { url: a.url || "", error: !!a.error } : { url: "", error: false }; }
+    }
+    // Stand-ins in force: every one for the Event Lead and Editor, their own group's for a Group Lead
+    if (acct.type === "lead" || (acct.type === "gl" && !acct.standin)) {
+      const { results: xs } = await env.DB.prepare("SELECT id, grp, person, until FROM xaccounts WHERE kind = 'standin' AND until > ?").bind(Date.now()).all();
+      out.standins = xs.filter((x) => acct.type === "lead" || x.grp === acct.group);
+    }
+    // New teacher accounts and their passwords, until the Event Lead or an Editor has passed them on
+    if (acct.type === "lead") {
+      const f = (await settingOf(env, "fresh")) || [];
+      if (f.length) { const pw = await unsealAll(env); out.fresh = f.map((id) => ({ id, password: pw[id] || "" })); }
     }
     return json(out);
   }
@@ -459,7 +526,8 @@ export async function handleEvents(request, env, url, path) {
       ? await env.DB.prepare("UPDATE events SET data = ?1, deleted = 0, updated = ?2, seq = " + next + " WHERE id = ?3 AND seq = ?4 RETURNING seq").bind(data, Date.now(), id, rev).first()
       : await env.DB.prepare("INSERT INTO events (id, data, deleted, updated, seq) VALUES (?1, ?2, 0, ?3, " + next + ") ON CONFLICT (id) DO NOTHING RETURNING seq").bind(id, data, Date.now()).first();
     if (!saved) return json({ error: "conflict", rev: -1 }, 409);
-    return json({ rev: saved.seq, data: JSON.stringify(visible(acct, nw)) });
+    const made = acct.type === "lead" ? await ensureTeachers(env, nw, await whoOf(env, acct)) : [];
+    return json({ rev: saved.seq, data: JSON.stringify(visible(acct, nw)), ...(made.length ? { made } : {}) });
   }
 
   // Profile photos: every signed-in account sees them; each person changes their own, and the Event Lead can remove anyone's.
@@ -516,7 +584,38 @@ export async function handleEvents(request, env, url, path) {
     if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
     const { results } = await env.DB.prepare("SELECT id, changed FROM accounts").all();
     const changed = Object.fromEntries(results.map((r) => [r.id, r.changed]));
-    return json({ accounts: ACCOUNTS.map((a) => ({ id: a.id, type: a.type, changed: changed[a.id] || 0 })) });
+    const { results: xs } = await env.DB.prepare("SELECT * FROM xaccounts WHERE until IS NULL OR until > ?").bind(Date.now()).all();
+    return json({ accounts: [...ACCOUNTS.map((a) => ({ id: a.id, type: a.type, changed: changed[a.id] || 0 })),
+      ...xs.map((x) => ({ id: x.id, type: x.kind, group: x.grp, code: x.code, person: x.person, until: x.until, created: x.created, changed: changed[x.id] || 0 }))] });
+  }
+  // A stand-in for a Group Lead (Carson, 26/10/02): made by that Group Lead, or by the Event Lead or an Editor, for one member
+  // of the group; 3 days; one per group (a new one ends the old); a stand-in cannot make another.
+  if (path === "standin" && (request.method === "POST" || request.method === "DELETE")) {
+    let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+    const g = String(body.group || "");
+    if (!GROUPS.includes(g) || !(acct.type === "lead" || (acct.type === "gl" && !acct.standin && acct.group === g))) return json({ error: "forbidden" }, 403);
+    const id = g + " Stand-in";
+    await dropAccount(env, id);
+    if (request.method === "DELETE") return json({ ok: true });
+    const r = ((await settingOf(env, "rosters")) || {})[g] || {}, person = String(body.person || "");
+    if (!(r.people || []).some((p) => p.name === person)) return json({ error: "bad request" }, 400);
+    const pw = newPassword(), until = Date.now() + STANDIN_MS;
+    await env.DB.prepare("INSERT INTO xaccounts (id, kind, grp, person, until, created, by) VALUES (?1, 'standin', ?2, ?3, ?4, ?5, ?6)").bind(id, g, person, until, Date.now(), await whoOf(env, acct)).run();
+    await setPassword(env, id, pw);
+    return json({ id, password: pw, until, person });
+  }
+  if (path === "account" && request.method === "DELETE") {
+    if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
+    let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+    const x = await env.DB.prepare("SELECT kind FROM xaccounts WHERE id = ?").bind(String(body.id || "")).first();
+    if (!x) return json({ error: "not found" }, 404);
+    await dropAccount(env, String(body.id));
+    return json({ ok: true });
+  }
+  if (path === "fresh" && request.method === "DELETE") {
+    if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
+    await saveSetting(env, "fresh", []);
+    return json({ ok: true });
   }
   if (path === "passwords" && request.method === "GET") {
     if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
@@ -525,7 +624,7 @@ export async function handleEvents(request, env, url, path) {
   if (path === "password" && request.method === "POST") {
     if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
     let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
-    const target = ACCOUNTS.find((a) => a.id === body.account), pw = normal(body.password);
+    const target = await accountOf(env, String(body.account || "")), pw = normal(body.password);
     if (!target || [...pw].length < MIN_PASSWORD || pw.length > 200) return json({ error: "bad request" }, 400);
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
     await env.DB.prepare("INSERT INTO accounts (id, hash, changed) VALUES (?1, ?2, ?3) ON CONFLICT (id) DO UPDATE SET hash = ?2, changed = ?3").bind(target.id, salt + ":" + await pbkdf2(pw, salt), Date.now()).run();

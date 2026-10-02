@@ -388,7 +388,15 @@ const rosterIn = o => Object.fromEntries(Object.entries(o || {}).map(([g, r]) =>
 const rosterOut = o => Object.fromEntries(Object.entries(o).map(([g, r]) => [g, {lead: {cls: r.lead[0].trim(), name: r.lead[1].trim()}, people: r.people.filter(p => p[1].trim()).map(p => ({cls: p[0].trim(), name: p[1].trim()}))}]));
 const clsOf = (g, n) => { const r = roster(g); return r.lead[1] === n ? r.lead[0] : ((r.people.find(p => p[1] === n) || [])[0] || ''); };
 let APPS = null;  // the Event Lead's link to the CA Support form's sheet: {url, error}
-let PASSWORDS = {};  // new passwords typed on a Members page, sent on Done
+let PASSWORDS = {};  // new passwords typed on a Users & Groups page, sent on Done
+// Stand-ins in force ({id, grp, person, until}); teacher accounts just made, with their password, until passed on ({id, password})
+let STANDINS = [], FRESH = [];
+// A time from the server as 05/10 20:03 (Hong Kong)
+const hkAt = ms => { const d = new Date(ms + 8 * 3600e3).toISOString(); return md(d.slice(2, 10).replace(/-/g, '/')) + ' ' + d.slice(11, 16); };
+// What a person needs to sign in, ready to paste into a message
+const signInText = (id, pw, more) => `Event Centre：${location.origin}\nAccount：${id}\nPassword：${pw}` + (more ? '\n' + more : '');
+const teacherCode = x => String(x || '').trim().toUpperCase().replace(/\s+/g, '');
+const taught = code => EVENTS.filter(e => [...(e.leading || []), ...(e.support || [])].some(x => teacherCode(x) === code));
 // One account per small group (members pick their name), one per Group Lead, one for the chairs, one for teachers
 // Editor: CA's own teachers, with the Event Lead's rights; each picks their name, as the chairs do in Event Lead. Viewer: any teacher, to read.
 const ACCOUNTS = [{id: 'Event Lead', type: 'lead'}, {id: 'Editor', type: 'lead', admin: true}, {id: 'Viewer', type: 'teacher'},
@@ -396,11 +404,14 @@ const ACCOUNTS = [{id: 'Event Lead', type: 'lead'}, {id: 'Editor', type: 'lead',
 
 /* ---------- Who is looking: the account signed in on this device, and the person who picked their name ---------- */
 const S = {acct: null, who: null, seen: {}, toSee: new Set(), stack: [], edit: false, snap: null, sheet: null, menu: null, alert: null, open: {}, toast: '', find: ''};
-const ACCT = () => ACCOUNTS.find(a => a.id === S.acct);
+// An account added while the site runs (a Group Lead's stand-in, a teacher's own) comes from the server at sign-in
+let XACCT = null;
+const ACCT = () => ACCOUNTS.find(a => a.id === S.acct) || (XACCT && XACCT.id === S.acct ? XACCT : null);
 function V() {
   const a = ACCT(); if (!a) return null;
   if (a.type === 'lead') return {type: 'lead', name: S.who || a.id};
-  if (a.type === 'teacher') return {type: 'teacher', name: 'Viewer'};
+  if (a.type === 'teacher') return {type: 'teacher', name: a.id};
+  if (a.standin) return {type: 'gl', name: a.person || a.id, group: a.group, standin: true};
   if (a.type === 'gl') return {type: 'gl', name: roster(a.group).lead[1] || a.id, group: a.group};
   return {type: 'member', name: S.who || a.id, group: a.group};
 }
@@ -408,8 +419,7 @@ function V() {
 const peopleOf = a => !a ? [] : a.type === 'lead' ? (a.admin ? ADMINS : CHAIRS).filter(Boolean) : a.type === 'group' ? members(a.group).filter(n => n !== roster(a.group).lead[1]) : [];
 const cur = () => S.stack[S.stack.length - 1], EV = () => EVENTS.find(e => e.id === (cur() || {}).ev);
 const isLead = () => !!V() && V().type === 'lead';
-// An Acting Group Lead works as the Group Lead on the day of the event
-const vt = ev => { const v = V(); if (v.type !== 'member' || !ev) return v.type; const g = ev.groups.find(x => x.name === v.group); return g && g.acting === v.name && ev.date === TODAY ? 'gl' : 'member'; };
+const vt = () => V().type;
 const seen = ev => isLead() || V().type === 'teacher' || ev.groups.some(g => g.name === V().group);
 // Who changes a document: the Event Lead, and the on-duty group whose work it is (MC: Script; Backstage: Participant List; Reception: Guest List)
 const DOC_KIND = {script: 'MC', awards: 'Backstage', guests: 'Reception'};
@@ -560,6 +570,7 @@ function pEvents() {
   return {root: true, title: 'Events', search: true,
     fab: isLead() ? {act: 'sheet:new', label: 'New Event'} : null, r: `<button class="nb round glass av" data-a="sheet:account" aria-label="Account">${avatar(V().name)}</button>`,
     body: `<h1>Events</h1>
+    ${isLead() && FRESH.length && !q ? `<section class="sec"><p class="sh">New Teacher Accounts</p><div class="list">${FRESH.map(x => `<div class="row" style="grid-template-columns:22px minmax(0,1fr) auto">${sym('teacher', '')}<span>${esc(x.id)}<span class="cap">${esc(x.password)}</span></span><button class="nb glass" data-a="copyacct:${esc(x.id)}">Copy</button></div>`).join('')}<button class="row" data-a="freshdone" style="grid-template-columns:minmax(0,1fr)"><span class="lk">Done</span></button></div><p class="note">Send each teacher their account. They see only the events they lead or support. Tap Done once all are sent; Users &amp; Groups keeps the accounts.</p></section>` : ''}
     ${up.length || !q ? `<section class="sec"><p class="sh">Upcoming</p>${up.length ? `<div class="list">${rows(up)}</div>` : '<p class="empty">No events yet</p>'}</section>` : ''}
     ${past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${rows(past)}</div></section>` : ''}
     ${q && !list.length ? '<p class="empty sec">No results</p>' : ''}
@@ -646,10 +657,10 @@ function yourPart(ev, ed) {
     return `<div class="row g-p top">${gsym(g)}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('、')}</span>` : ''}</span></div>`; }).join('');
   return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + (isDay(ev) ? daySec(ev) : allTasks(ev, false));
 }
-// A group's members: attendance | name, time, Group Lead or Acting Group Lead | ›. Each is ticked one by one. The row opens their tasks.
+// A group's members: attendance | name, time, Group Lead | ›. Each is ticked one by one. The row opens their tasks.
 function memberList(ev, g) {
-  const lead = roster(g).lead[1], gr = ev.groups.find(x => x.name === g) || {}, at = ev.att[g] || {};
-  const rows = members(g).map(n => { const t = at[n], lv = onLeave(ev, g, n), rs = (gr.acting === n ? ['Acting Group Lead'] : []).concat(n === lead ? ['Group Lead'] : []);
+  const lead = roster(g).lead[1], at = ev.att[g] || {};
+  const rows = members(g).map(n => { const t = at[n], lv = onLeave(ev, g, n), rs = n === lead ? ['Group Lead'] : [];
     const ck = lv && !t ? `<span class="ck" role="img" aria-label="On Leave">${ic('leave')}</span>` : `<button class="ck${t ? ' on' : ''}" data-a="here:${g}:${n}" aria-pressed="${!!t}" aria-label="${esc(n)} is here">${ic(t ? 'check-fill' : 'circle')}</button>`;
     const inner = `<span class="nw">${esc(n)}${t ? `<span class="tm">${t}</span>` : ''}</span><span class="tags">${rs.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</span>`;
     const row = `<div class="row g-mem">${ck}${n === lead ? `<span class="nmb" style="grid-template-columns:minmax(0,1fr) auto">${inner}</span>` : `<button class="nmb" data-a="sheet:person:${g}:${n}">${inner}${ic('chev-r', 'go')}</button>`}</div>`;
@@ -720,23 +731,33 @@ function pGuests(ev) {
   return {...docBar(canDoc(ev, 'guests'), 'askdoc:guests'), title: 'Guest List', body: docHead('Guest List', ev) + `<section class="sec"><div class="list">${rows}${ed ? addB('addguest', 'Add Guest') : ''}</div>${!rows && !ed ? '<p class="empty">No guests yet</p>' : ''}</section>`};
 }
 
-/* ---------- Members (Event Lead) ---------- */
+/* ---------- Users & Groups (Event Lead) ---------- */
 // A password reads as dots; the eye shows it (as the server last saw it: set here, or used to sign in), and hides it again
 let PWSHOW = null;  // fetched when an eye is first tapped; never kept on the device
 const pwView = (id, ed) => { if (ed) return `<span class="pw">${fld('pw:' + id, PASSWORDS[id] || '', 'New Password')}</span>`;
   const on = (S.pwOpen || new Set()).has(id), v = on && PWSHOW ? PWSHOW[id] : '';
   return `<span class="pw"><span class="pv${on ? '' : ' mask'}">${on ? (v ? esc(v) : '—') : '••••••'}</span><button class="ib eye" data-a="pweye:${esc(id)}" aria-label="${on ? 'Hide' : 'Show'} Password">${ic(on ? 'eye-off' : 'eye')}</button></span>`; };
+// A group's stand-in: who, and until when; it opens the Stand-in sheet
+const standinRow = g => { const x = STANDINS.find(y => y.grp === g);
+  return `<button class="row g-ic" data-a="standin:${g}">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) + ' · Until ' + hkAt(x.until) : 'None'}</span>${ic('chev-r', 'go')}</button>`; };
 const acctRow = (id, ed) => `<div class="row g-acct">${sym('key', 'Account')}<span>${esc(id)}</span>${pwView(id, ed)}</div>`;
 function pMembers() {
-  return {l: backBtn(), title: 'Members', body: `<h1>Members</h1>
+  if (!S.xaccts) loadXaccts();
+  const ts = (Array.isArray(S.xaccts) ? S.xaccts : []).filter(x => x.type === 'teacher').sort((a, b) => a.id.localeCompare(b.id));
+  return {l: backBtn(), title: 'Users & Groups', body: `<h1>Users &amp; Groups</h1>
     <section class="sec"><div class="list">
       <button class="row g-ic" data-a="group:Event Lead">${sym('flag', '')}<span>Event Lead</span><span class="t">${CHAIRS.length}</span>${ic('chev-r', 'go')}</button>
       <button class="row g-ic" data-a="group:Editor">${sym('pencil', '')}<span>Editor</span><span class="t">${ADMINS.length}</span>${ic('chev-r', 'go')}</button>
       <button class="row g-ic" data-a="group:Viewer">${sym('eye', '')}<span>Viewer</span><span></span>${ic('chev-r', 'go')}</button></div></section>
+    <section class="sec"><p class="sh">Teachers</p>${ts.length ? `<div class="list">${ts.map(x => `<button class="row g-ic" data-a="group:T:${esc(x.id)}">${sym('teacher', '')}<span>${esc(x.id)}</span><span class="t">${taught(x.id).length}</span>${ic('chev-r', 'go')}</button>`).join('')}</div>` : `<p class="empty">${Array.isArray(S.xaccts) ? 'No teacher accounts yet' : 'Loading'}</p>`}</section>
     <section class="sec"><p class="sh">Groups</p><div class="list">${ALL_GROUPS.map(g => `<button class="row g-ic" data-a="group:${g}">${gsym(g)}<span>${gname(g)}</span><span class="t">${members(g).length}</span>${ic('chev-r', 'go')}</button>`).join('')}</div></section>`};
 }
 function pAccount(id) {
   const ed = S.edit, bar = editBar(true);
+  if (id.startsWith('T:')) { const code = id.slice(2), evs = taught(code).sort((a, b) => b.date.localeCompare(a.date));
+    return {...bar, title: code, body: `<h1>${esc(code)}</h1><section class="sec list">${acctRow(code, ed)}</section>
+    <section class="sec"><p class="sh">Events</p>${evs.length ? `<div class="list">${evs.map(e => `<button class="row g-ev" data-a="open:${e.id}"><span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('')}</div>` : '<p class="empty">No events</p>'}</section>
+    ${ed ? '' : `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="askdropacct:${esc(code)}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>Delete Account</span></button></div></section>`}`}; }
   if (id === 'Viewer') return {...bar, title: 'Viewer', body: `<h1>Viewer</h1><section class="sec list">${acctRow('Viewer', ed)}</section>`};
   if (id === 'Editor') return {...bar, title: 'Editor', body: `<h1>Editor</h1><section class="sec list">${acctRow('Editor', ed)}</section>
     <section class="sec"><p class="sh">Teachers</p><div class="list">${ADMINS.map((n, i) => ed ? `<div class="row" style="grid-template-columns:minmax(0,1fr) 24px"><span class="fl">${fld('admin:' + i, n, 'Name')}</span>${rmB('deladmin:' + i, 'Remove teacher')}</div>` : `<div class="row"><span>${esc(n)}</span></div>`).join('')}${ed ? addB('addadmin', 'Add Teacher') : ''}</div></section>`};
@@ -747,7 +768,7 @@ function pAccount(id) {
     ? `<div class="row g-kv"><span class="fl">${fld(`rc:${g}:${k}:0`, p[0], 'Class', 'upper')}</span><span class="fl">${fld(`rc:${g}:${k}:1`, p[1], 'Name')}</span>${del ? rmB(`delperson:${g}:${k}`, 'Remove member') : '<span></span>'}</div>`
     : `<div class="row g-kv"><span class="t">${esc(p[0])}</span><span>${esc(p[1])}</span></div>`;
   return {...bar, title: g, body: `<h1>${gname(g)}</h1>
-    <section class="sec list">${acctRow(g, ed)}${acctRow(g + ' Lead', ed)}</section>
+    <section class="sec list">${acctRow(g, ed)}${acctRow(g + ' Lead', ed)}${standinRow(g)}</section>
     <section class="sec"><p class="sh">Group Lead</p><div class="list">${person(r.lead, 'lead')}</div></section>
     <section class="sec"><p class="sh">Members</p><div class="list">${r.people.map((p, i) => person(p, i, true)).join('')}${ed ? addB('addperson:' + g, 'Add Member', '4.2em') : ''}</div></section>`};
 }
@@ -773,24 +794,34 @@ function sheet() {
     const t = ev.tasks.find(x => x.id === s.id), g = V().group;
     h = bar(close, `People<span class="s2">${esc(t.text)}</span>`, '') + `<div class="list">${members(g).map(n => onLeave(ev, g, n) && !t.names.includes(n) ? `<div class="row g-opt" aria-disabled="true"><span class="muted">${esc(n)}</span>${sym('leave', 'On Leave')}</div>` : `<button class="row g-opt" data-a="pickn:${t.id}:${n}"><span>${esc(n)}</span>${check(t.names.includes(n))}</button>`).join('')}</div>`;
   }
-  // A member's tasks: the group's tasks, ticked for this member (as People, from the member's side); then Acting Group Lead and On Leave
+  // A member's tasks: the group's tasks, ticked for this member (as People, from the member's side); then On Leave
   if (s.k === 'person') {
-    const [g, n] = [s.g, s.n], gr = ev.groups.find(x => x.name === g) || {};
+    const [g, n] = [s.g, s.n];
     const list = sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g)));
     // Before the Event (dates) and On the Day (lines) are the sheet's two sections, so a date and a time never share a place
     const one = (t, when) => `<button class="row g-opt" data-a="pickn:${t.id}:${esc(n)}"><span>${esc(t.text)}<span class="cap">${when}</span></span>${check(t.names.includes(n))}</button>`;
     const sec = (head, l, when) => l.length ? `<section class="sec"><p class="sh">${head}</p><div class="list">${l.map(t => one(t, when(t))).join('')}</div></section>` : '';
     h = bar(close, `Tasks<span class="s2">${esc(n)}</span>`, '') + (list.length ? sec('Before the Event', list.filter(t => !t.row), t => md(t.date || '')) + sec('On the Day', list.filter(t => t.row), t => esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' '))) : '<p class="empty">No tasks yet</p>') +
-      `<section class="sec"><div class="list">${vt(ev) !== 'member' ? `<label class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:pointer"><span>Acting Group Lead</span><input type="checkbox" class="switch" data-a="acting:${g}:${n}"${gr.acting === n ? ' checked' : ''}></label>` : ''}<label class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:pointer"><span>On Leave</span><input type="checkbox" class="switch" data-a="leave:${g}:${n}"${onLeave(ev, g, n) ? ' checked' : ''}></label></div></section>`;
+      `<section class="sec"><div class="list"><label class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:pointer"><span>On Leave</span><input type="checkbox" class="switch" data-a="leave:${g}:${n}"${onLeave(ev, g, n) ? ' checked' : ''}></label></div></section>`;
   }
   if (s.k === 'account') {
     const v = V(), others = peopleOf(ACCT()).filter(x => x !== v.name), pn = photoName();
     const face = pn ? `<button class="av avb" data-a="photo" aria-label="${PHOTOS[pn] ? 'Change Photo' : 'Add Photo'}">${avatar(v.name)}<span class="ov">${ic('photo')}</span></button>` : `<span class="av">${avatar(v.name)}</span>`;
     h = bar(close, 'Account', '') +
-      `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === ACCT().id ? '' : ACCT().id) : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
+      `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === ACCT().id ? '' : ACCT().id) : v.standin ? `${v.group} Stand-in · Until ${hkAt(ACCT().until)}` : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
       (others.length ? `<section class="sec"><p class="sh">Switch Person</p><div class="list">${others.map(x => `<button class="row g-sw" data-a="switch:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
-      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Members</span>${ic('chev-r', 'go')}</button><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}` : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
+      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Users &amp; Groups</span>${ic('chev-r', 'go')}</button><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}` : ''}${v.type === 'gl' && !v.standin ? (x => `<button class="row g-sw" data-a="standin:${v.group}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) : 'None'}</span></button>`)(STANDINS.find(y => y.grp === v.group)) : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
       `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="signout"><span class="ic" style="color:inherit">${ic('logout')}</span><span>Sign Out</span></button></div></section>`;
+  }
+  // A stand-in for a Group Lead: pick a member; the account and its password show once, with Copy, to send to them
+  if (s.k === 'standin') {
+    const g = s.g, x = STANDINS.find(y => y.grp === g), made = S.made && S.made.grp === g ? S.made : null;
+    const kv = (k, val) => `<div class="row" style="grid-template-columns:6em minmax(0,1fr)"><span class="t">${k}</span><span>${val}</span></div>`;
+    h = made ? bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + `<div class="list">${kv('Member', esc(made.person))}${kv('Account', esc(made.id))}${kv('Password', esc(made.password))}${kv('Until', hkAt(made.until))}</div>
+      <p class="note">${esc(made.person)} signs in with this account and works as the Group Lead until then; the account then ends by itself.</p><button class="nb pri" style="width:100%" data-a="copyacct:standin">Copy</button>`
+      : bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + (x ? `<div class="list"><div class="row g-acct">${sym('key', 'Account')}<span>${esc(x.person)}<span class="cap">${esc(x.id)} · Until ${hkAt(x.until)}</span></span>${isLead() ? pwView(x.id, false) : ''}</div><button class="row g-sw danger" data-a="standinoff:${g}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>End Stand-in</span></button></div>` : '') +
+      `<section class="sec"><p class="sh">${x ? 'Change to' : 'Choose a Member'}</p><div class="list">${roster(g).people.map(p => p[1]).filter(Boolean).map(n => `<button class="row g-opt" data-a="standinon:${g}:${esc(n)}"><span>${esc(n)}</span><span></span></button>`).join('') || '<p class="empty">No members</p>'}</div></section>
+      <p class="note">The stand-in works as the Group Lead for 3 days. One per group: a new one ends the last.</p>`;
   }
   // Recently Deleted: events deleted in the last 30 days; Restore brings one back as it was
   if (s.k === 'deleted') h = bar(close, 'Recently Deleted', '') + (!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? `<div class="list">${S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('')}</div>` : '<p class="empty">No deleted events</p>');
@@ -965,7 +996,6 @@ document.addEventListener('click', async e => {
       EVENTS.push({id, v: 4, date: n.date, name: n.name.trim(), asmTime: n.asmTime, venue: n.venue, leading: n.leading ? n.leading.split(/[、,，]/).map(x => x.trim()).filter(Boolean) : [], support: [], lead: CHAIRS.includes(V().name) ? V().name : '', remarks: '', groups: [], mcs: [], rows: [], tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: [], upd: {}});
       log(EVENTS[EVENTS.length - 1], 'Created the event'); S.sheet = null; go({p: 'event', ev: id}); break; }
     case 'pickn': { const [tid, n] = arg.split(':'), t = ev.tasks.find(x => x.id === tid); t.names = t.names.includes(n) ? t.names.filter(x => x !== n) : [...t.names, n]; log(ev, `${t.text}: ${t.names.join('、') || 'no one'}`); render(); break; }
-    case 'acting': { const [g, n] = arg.split(':'), gr = ev.groups.find(x => x.name === g); gr.acting = gr.acting === n ? null : n; log(ev, `Acting Group Lead: ${gr.acting || 'none'}`); render(); break; }
     case 'here': { const [g, n] = arg.split(':'), a2 = ev.att[g] = ev.att[g] || {}; if (a2[n]) delete a2[n]; else a2[n] = NOW(); render(); break; }
     case 'rollaw': { const [lid, aid, i] = arg.split(':'), a2 = ev.awards[lid].awards.find(x => x.id === aid), k = `${aid}:${a2.rows[+i][1]}`, m = ((ev.roll = ev.roll || {}).aw = ev.roll.aw || {}); if (m[k]) delete m[k]; else m[k] = NOW(); render(); break; }
     case 'rollgu': { const m = ((ev.roll = ev.roll || {}).gu = ev.roll.gu || {}); if (m[arg]) delete m[arg]; else m[arg] = NOW(); render(); break; }
@@ -1027,6 +1057,22 @@ document.addEventListener('click', async e => {
       S.alert = null; S.edit = false; S.stack.pop(); render(); toast('Deleted'); break;
     case 'gremove': ev.groups = ev.groups.filter(x => x.name !== arg); dropTasks(ev, arg); S.alert = null; render(); break;
     case 'signout': signOut(); break;
+    case 'standin': S.sheet = {k: 'standin', g: arg}; S.made = null; layer(); break;
+    case 'standinon': case 'standinoff': { const [g, n] = arg.split(':');
+      try { const r2 = await api('standin', {method: a === 'standinon' ? 'POST' : 'DELETE', body: JSON.stringify({group: g, person: n})}), b2 = await r2.json();
+        if (!r2.ok) throw new Error(b2.error);
+        STANDINS = STANDINS.filter(y => y.grp !== g); PWSHOW = null;
+        if (a === 'standinon') { S.made = {...b2, grp: g}; STANDINS.push({id: b2.id, grp: g, person: b2.person, until: b2.until}); } else toast('Stand-in ended');
+        S.xaccts = null; render(); }
+      catch (err) { toast(SYNC.offline ? 'No connection' : 'Not changed'); } break; }
+    case 'copyacct': { const x = arg === 'standin' ? S.made : FRESH.find(y => y.id === arg);
+      const more = arg === 'standin' ? `${x.person}：${x.grp} Stand-in，有效至 ${hkAt(x.until)}` : '登入後可查看 閣下任 Leading 或 Supporting Teacher 之活動。';
+      try { await navigator.clipboard.writeText(signInText(x.id, x.password, more)); toast('Copied'); } catch (err) { toast('Could not copy'); } break; }
+    case 'freshdone': try { const r2 = await api('fresh', {method: 'DELETE'}); if (!r2.ok) throw new Error(); FRESH = []; render(); } catch (err) { toast('No connection'); } break;
+    case 'askdropacct': S.alert = {t: `Delete ${arg}'s Account?`, m: `${arg} can no longer sign in. Their events stay. Saving an event that names ${arg} makes a new account with a new password.`, verb: 'Delete', act: 'dropacct:' + arg}; layer(); break;
+    case 'dropacct': S.alert = null;
+      try { const r2 = await api('account', {method: 'DELETE', body: JSON.stringify({id: arg})}); if (!r2.ok) throw new Error(); S.xaccts = null; FRESH = FRESH.filter(y => y.id !== arg); S.stack.pop(); render(); toast('Account deleted'); }
+      catch (err) { layer(); toast('Not deleted'); } break;
   }
 });
 // Adding a document ends the event's Edit and opens the new document in Edit
@@ -1281,6 +1327,21 @@ function apply(rows) {
   if (changed) cacheSave();
   return changed;
 }
+// What the server says about this account and the accounts it looks after; true when something shown changed
+function takeAccounts(b) {
+  const before = J([XACCT, STANDINS, FRESH]);
+  if (b.account && !ACCOUNTS.some(x => x.id === b.account.id)) { XACCT = b.account; store.set('xacct', XACCT); }
+  if (b.standins) STANDINS = b.standins;
+  if (isLead()) FRESH = b.fresh || [];
+  return J([XACCT, STANDINS, FRESH]) !== before;
+}
+// The Event Lead's list of added accounts (teachers and stand-ins), for Users & Groups
+async function loadXaccts() {
+  S.xaccts = 'loading';
+  try { const r = await api('accounts'), b = await r.json(); S.xaccts = r.ok ? b.accounts.filter(x => x.code || x.type === 'standin') : []; }
+  catch (e) { S.xaccts = null; return; }
+  if (cur() && ['members', 'group'].includes(cur().p)) render();
+}
 function takeLists(b) {
   const rosterDirty = SYNC.rosterBase && J(rosterOut(ROSTER)) !== SYNC.rosterBase;
   if (b.rosters && !rosterDirty && !(cur() && cur().p === 'group' && S.edit)) { ROSTER = rosterIn(b.rosters); SYNC.rosterBase = J(rosterOut(ROSTER)); }
@@ -1294,7 +1355,7 @@ async function loadAll() {
   try {
     const r = await api('state?since=0&full=1'), b = await r.json();
     if (!r.ok) throw new Error(b.error);
-    takeLists(b);
+    takeLists(b); takeAccounts(b);
     apply(b.rows);
     await syncPhotos(b.photos).catch(() => {});
     // An event this device knew that the server no longer has at all: keep only if it has unsent changes
@@ -1320,8 +1381,8 @@ async function pull(full) {
     // A newer page is live: reload onto it while nothing is being changed here (no Edit, sheet, menu or alert, no unsent save)
     if (b.ver && b.ver !== PAGE_VER && !S.edit && !S.sheet && !S.menu && !S.alert && !SYNC.busy.size && !EVENTS.some(e => J(e) !== SYNC.base[e.id])) { location.reload(); return; }
     if (full) takeLists(b);
-    const photos = await syncPhotos(b.photos).catch(() => false);
-    if (apply(b.rows) || photos || full) refresh();
+    const photos = await syncPhotos(b.photos).catch(() => false), accts = takeAccounts(b);
+    if (apply(b.rows) || photos || accts || full) refresh();
   } catch (e) { SYNC.offline = true; }
 }
 // After Done or Cancel: what others saved to this event while it was being edited
@@ -1357,6 +1418,7 @@ async function push(id, s) {
       SYNC.rev[id] = b.rev; SYNC.seq = Math.max(SYNC.seq, b.rev);
       if (s === null) delete SYNC.base[id];
       else { SYNC.base[id] = b.data; if (local && JSON.stringify(local) === s && id !== editingId()) { replaceIn(local, JSON.parse(b.data)); refresh(); } }
+      if (b.made) { S.xaccts = null; pull(); }  // teachers named for the first time got an account: show it with its password
       SYNC.offline = false;
     } else if (r.status === 409) {
       SYNC.rev[id] = b.rev;
@@ -1388,7 +1450,7 @@ async function pushList(path, value) {
   catch (e) { persistSoon(6000); }
   finally { SYNC.busy.delete(path); cacheSave(); }
 }
-// Passwords: the Event Lead sets them on a Members page; they are kept scrambled, so no one can read one back
+// Passwords: the Event Lead sets them on a Users & Groups page; they are kept scrambled, so no one can read one back
 async function savePasswords() {
   const typed = Object.entries(PASSWORDS).filter(([, v]) => v && v.trim());
   PASSWORDS = {}; PWSHOW = null;
@@ -1455,14 +1517,14 @@ document.addEventListener('submit', async e => {
     const b = await r.json();
     if (!r.ok) { err.textContent = b.error || 'Could not sign in'; btn.disabled = false; return; }
     SYNC.token = b.token; S.acct = b.account.id; S.who = null; S.stack = [];
-    store.set('token', b.token); store.set('acct', S.acct); store.del('who');
+    store.set('token', b.token); store.set('acct', S.acct); store.del('who'); takeAccounts(b);
     render(); await loadAll();
   } catch (x) { err.textContent = 'No connection. Try again when online.'; btn.disabled = false; }
 });
 function signedOut(msg) {
   SYNC.token = null; SYNC.loaded = false; SYNC.base = {}; SYNC.rev = {}; SYNC.seq = 0; SYNC.rosterBase = ''; SYNC.chairBase = ''; SYNC.adminBase = '';
-  store.del('token'); store.del('acct'); store.del('who'); store.del('cache');
-  EVENTS = []; ROSTER = {}; CHAIRS = []; ADMINS = []; PWSHOW = null; S.pwOpen = new Set(); S.acct = null; S.who = null; S.stack = []; S.sheet = null; S.menu = null; S.alert = null; S.edit = false; S.find = '';
+  store.del('token'); store.del('acct'); store.del('who'); store.del('cache'); store.del('xacct');
+  XACCT = null; STANDINS = []; FRESH = []; S.xaccts = null; S.made = null; EVENTS = []; ROSTER = {}; CHAIRS = []; ADMINS = []; PWSHOW = null; S.pwOpen = new Set(); S.acct = null; S.who = null; S.stack = []; S.sheet = null; S.menu = null; S.alert = null; S.edit = false; S.find = '';
   render(); if (msg) toast(msg);
 }
 function signOut() {
@@ -1587,7 +1649,7 @@ async function exportDoc(ev, id) {
 
 /* ---------- Start: the last account on this device, its copy of the events, then the server ---------- */
 // A device signed in to Teacher or Admin before they were renamed (26/10/02) carries on as Viewer or Editor
-SYNC.token = store.get('token'); S.acct = ({Teacher: 'Viewer', Admin: 'Editor'})[store.get('acct')] || store.get('acct'); S.who = store.get('who'); S.seen = store.get('seen') || {};
+SYNC.token = store.get('token'); S.acct = ({Teacher: 'Viewer', Admin: 'Editor'})[store.get('acct')] || store.get('acct'); S.who = store.get('who'); S.seen = store.get('seen') || {}; XACCT = store.get('xacct');
 PHOTOS = store.get('photos') || {};
 if (SYNC.token && ACCT()) {
   if (cacheLoad()) { SYNC.loaded = true; S.stack = [{p: 'events'}]; }
