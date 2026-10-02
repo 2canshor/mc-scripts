@@ -4,6 +4,7 @@
 // kind of document; the teacher reads. An event is compared with the stored one piece by piece ("units"), and every
 // changed piece must be allowed. The server also records who changed what, for the yellow update dots.
 import { SEED } from "./accounts-seed.js";
+import { PAGE_VERSION } from "./page-version.js";
 
 const GROUPS = ["MC", "Backstage", "Reception"].flatMap((m) => ["A", "B", "C", "D"].map((x) => `${m} Group ${x}`));
 export const ACCOUNTS = [
@@ -409,7 +410,7 @@ export async function handleEvents(request, env, url, path) {
     try { await importApplications(env, false); } catch (e) { /* the events already there still load */ }
     const { results } = await env.DB.prepare("SELECT id, data, deleted, seq FROM events WHERE seq > ? ORDER BY seq").bind(since).all();
     const rows = results.map((r) => ({ id: r.id, rev: r.seq, deleted: !!r.deleted, data: r.deleted ? null : JSON.stringify(visible(acct, upgrade(JSON.parse(r.data)))) }));
-    const out = { account: { id: acct.id, type: acct.type, group: acct.group || null }, rows, photos: await photoVersions(env) };
+    const out = { account: { id: acct.id, type: acct.type, group: acct.group || null }, rows, photos: await photoVersions(env), ver: PAGE_VERSION };
     if (!since || url.searchParams.get("full")) {
       const s = await env.DB.prepare("SELECT k, v FROM settings WHERE k IN ('rosters', 'chairs', 'admins')").all();
       const map = Object.fromEntries(s.results.map((r) => [r.k, JSON.parse(r.v)]));

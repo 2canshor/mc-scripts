@@ -831,7 +831,8 @@ function pEvent(ev) {
 }
 // Facts: a symbol and a value, no labels (each label is the symbol's spoken name). The event begins at Assembly.
 // Teachers: one field each, and one empty field after them for the next (as the Script's MC line)
-const teachF = (k, list, ph) => [...list, ''].map((n, i) => fld(`teach:${k}:${i}`, n, ph, k === 'support' ? 'muted' : '')).join('');
+// One Leading Teacher; Supporting Teachers as many as needed, with an empty field after them for the next
+const teachF = (k, list, ph) => (k === 'leading' ? [list[0] || ''] : [...list, '']).map((n, i) => fld(`teach:${k}:${i}`, n, ph, k === 'support' ? 'muted' : '')).join('');
 function facts(ev, ed) {
   const F = {assemble: 'asmTime', pin: 'venue', teacher: 'leading', flag: 'lead', note: 'remarks'};
   const row = (n, label, v, top) => `<div class="row g-p${top ? ' top' : ''}">${ed ? '' : dot(`${ev.id}:f:${F[n]}`)}${sym(n, label)}<span>${v}</span></div>`;
@@ -1444,6 +1445,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
+const PAGE_VER = 'be3c65122d2f';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
@@ -1569,6 +1571,8 @@ async function pull(full) {
   try {
     const r = await api('state?since=' + (full ? '0&full=1' : SYNC.seq)); if (!r.ok) return;
     const b = await r.json(); SYNC.offline = false;
+    // A newer page is live: reload onto it while nothing is being changed here (no Edit, sheet, menu or alert, no unsent save)
+    if (b.ver && b.ver !== PAGE_VER && !S.edit && !S.sheet && !S.menu && !S.alert && !SYNC.busy.size && !EVENTS.some(e => J(e) !== SYNC.base[e.id])) { location.reload(); return; }
     if (full) takeLists(b);
     const photos = await syncPhotos(b.photos).catch(() => false);
     if (apply(b.rows) || photos || full) refresh();

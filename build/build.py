@@ -28,5 +28,10 @@ print('built', len(std), 'real names found:', bad)
 # The events page: build/events.src.html with the same Word generator and template, written to src/events.html.
 # Its data comes from the server, never from this repository.
 ev = open(os.path.join(here, 'events.src.html'), encoding='utf-8').read().replace('%%GEN%%', g).replace('%%TPL%%', tpl)
+# A version taken from the page itself: the server reports it, and a page left open on an older one reloads itself
+import hashlib
+ver = hashlib.sha256(ev.encode('utf-8')).hexdigest()[:12]
+ev = ev.replace('%%VER%%', ver)
 open(os.path.join(root, 'src', 'events.html'), 'w', encoding='utf-8').write(ev)
+open(os.path.join(root, 'src', 'page-version.js'), 'w', encoding='utf-8').write('// Written by build/build.py: the version of src/events.html\nexport const PAGE_VERSION = "' + ver + '";\n')
 print('events page built', len(ev), 'real names found:', [w for w in names if w in ev])
