@@ -129,8 +129,9 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .ln>.udot{top:calc(10px + .75em - 4px)}
 .srow,.award h2,.lh{position:relative}
 .srow>.udot,.award h2>.udot{left:-16px;top:calc(.875em - 4px)}
-.badge{color:var(--secondary);font-variant-numeric:tabular-nums}
+.badge{color:var(--danger);font-variant-numeric:tabular-nums}  /* a red digit, never a ball (26/10/02) */
 .nob{color:var(--danger);display:inline-grid;vertical-align:-4px}
+.nob.plain{color:var(--secondary)}
 .nob svg.i{width:19px;height:19px}
 .isym{display:inline-grid;vertical-align:-3px;color:var(--secondary)}
 .isym svg.i{width:17px;height:17px}
@@ -689,7 +690,12 @@ const linked = s => esc(s).replace(/https?:\/\/[^\s<"]+/g, u => `<a class="lk" h
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const ic = (n, c = '') => `<svg class="i ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 // A small group's symbol in its own colour: A red, B green, C blue, D purple, so MC Group A and MC Group B look different
-const gsym = g => sym(SYM[kind(g)], g, 'ic g' + g.slice(-1));
+// Colour marks the viewer's own work (26/10/02): a Group Lead or member sees only their own group's symbol in colour, others
+// as plain as text; the red "no one yet" shows only where the viewer adds names (Event Lead: every group; Group Lead: their own)
+const own = g => !V() || !['member', 'gl'].includes(V().type) || g === V().group;
+const fills = g => !!V() && (isLead() || (V().type === 'gl' && g === V().group));
+const gcls = g => own(g) ? ' g' + g.slice(-1) : '';
+const gsym = g => sym(SYM[kind(g)], g, 'ic' + gcls(g));
 const sym = (n, label, c = 'ic') => `<span class="${c}"${label ? ` role="img" aria-label="${esc(label)}"` : ''}>${ic(n)}</span>`;
 const gname = g => g === 'All' ? 'Everyone' : esc(g).replace(/ Group /, ' Group&nbsp;');
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
@@ -720,7 +726,7 @@ const isNew = key => { const u = updOf(key); return !!u && !!V() && u.by !== V()
 const dot = (key, opens) => { if (!isNew(key)) return ''; if (!opens) S.toSee.add(key); return '<span class="udot" role="img" aria-label="Updated"></span>'; };
 const seeNow = key => { const u = updOf(key); if (u && V()) { mySeen()[key] = u.at; store.set('seen', S.seen); } };
 const seePage = () => { if (V()) S.toSee.forEach(seeNow); S.toSee = new Set(); };
-const nobody = () => `<span class="nob" role="img" aria-label="No one yet">${ic('nobody')}</span>`;
+const nobody = g => `<span class="nob${fills(g) ? '' : ' plain'}" role="img" aria-label="No one yet">${ic('nobody')}</span>`;
 const badge = n => `<span class="badge" aria-label="${n} without a name">${n}</span>`;
 // A toast says what just happened; it may carry one action (MC Scripts' 復原), and then stays 8 seconds
 const toast = (m, act) => { S.toast = m; S.toastAct = act || null; layer(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; S.toastAct = null; layer(); }, act ? 8000 : 2400); };
@@ -736,7 +742,7 @@ const sorted = (ev, list) => list.map((t, i) => [t, i]).sort((a, b) => order(ev,
 const groupTasks = (ev, g) => ev.tasks.filter(t => !t.role && (t.to.includes(g) || t.to.includes('All')));
 const owner = t => t.to.includes('All') ? sym('all', 'Everyone', 'ic gAll') : t.to.length ? gsym(t.to[0]) : `<span class="ic">${nobody()}</span>`;
 const names = t => { if (t.to.includes('All')) return ''; const v = V();
-  return `<span class="who">${t.names.length ? t.names.map(n => `<span class="nw${n === v.name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`; };
+  return `<span class="who">${t.names.length ? t.names.map(n => `<span class="nw${n === v.name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody(t.to[0])}</span>`; };
 const remark = t => t.remark ? `<span class="cap">${esc(t.remark)}</span>` : '';
 const named = ev => (ev.mcs || []).filter(m => m[1]);
 // Awardee and guest paragraphs: the rows they read, by index into the list; rows not yet read elsewhere go into a new one
@@ -875,10 +881,10 @@ const taskSec = (ev, head, tasks, render) => { const rows = taskRows(ev, tasks, 
   return rows ? `<section class="sec"><p class="sh">${head}</p><div class="list">${rows}</div></section>` : tasks.length ? '' : `<section class="sec"><p class="sh">${head}</p><p class="empty">No tasks yet</p></section>`; };
 // Who a task is for: the group (or Everyone), then the names the Group Lead has added
 // A group written out keeps its coloured symbol in front (Everyone its own symbol in grey)
-const gtag = g => g === 'All' ? `<span class="nw"><span class="isym gAll">${ic('all')}</span> Everyone</span>` : `<span class="nw"><span class="isym g${g.slice(-1)}">${ic(SYM[kind(g)])}</span> ${gname(g)}</span>`;
+const gtag = g => g === 'All' ? `<span class="nw"><span class="isym gAll">${ic('all')}</span> Everyone</span>` : `<span class="nw"><span class="isym${gcls(g)}">${ic(SYM[kind(g)])}</span> ${gname(g)}</span>`;
 // Under a task in reading, the group is its symbol alone (26/10/02), then the names; Everyone keeps its word, having no names after it
-const gicon = g => `<span class="isym g${g.slice(-1)}" role="img" aria-label="${esc(g)}" title="${esc(g)}">${ic(SYM[kind(g)])}</span>`;
-const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}</span>` : `<span class="who">${t.to.length ? gicon(t.to[0]) + ' ' : ''}${t.names.length ? t.names.map(n => `<span class="nw${n === V().name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody()}</span>`;
+const gicon = g => `<span class="isym${gcls(g)}" role="img" aria-label="${esc(g)}" title="${esc(g)}">${ic(SYM[kind(g)])}</span>`;
+const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}</span>` : `<span class="who">${t.to.length ? gicon(t.to[0]) + ' ' : ''}${t.names.length ? t.names.map(n => `<span class="nw${n === V().name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody(t.to[0])}</span>`;
 // Every task of the event (Event Lead and Teacher). In Edit each task chooses when (Before the Event or a Rundown line) and which group.
 function allTasks(ev, ed) {
   const list = sorted(ev, ev.tasks.filter(t => !t.role));
@@ -908,7 +914,7 @@ function yourPart(ev, ed) {
     // Duty groups: who is on duty, with the number of tasks still without a name. Their tasks are in Tasks below.
     const rows = ev.groups.map(gr => { const g = gr.name, n = openCount(ev, g), cov = gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
       if (ed) return `<div class="row g-p" tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto">${gsym(g)}<span><span class="fl">${pick(`dg:${g}`, gname(g), dutyOpts(ev, kind(g), g), 'Group')}</span>${cov}</span>${rmB('askgroup:' + g, 'Remove duty group')}</div>`;
-      return `<div class="row g-p" style="grid-template-columns:22px minmax(0,1fr) auto">${gsym(g)}<span>${gname(g)}${cov}</span><span>${n ? badge(n) : ''}</span></div>`; }).join('');
+      return `<div class="row g-p" style="grid-template-columns:22px minmax(0,1fr) auto">${gsym(g)}<span>${gname(g)}${cov}</span><span>${n && fills(g) ? badge(n) : ''}</span></div>`; }).join('');
     return `<section class="sec"><p class="sh">Duty Groups</p><div class="list">${rows}${ed ? addB('menu:addgroup', 'Add Duty Group') : ''}</div>${!rows && !ed ? '<p class="empty">No duty groups yet</p>' : ''}</section>` + (ed ? (isDay(ev) ? `<section class="sec"><p class="sh">Rundown</p>${runEdit(ev)}</section>` : '') + allTasks(ev, true) : isDay(ev) ? daySec(ev) : allTasks(ev, false));
   }
   // Teacher: who is responsible
@@ -929,12 +935,14 @@ function memberList(ev, g) {
 }
 function documents(ev, ed) {
   const items = isDay(ev) ? [] : [['rundown', 'list', 'Rundown', '']];
+  // The Rundown's red count: tasks with no name yet that this viewer fills (Event Lead: every group's; Group Lead: their own group's)
+  const open = ev.groups.filter(x => fills(x.name)).reduce((k, x) => k + openCount(ev, x.name), 0);
   if (hasScript(ev) || (ev.mcs || []).length) items.push(['script', 'doc', 'Script', ed ? 'delscript' : '']);
   Object.entries(ev.awards || {}).forEach(([id, d]) => items.push(['aw:' + id, 'users', 'Participant List', ed ? 'deldoc:aw:' + id : '']));
   if (ev.guests) items.push(['guests', 'guests', 'Guest List', ed ? 'deldoc:guests' : '']);
   const rows = items.map(([id, n, name, del]) => ed
     ? `<div class="row g-ic">${sym(n, '')}<span>${esc(name)}</span><span></span><span></span></div>`
-    : `<button class="row g-ic" data-a="doc:${id}">${dot(`${ev.id}:d:${id}`, true)}${sym(n, '')}<span>${esc(name)}</span><span></span>${ic('chev-r', 'go')}</button>`).join('');
+    : `<button class="row g-ic" data-a="doc:${id}">${dot(`${ev.id}:d:${id}`, true)}${sym(n, '')}<span>${esc(name)}</span><span>${id === 'rundown' && open ? badge(open) : ''}</span>${ic('chev-r', 'go')}</button>`).join('');
   const add = ed && menuItems('adddoc').length ? addB('menu:adddoc', 'Add Document') : '';
   return rows || add ? `<section class="sec"><p class="sh">Documents</p><div class="list">${rows}${add}</div></section>` : '';
 }
@@ -1077,11 +1085,9 @@ function sheet() {
   if (s.k === 'standin') {
     const g = s.g, x = STANDINS.find(y => y.grp === g), made = S.made && S.made.grp === g ? S.made : null;
     const kv = (k, val) => `<div class="row" style="grid-template-columns:6em minmax(0,1fr)"><span class="t">${k}</span><span>${val}</span></div>`;
-    h = made ? bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + `<div class="list">${kv('Member', esc(made.person))}${kv('Account', esc(made.id))}${kv('Password', esc(made.password))}${kv('Until', hkAt(made.until))}</div>
-      <p class="note">${esc(made.person)} signs in with this account and works as the Group Lead until then; the account then ends by itself.</p><button class="nb pri" style="width:100%" data-a="copyacct:standin">Copy</button>`
+    h = made ? bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + `<div class="list">${kv('Member', esc(made.person))}${kv('Account', esc(made.id))}${kv('Password', esc(made.password))}${kv('Until', hkAt(made.until))}</div><button class="nb pri" style="width:100%;margin-top:16px" data-a="copyacct:standin">Copy</button>`
       : bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + (x ? `<div class="list"><div class="row g-acct">${sym('key', 'Account')}<span>${esc(x.person)}<span class="cap">${esc(x.id)} · Until ${hkAt(x.until)}</span></span>${isLead() ? pwView(x.id, false) : ''}</div><button class="row g-sw danger" data-a="standinoff:${g}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>End Stand-in</span></button></div>` : '') +
-      `<section class="sec"><p class="sh">${x ? 'Change to' : 'Choose a Member'}</p><div class="list">${roster(g).people.map(p => p[1]).filter(Boolean).map(n => `<button class="row g-opt" data-a="standinon:${g}:${esc(n)}"><span>${esc(n)}</span><span></span></button>`).join('') || '<p class="empty">No members</p>'}</div></section>
-      <p class="note">The stand-in works as the Group Lead for 3 days. One per group: a new one ends the last.</p>`;
+      `<section class="sec"><p class="sh">${x ? 'Change to' : 'Choose a Member'}</p><div class="list">${roster(g).people.map(p => p[1]).filter(n => n && !(x && x.person === n)).map(n => `<button class="row g-opt" data-a="standinon:${g}:${esc(n)}"><span>${esc(n)}</span><span></span></button>`).join('') || '<p class="empty">No members</p>'}</div></section>`;
   }
   // Recently Deleted: events deleted in the last 30 days; Restore brings one back as it was
   if (s.k === 'deleted') h = bar(close, 'Recently Deleted', '') + (!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? `<div class="list">${S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('')}</div>` : '<p class="empty">No deleted events</p>');
@@ -1497,7 +1503,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '12f83ae7d5a5';
+const PAGE_VER = 'a3ffa8af5c7a';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
