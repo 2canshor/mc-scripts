@@ -283,6 +283,12 @@ html.locked,html.locked body{overflow:hidden}
 .av .ov svg.i{width:26px;height:26px}
 @media (hover:hover){.avb:hover .ov{opacity:1}}
 .avb:focus-visible .ov{opacity:1}
+.pn{display:inline-flex;align-items:center;gap:5px;margin-right:10px;cursor:pointer;white-space:nowrap;vertical-align:-4px}
+.pn:last-child{margin-right:0}
+.pn .av{width:20px;height:20px;font-size:11px}
+.pn:hover>span:last-child{text-decoration:underline;text-underline-offset:3px}
+.opt-n{display:inline-flex;align-items:center;gap:10px}
+.opt-n .av{width:28px;height:28px;font-size:13px}
 .me-row{display:grid;grid-template-columns:60px minmax(0,1fr);column-gap:14px;align-items:center;margin:4px 0 6px}
 .me-row .av{width:60px;height:60px;font-size:24px}
 .g-sw{grid-template-columns:32px minmax(0,1fr)}
@@ -488,7 +494,7 @@ const sorted = (ev, list) => list.map((t, i) => [t, i]).sort((a, b) => order(ev,
 const groupTasks = (ev, g) => ev.tasks.filter(t => !t.role && (t.to.includes(g) || t.to.includes('All')));
 const owner = t => t.to.includes('All') ? sym('all', 'Everyone', 'ic gAll') : t.to.length ? gsym(t.to[0]) : `<span class="ic">${nobody()}</span>`;
 const names = t => { if (t.to.includes('All')) return ''; const v = V();
-  return `<span class="who">${t.names.length ? t.names.map(n => `<span class="nw${n === v.name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody(t.to[0])}</span>`; };
+  return `<span class="who">${t.names.length ? t.names.map(n => mention(n, n === v.name)).join('') : nobody(t.to[0])}</span>`; };
 const remark = t => t.remark ? `<span class="cap">${esc(t.remark)}</span>` : '';
 const named = ev => (ev.mcs || []).filter(m => m[1]);
 // Awardee and guest paragraphs: the rows they read, by index into the list; rows not yet read elsewhere go into a new one
@@ -519,6 +525,30 @@ function rotation(ev, k) {
 const dutyOpts = (ev, k, g) => rotation(ev, k).filter(x => x.g === g || !ev.groups.some(y => y.name === x.g)).map((x, i) => `<option value="${x.g}"${x.g === g ? ' selected' : ''}>${x.g}${i === 0 && x.g !== g ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}</option>`).join('');
 /* ---------- Controls and fields ---------- */
 const avatar = n => PHOTOS[n] && PHOTOS[n].d ? `<img src="${PHOTOS[n].d}" alt="">` : esc([...(n || '?')][0]);
+// A person named anywhere carries their photo (or initial) before the name, as characters do in Mario Odyssey's dialogue;
+// tapping the photo or name opens their card (Teams' profile card): who they are, who they report to, their events
+const pav = n => `<span class="av">${avatar(n)}</span>`;
+const mention = (n, me) => `<span class="pn${me ? ' me' : ''}" data-a="card:${esc(n)}" role="button" tabindex="0">${pav(n)}<span>${esc(n)}</span></span>`;
+// Who a person is, from the rosters, the chairs and the teachers: position, group, class, who they report to, their events
+function personOf(n) {
+  const evs = f => EVENTS.filter(f).sort((a, b) => a.date.localeCompare(b.date));
+  if (CHAIRS.includes(n)) return {pos: 'Chair', up: ADMINS.filter(Boolean), evs: evs(e => e.lead === n)};
+  const g = ALL_GROUPS.find(x => members(x).includes(n));
+  if (g) { const lead = roster(g).lead[1] === n;
+    return {pos: lead ? 'Group Lead' : 'Member', g, cls: clsOf(g, n), up: lead ? CHAIRS.filter(Boolean) : [roster(g).lead[1]].filter(Boolean), evs: evs(e => e.groups.some(x => x.name === g))}; }
+  const code = teacherCode(n), ca = ADMINS.map(teacherCode).includes(code);
+  if (ca || taught(code).length) return {pos: ca ? 'CA Teacher' : 'Teacher', up: [], evs: evs(e => [...(e.leading || []), ...(e.support || [])].some(x => teacherCode(x) === code))};
+  return {pos: '', up: [], evs: []};
+}
+// The card: photo, name, position; then Reports To and the person's events (upcoming first, then past)
+function cardOf(n) {
+  const w = personOf(n), up = w.evs.filter(e => e.date >= TODAY), past = w.evs.filter(e => e.date < TODAY).reverse();
+  const evRows = l => l.map(e => `<button class="row g-ev" data-a="cardopen:${e.id}"><span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('');
+  return `<div class="me-row"><span class="av">${avatar(n)}</span><span><strong>${esc(n)}</strong><span class="cap">${esc([w.pos, w.g, w.cls].filter(Boolean).join(' · '))}</span></span></div>` +
+    (w.up.length ? `<section class="sec"><p class="sh">Reports To</p><div class="list">${w.up.map(x => `<button class="row g-sw" data-a="card:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
+    (up.length ? `<section class="sec"><p class="sh">Upcoming</p><div class="list">${evRows(up)}</div></section>` : '') +
+    (past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${evRows(past)}</div></section>` : '');
+}
 const backBtn = () => `<button class="nb round glass" data-a="back" aria-label="Back">${ic('back')}</button>`;
 const shareBtn = `<button class="nb round glass" data-a="exportdoc" aria-label="Export">${ic('download')}</button>`;
 const docBar = (canEdit, del) => { const b = editBar(canEdit, del ? `<div class="glass grp"><button class="nb danger" data-a="${del}" aria-label="Delete">${ic('trash')}</button></div>` : ''); return {...b, r: S.edit ? b.r : shareBtn + b.r}; };
@@ -609,12 +639,12 @@ function facts(ev, ed) {
     ${row('teacher', 'Teachers', `<span class="tch" data-teach><span class="fl">${teachF('leading', ev.leading, 'Leading Teacher')}</span><span class="fl">${teachF('support', ev.support, 'Supporting Teacher')}</span></span>`, true)}
     ${row('flag', 'Event Lead', `<span class="fl">${pick('ev:lead', esc(ev.lead), CHAIRS.map(n => `<option${n === ev.lead ? ' selected' : ''}>${esc(n)}</option>`).join(''), 'Event Lead')}</span>`)}
     ${row('note', 'Remarks', box('ev:remarks', ev.remarks, 'Remarks'), true)}</section>`;
-  const t = [esc(ev.leading.join('、')), ev.support.length ? `<span class="muted">${esc(ev.support.join('、'))}</span>` : ''].filter(Boolean).join('　');
+  const t = [ev.leading.map(n => mention(n)).join(''), ev.support.length ? `<span class="muted">${ev.support.map(n => mention(n)).join('')}</span>` : ''].filter(Boolean).join('');
   return `<section class="sec list">
     ${ev.asmTime ? row('assemble', 'Assembly', `<span class="tn">${ev.asmTime}</span>`) : ''}
     ${ev.venue ? row('pin', 'Venue', esc(ev.venue)) : ''}
     ${t ? row('teacher', 'Teachers', t) : ''}
-    ${ev.lead ? row('flag', 'Event Lead', esc(ev.lead)) : ''}
+    ${ev.lead ? row('flag', 'Event Lead', mention(ev.lead)) : ''}
     ${ev.remarks ? row('note', 'Remarks', `<span class="pre">${linked(ev.remarks)}</span>`, true) : ''}</section>`;
 }
 // A list of tasks holds one kind of time only, dates: the work before the event. On the event's day the page shows the
@@ -630,7 +660,7 @@ const taskSec = (ev, head, tasks, render) => { const rows = taskRows(ev, tasks, 
 const gtag = g => g === 'All' ? `<span class="nw"><span class="isym gAll">${ic('all')}</span> Everyone</span>` : `<span class="nw"><span class="isym${gcls(g)}">${ic(SYM[kind(g)])}</span> ${gname(g)}</span>`;
 // Under a task in reading, the group is its symbol alone (26/10/02), then the names; Everyone keeps its word, having no names after it
 const gicon = g => `<span class="isym${gcls(g)}" role="img" aria-label="${esc(g)}" title="${esc(g)}">${ic(SYM[kind(g)])}</span>`;
-const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}</span>` : `<span class="who">${t.to.length ? gicon(t.to[0]) + ' ' : ''}${t.names.length ? t.names.map(n => `<span class="nw${n === V().name ? ' me' : ''}">${esc(n)}</span>`).join('、') : nobody(t.to[0])}</span>`;
+const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}</span>` : `<span class="who">${t.to.length ? gicon(t.to[0]) + ' ' : ''}${t.names.length ? t.names.map(n => mention(n, n === V().name)).join('') : nobody(t.to[0])}</span>`;
 // Every task of the event (Event Lead and Teacher). In Edit each task chooses when (Before the Event or a Rundown line) and which group.
 function allTasks(ev, ed) {
   const list = sorted(ev, ev.tasks.filter(t => !t.role));
@@ -665,8 +695,8 @@ function yourPart(ev, ed) {
   }
   // Teacher: who is responsible
   const who = ev.groups.map(gr => { const g = gr.name, ns = [...new Set(ev.tasks.filter(t => t.to.includes(g)).flatMap(t => t.names))];
-    const lines = ns.map(n => `<span class="nw">${esc(n)}</span>`);
-    return `<div class="row g-p top">${gsym(g)}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('、')}</span>` : ''}</span></div>`; }).join('');
+    const lines = ns.map(n => mention(n));
+    return `<div class="row g-p top">${gsym(g)}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('')}</span>` : ''}</span></div>`; }).join('');
   return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + (isDay(ev) ? daySec(ev) : allTasks(ev, false));
 }
 // A group's members: attendance | name, time, Group Lead | ›. Each is ticked one by one. The row opens their tasks.
@@ -674,8 +704,8 @@ function memberList(ev, g) {
   const lead = roster(g).lead[1], at = ev.att[g] || {};
   const rows = members(g).map(n => { const t = at[n], lv = onLeave(ev, g, n), rs = n === lead ? ['Group Lead'] : [];
     const ck = lv && !t ? `<span class="ck" role="img" aria-label="On Leave">${ic('leave')}</span>` : `<button class="ck${t ? ' on' : ''}" data-a="here:${g}:${n}" aria-pressed="${!!t}" aria-label="${esc(n)} is here">${ic(t ? 'check-fill' : 'circle')}</button>`;
-    const inner = `<span class="nw">${esc(n)}${t ? `<span class="tm">${t}</span>` : ''}</span><span class="tags">${rs.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</span>`;
-    const row = `<div class="row g-mem">${ck}${n === lead ? `<span class="nmb" style="grid-template-columns:minmax(0,1fr) auto">${inner}</span>` : `<button class="nmb" data-a="sheet:person:${g}:${n}">${inner}${ic('chev-r', 'go')}</button>`}</div>`;
+    const inner = `<span class="nw opt-n">${pav(n)}<span>${esc(n)}${t ? `<span class="tm">${t}</span>` : ''}</span></span><span class="tags">${rs.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</span>`;
+    const row = `<div class="row g-mem">${ck}${n === lead ? `<button class="nmb" data-a="sheet:person:${g}:${n}">${inner}${ic('chev-r', 'go')}</button>` : `<button class="nmb" data-a="sheet:person:${g}:${n}">${inner}${ic('chev-r', 'go')}</button>`}</div>`;
     return n === lead ? row : `<div class="sw">${row}<div class="swa"><button data-a="leave:${g}:${n}">${lv ? 'Back' : 'On Leave'}</button></div></div>`; }).join('');
   return `<section class="sec"><p class="sh">Members</p><div class="list">${rows}</div></section>`;
 }
@@ -774,13 +804,13 @@ function pAccount(id) {
     ${ed ? '' : `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="askdropacct:${esc(code)}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>Delete Account</span></button></div></section>`}`}; }
   if (id === 'Viewer') return {...bar, title: 'Viewer', body: `<h1>Viewer</h1><section class="sec list">${acctRow('Viewer', ed)}</section>`};
   if (id === 'Editor') return {...bar, title: 'Editor', body: `<h1>Editor</h1><section class="sec list">${acctRow('Editor', ed)}</section>
-    <section class="sec"><p class="sh">Teachers</p><div class="list">${ADMINS.map((n, i) => ed ? `<div class="row" style="grid-template-columns:minmax(0,1fr) 24px"><span class="fl">${fld('admin:' + i, n, 'Name')}</span>${rmB('deladmin:' + i, 'Remove teacher')}</div>` : `<div class="row"><span>${esc(n)}</span></div>`).join('')}${ed ? addB('addadmin', 'Add Teacher') : ''}</div></section>`};
+    <section class="sec"><p class="sh">Teachers</p><div class="list">${ADMINS.map((n, i) => ed ? `<div class="row" style="grid-template-columns:minmax(0,1fr) 24px"><span class="fl">${fld('admin:' + i, n, 'Name')}</span>${rmB('deladmin:' + i, 'Remove teacher')}</div>` : `<div class="row"><span>${mention(n)}</span></div>`).join('')}${ed ? addB('addadmin', 'Add Teacher') : ''}</div></section>`};
   if (id === 'Event Lead') return {...bar, title: 'Event Lead', body: `<h1>Event Lead</h1><section class="sec list">${acctRow('Event Lead', ed)}</section>
-    <section class="sec"><p class="sh">Chairs</p><div class="list">${CHAIRS.map((n, i) => ed ? `<div class="row" style="grid-template-columns:minmax(0,1fr) 24px"><span class="fl">${fld('chair:' + i, n, 'Name')}</span>${rmB('delchair:' + i, 'Remove chair')}</div>` : `<div class="row"><span>${esc(n)}</span></div>`).join('')}${ed ? addB('addchair', 'Add Chair') : ''}</div></section>`};
+    <section class="sec"><p class="sh">Chairs</p><div class="list">${CHAIRS.map((n, i) => ed ? `<div class="row" style="grid-template-columns:minmax(0,1fr) 24px"><span class="fl">${fld('chair:' + i, n, 'Name')}</span>${rmB('delchair:' + i, 'Remove chair')}</div>` : `<div class="row"><span>${mention(n)}</span></div>`).join('')}${ed ? addB('addchair', 'Add Chair') : ''}</div></section>`};
   const g = id, r = roster(g);
   const person = (p, k, del) => ed
     ? `<div class="row g-kv"><span class="fl">${fld(`rc:${g}:${k}:0`, p[0], 'Class', 'upper')}</span><span class="fl">${fld(`rc:${g}:${k}:1`, p[1], 'Name')}</span>${del ? rmB(`delperson:${g}:${k}`, 'Remove member') : '<span></span>'}</div>`
-    : `<div class="row g-kv"><span class="t">${esc(p[0])}</span><span>${esc(p[1])}</span></div>`;
+    : `<div class="row g-kv"><span class="t">${esc(p[0])}</span><span>${p[1] ? mention(p[1]) : ''}</span></div>`;
   return {...bar, title: g, body: `<h1>${gname(g)}</h1>
     <section class="sec list">${acctRow(g, ed)}${acctRow(g + ' Lead', ed)}${standinRow(g)}</section>
     <section class="sec"><p class="sh">Group Lead</p><div class="list">${person(r.lead, 'lead')}</div></section>
@@ -806,7 +836,7 @@ function sheet() {
   }
   if (s.k === 'assign') {
     const t = ev.tasks.find(x => x.id === s.id), g = V().group;
-    h = bar(close, `People<span class="s2">${esc(t.text)}</span>`, '') + `<div class="list">${members(g).map(n => onLeave(ev, g, n) && !t.names.includes(n) ? `<div class="row g-opt" aria-disabled="true"><span class="muted">${esc(n)}</span>${sym('leave', 'On Leave')}</div>` : `<button class="row g-opt" data-a="pickn:${t.id}:${n}"><span>${esc(n)}</span>${check(t.names.includes(n))}</button>`).join('')}</div>`;
+    h = bar(close, `People<span class="s2">${esc(t.text)}</span>`, '') + `<div class="list">${members(g).map(n => onLeave(ev, g, n) && !t.names.includes(n) ? `<div class="row g-opt" aria-disabled="true"><span class="muted opt-n">${pav(n)}<span>${esc(n)}</span></span>${sym('leave', 'On Leave')}</div>` : `<button class="row g-opt" data-a="pickn:${t.id}:${n}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span>${check(t.names.includes(n))}</button>`).join('')}</div>`;
   }
   // A member's tasks: the group's tasks, ticked for this member (as People, from the member's side); then On Leave
   if (s.k === 'person') {
@@ -815,8 +845,9 @@ function sheet() {
     // Before the Event (dates) and On the Day (lines) are the sheet's two sections, so a date and a time never share a place
     const one = (t, when) => `<button class="row g-opt" data-a="pickn:${t.id}:${esc(n)}"><span>${esc(t.text)}<span class="cap">${when}</span></span>${check(t.names.includes(n))}</button>`;
     const sec = (head, l, when) => l.length ? `<section class="sec"><p class="sh">${head}</p><div class="list">${l.map(t => one(t, when(t))).join('')}</div></section>` : '';
-    h = bar(close, `Tasks<span class="s2">${esc(n)}</span>`, '') + (list.length ? sec('Before the Event', list.filter(t => !t.row), t => md(t.date || '')) + sec('On the Day', list.filter(t => t.row), t => esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' '))) : '<p class="empty">No tasks yet</p>') +
-      `<section class="sec"><div class="list"><label class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:pointer"><span>On Leave</span><input type="checkbox" class="switch" data-a="leave:${g}:${n}"${onLeave(ev, g, n) ? ' checked' : ''}></label></div></section>`;
+    const card = cardOf(n), cut = card.indexOf('<section'), head = cut < 0 ? card : card.slice(0, cut), rest = cut < 0 ? '' : card.slice(cut);
+    h = bar(close, '', '') + head + (n === roster(g).lead[1] ? '' : (list.length ? sec('Before the Event', list.filter(t => !t.row), t => md(t.date || '')) + sec('On the Day', list.filter(t => t.row), t => esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' '))) : '<p class="empty">No tasks yet</p>') +
+      `<section class="sec"><div class="list"><label class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:pointer"><span>On Leave</span><input type="checkbox" class="switch" data-a="leave:${g}:${n}"${onLeave(ev, g, n) ? ' checked' : ''}></label></div></section>`) + rest;
   }
   if (s.k === 'account') {
     const v = V(), others = peopleOf(ACCT()).filter(x => x !== v.name), pn = photoName();
@@ -833,12 +864,13 @@ function sheet() {
     const kv = (k, val) => `<div class="row" style="grid-template-columns:6em minmax(0,1fr)"><span class="t">${k}</span><span>${val}</span></div>`;
     h = made ? bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + `<div class="list">${kv('Member', esc(made.person))}${kv('Account', esc(made.id))}${kv('Password', esc(made.password))}${kv('Until', hkAt(made.until))}</div><button class="nb pri" style="width:100%;margin-top:16px" data-a="copyacct:standin">Copy</button>`
       : bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + (x ? `<div class="list"><div class="row g-acct">${sym('key', 'Account')}<span>${esc(x.person)}<span class="cap">${esc(x.id)} · Until ${hkAt(x.until)}</span></span>${isLead() ? pwView(x.id, false) : ''}</div><button class="row g-sw danger" data-a="standinoff:${g}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>End Stand-in</span></button></div>` : '') +
-      `<section class="sec"><p class="sh">Choose a Member</p><div class="list">${roster(g).people.map(p => p[1]).filter(n => n && !(x && x.person === n)).map(n => `<button class="row g-opt" data-a="standinpick:${esc(n)}"><span>${esc(n)}</span>${check(S.pick === n)}</button>`).join('') || '<p class="empty">No members</p>'}</div></section>
+      `<section class="sec"><p class="sh">Choose a Member</p><div class="list">${roster(g).people.map(p => p[1]).filter(n => n && !(x && x.person === n)).map(n => `<button class="row g-opt" data-a="standinpick:${esc(n)}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span>${check(S.pick === n)}</button>`).join('') || '<p class="empty">No members</p>'}</div></section>
       <button class="nb pri" style="width:100%;margin-top:16px" data-a="standinon:${g}:${esc(S.pick || '')}"${S.pick ? '' : ' disabled'}>Next</button>`;
   }
+  if (s.k === 'card') h = bar(close, '', '') + cardOf(s.n);
   // Recently Deleted: events deleted in the last 30 days; Restore brings one back as it was
   if (s.k === 'deleted') h = bar(close, 'Recently Deleted', '') + (!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? `<div class="list">${S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('')}</div>` : '<p class="empty">No deleted events</p>');
-  if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map((e, i) => { const txt = `<span>${esc(e.what)}<span class="cap">${esc(dmy(e.at.slice(0, 8)) + e.at.slice(8))} · ${esc(e.who)}</span></span>`;
+  if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map((e, i) => { const txt = `<span>${esc(e.what)}<span class="cap">${esc(dmy(e.at.slice(0, 8)) + e.at.slice(8))}　${mention(e.who)}</span></span>`;
     return e.snap && isLead() ? `<button class="row" data-a="askrestore:${i}" style="grid-template-columns:minmax(0,1fr) auto">${txt}<span class="muted">Restore</span></button>` : `<div class="row">${txt}</div>`; }).join('') || '<p class="empty">No changes yet</p>'}</div>`; // tell-ok: history time and person
   if (s.k === 'delete') h = bar(cancel(), 'Delete Event?', '') + `<p class="note">${esc(ev.name)}: its Rundown, tasks and documents go for everyone.</p><button class="nb glass danger" style="width:100%;font-weight:600" data-a="delevent">Delete Event</button>`;
   return `<div class="dimbg" data-a="bg"><div class="sheet" role="dialog" aria-modal="true">${h}</div></div>`;
@@ -1071,6 +1103,8 @@ document.addEventListener('click', async e => {
       S.alert = null; S.edit = false; S.stack.pop(); render(); toast('Deleted'); break;
     case 'gremove': ev.groups = ev.groups.filter(x => x.name !== arg); dropTasks(ev, arg); S.alert = null; render(); break;
     case 'signout': signOut(); break;
+    case 'card': S.sheet = {k: 'card', n: arg}; layer(); break;
+    case 'cardopen': S.sheet = null; layer(); go({p: 'event', ev: arg}); break;
     case 'standin': S.sheet = {k: 'standin', g: arg}; S.made = null; S.pick = null; layer(); break;
     case 'standinpick': S.pick = arg; layer(); break;
     case 'standinon': case 'standinoff': { const [g, n] = arg.split(':');
