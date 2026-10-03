@@ -312,6 +312,8 @@ html.locked,html.locked body{overflow:hidden}
 .pre .pn,.cap .pn{vertical-align:top;height:1.5em;margin:0 3px;gap:4px}
 .cap .pn{height:1.45em}
 .pre .pn .av,.cap .pn .av{width:18px;height:18px;font-size:10px}
+/* A tagged name is in Strong Yellow (26/10/03); in light mode the Design System's Text Yellow, so it stays readable on ivory */
+.pre .pn>span:last-child,.cap .pn>span:last-child{color:var(--fill)}
 .mpop{position:fixed;z-index:42;min-width:220px;max-width:calc(100vw - 32px);max-height:320px;overflow-y:auto;padding:6px;border-radius:18px;background:var(--glass-hi);display:flex;flex-direction:column}
 .mpop button{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:10px;align-items:center;min-height:44px;padding:4px 10px;border-radius:12px;font-size:16px;line-height:1.3}
 .mpop button .av{width:28px;height:28px;font-size:13px}
@@ -1675,7 +1677,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '631e5185f630';
+const PAGE_VER = 'be81132b20fa';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
