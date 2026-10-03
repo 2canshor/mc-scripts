@@ -269,7 +269,7 @@ html.locked,html.locked body{overflow:hidden}
 @media (hover:hover){.menu button:hover{background:var(--field)}}
 /* ---------- Sheets ---------- */
 .dimbg{position:fixed;inset:0;z-index:20;background:var(--dim);display:flex;align-items:flex-end;justify-content:center}
-.sheet{width:min(560px,100%);max-height:90vh;overflow:auto;overscroll-behavior:contain;touch-action:pan-y;background:var(--canvas);border-radius:24px 24px 0 0;padding:12px 36px calc(28px + env(safe-area-inset-bottom,0px))}
+.sheet{width:min(560px,100%);max-height:90vh;overflow:auto;overscroll-behavior:contain;touch-action:pan-y;background:var(--canvas);border-radius:24px 24px 0 0;padding:20px 24px calc(28px + env(safe-area-inset-bottom,0px))} /* the bar's 44 px buttons sit 4 px into its 52 px: 24 px from the top and the side alike */
 .sheet.tall{min-height:72vh}
 @media (min-width:700px){.dimbg{align-items:center}.sheet{border-radius:24px}}
 .sbar{display:grid;grid-template-columns:1fr minmax(0,auto) 1fr;column-gap:8px;align-items:center;min-height:52px;margin-bottom:12px}
@@ -1173,7 +1173,8 @@ function sheet() {
   const s = S.sheet; if (!s) return '';
   const ev = cur() && cur().ev ? EV() : null;
   const bar = (l, t, r) => `<div class="sbar">${l || '<span></span>'}<h2>${t}</h2>${r || '<span></span>'}</div>`;
-  const close = `<button class="nb round glass" data-a="close" aria-label="Close">${ic('x')}</button>`, cancel = act => `<button class="nb glass" data-a="${act || 'close'}">Cancel</button>`;
+  // A sheet opened from another sheet (a card from a card) goes Back to it; a first sheet closes. A tap outside always closes.
+  const close = s.prev ? `<button class="nb round glass" data-a="sback" aria-label="Back">${ic('back')}</button>` : `<button class="nb round glass" data-a="close" aria-label="Close">${ic('x')}</button>`, cancel = act => `<button class="nb glass" data-a="${act || 'close'}">Cancel</button>`;
   const check = on => `<span>${on ? ic('check') : ''}</span>`;
   let h = '';
   if (s.k === 'new') {
@@ -1451,7 +1452,8 @@ document.addEventListener('click', async e => {
       S.alert = null; S.edit = false; S.stack.pop(); render(); toast('Deleted'); break;
     case 'gremove': ev.groups = ev.groups.filter(x => x.name !== arg); dropTasks(ev, arg); S.alert = null; render(); break;
     case 'signout': signOut(); break;
-    case 'card': S.sheet = {k: 'card', n: arg}; layer(); break;
+    case 'card': S.sheet = {k: 'card', n: arg, prev: S.sheet || null}; layer(); if (lay.querySelector('.sheet')) lay.querySelector('.sheet').scrollTop = 0; break;
+    case 'sback': S.sheet = S.sheet.prev; layer(); break;
     case 'gx': toggleOpen(arg); render(); break;
     // Recently Deleted opens in place on Events (26/10/03), fetching the list the first time
     case 'delx': S.delOpen = !S.delOpen; render(); if (S.delOpen) { S.deleted = null; try { const r2 = await api('deleted'); S.deleted = r2.ok ? await r2.json() : []; } catch (err) { S.deleted = []; } render(); } break;
@@ -1677,7 +1679,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = 'be81132b20fa';
+const PAGE_VER = '81bede92bcce';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
