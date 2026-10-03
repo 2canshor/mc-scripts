@@ -542,6 +542,9 @@ function rotation(ev, k) {
 // Choosing a duty group: the groups of one kind not yet on duty, in rotation order (the current one kept)
 const dutyOpts = (ev, k, g) => rotation(ev, k).filter(x => x.g === g || !ev.groups.some(y => y.name === x.g)).map((x, i) => `<option value="${x.g}"${x.g === g ? ' selected' : ''}>${x.g}${i === 0 && x.g !== g ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}</option>`).join('');
 /* ---------- Controls and fields ---------- */
+// Lists of events: by date (soonest or newest first); events of one day always by their Assembly time
+const byTime = (a, b) => (a.asmTime || '').localeCompare(b.asmTime || '');
+const soonest = (a, b) => a.date.localeCompare(b.date) || byTime(a, b), newest = (a, b) => b.date.localeCompare(a.date) || byTime(a, b);
 const avatar = n => PHOTOS[n] && PHOTOS[n].d ? `<img src="${PHOTOS[n].d}" alt="">` : esc([...(n || '?')][0]);
 // A person named anywhere carries their photo (or initial) before the name, as characters do in Mario Odyssey's dialogue;
 // tapping the photo or name opens their card (Teams' profile card): who they are, who they report to, their events
@@ -549,7 +552,7 @@ const pav = n => `<span class="av">${avatar(n)}</span>`;
 const mention = (n, me) => `<span class="pn${me ? ' me' : ''}" data-a="card:${esc(n)}" role="button" tabindex="0">${pav(n)}<span>${esc(n)}</span></span>`;
 // Who a person is, from the rosters, the chairs and the teachers: position, group, class, who they report to, their events
 function personOf(n) {
-  const evs = f => EVENTS.filter(f).sort((a, b) => a.date.localeCompare(b.date));
+  const evs = f => EVENTS.filter(f);
   if (CHAIRS.includes(n)) return {pos: 'Chair', up: ADMINS.filter(Boolean), evs: evs(e => e.lead === n)};
   const g = ALL_GROUPS.find(x => members(x).includes(n));
   if (g) { const lead = roster(g).lead[1] === n;
@@ -560,7 +563,7 @@ function personOf(n) {
 }
 // The card: photo, name, position; then Reports To and the person's events (upcoming first, then past)
 function cardOf(n) {
-  const w = personOf(n), up = w.evs.filter(e => e.date >= TODAY), past = w.evs.filter(e => e.date < TODAY).reverse();
+  const w = personOf(n), up = w.evs.filter(e => e.date >= TODAY).sort(soonest), past = w.evs.filter(e => e.date < TODAY).sort(newest);
   const evRows = l => l.map(e => `<button class="row g-ev" data-a="cardopen:${e.id}"><span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('');
   return `<div class="me-row"><span class="av">${avatar(n)}</span><span><strong>${esc(n)}</strong><span class="cap">${esc([w.pos, w.g, w.cls].filter(Boolean).join(' · '))}</span></span></div>` +
     (w.up.length ? `<section class="sec"><p class="sh">Reports To</p><div class="list">${w.up.map(x => `<button class="row g-sw" data-a="card:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
@@ -629,8 +632,10 @@ function pWho() {
 }
 function pEvents() {
   const q = S.find.trim().toLowerCase();
-  const list = EVENTS.filter(seen).filter(e => !q || (e.name + ' ' + dmy(e.date)).toLowerCase().includes(q)).sort((a, b) => b.date.localeCompare(a.date) || a.asmTime.localeCompare(b.asmTime));
-  const up = list.filter(e => e.date >= TODAY).reverse(), past = list.filter(e => e.date < TODAY);
+  // Upcoming: soonest first; Past: newest first. Events of one day always run by their Assembly time (26/10/03: reversing the
+  // list for Upcoming had put a day's later event first)
+  const list = EVENTS.filter(seen).filter(e => !q || (e.name + ' ' + dmy(e.date)).toLowerCase().includes(q));
+  const up = list.filter(e => e.date >= TODAY).sort(soonest), past = list.filter(e => e.date < TODAY).sort(newest);
   const rows = l => l.map(e => `<button class="row g-ev${e.date === TODAY ? ' current' : ''}" data-a="open:${e.id}">${dot(e.id, true)}<span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('');
   return {root: true, title: 'Events', search: true,
     fab: isLead() ? {act: 'sheet:new', label: 'New Event'} : null, r: `<button class="nb round glass av" data-a="sheet:account" aria-label="Account">${avatar(V().name)}</button>`,
@@ -870,7 +875,7 @@ function pMembers() {
 }
 function pAccount(id) {
   const ed = S.edit, bar = editBar(true);
-  if (id.startsWith('T:')) { const code = id.slice(2), evs = taught(code).sort((a, b) => b.date.localeCompare(a.date));
+  if (id.startsWith('T:')) { const code = id.slice(2), evs = taught(code).sort(newest);
     return {...bar, title: code, body: `<h1>${esc(code)}</h1><section class="sec list">${acctRow(code, ed)}</section>
     <section class="sec"><p class="sh">Events</p>${evs.length ? `<div class="list">${evs.map(e => `<button class="row g-ev" data-a="open:${e.id}"><span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('')}</div>` : '<p class="empty">No events</p>'}</section>
     ${ed ? '' : `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="askdropacct:${esc(code)}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>Delete Account</span></button></div></section>`}`}; }
@@ -1685,7 +1690,7 @@ const STATUS_FILL = {Attended: 8, Off: 9, Absent: 10, Covering: 11, Excluded: 12
 const colName = i => { let s = ''; for (i++; i; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
 async function exportAttendance() {
   const v = V(), groups = v.type === 'lead' ? ALL_GROUPS : [v.group];
-  const evs = EVENTS.filter(e => e.date && e.date <= TODAY && (v.type === 'lead' || e.groups.some(g => g.name === v.group || g.covers === v.group))).sort((a, b) => a.date.localeCompare(b.date));
+  const evs = EVENTS.filter(e => e.date && e.date <= TODAY && (v.type === 'lead' || e.groups.some(g => g.name === v.group || g.covers === v.group))).sort(soonest);
   // People: by group; members by class, then the Group Lead (as List of Members)
   const people = groups.flatMap(g => { const r = roster(g), lead = r.lead[1];
     return [...r.people.filter(p => p[1]).slice().sort((a, b) => a[0].localeCompare(b[0])).map(p => ({g, cls: p[0], n: p[1], lead: false})), ...(lead ? [{g, cls: r.lead[0], n: lead, lead: true}] : [])]; });
