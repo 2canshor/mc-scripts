@@ -1030,8 +1030,10 @@ function memberList(ev, g, ed) {
     const ck = ed ? '' : `<button class="ck${done && !lv ? ' on' : ''}${lv ? ' lv' : ''}" data-a="mc:${g}:${esc(n)}" aria-label="${esc(n)}: ${lv ? 'On Leave' : done ? 'all tasks done' : `${k} of ${ts.length} tasks done`}">${circ}</button>`;
     const head = `<div class="row g-mem${ed ? ' e' : ''}${lv ? ' lv' : ''}" data-a="gx:${key}" aria-expanded="${open}">${ck}<span class="nmw">${mention(n)}${done && !lv && at[n] ? `<span class="tm">${at[n]}</span>` : ''}</span><span class="tags">${n === lead ? '<span class="tag">Group Lead</span>' : ''}</span>${ic('chev-d', 'go dis')}</div>`;
     if (!open) return head;
+    // Edit: the member's own tasks, each with a remove; Add Task chooses one of the group's other tasks from a menu (26/10/03)
     const body = ed
-      ? (all.length ? all.map(t => `<button class="row g-opt sub2" data-a="pickn:${t.id}:${esc(n)}"><span>${esc(t.text)}<span class="cap">${when(t)}</span></span><span>${t.names.includes(n) ? ic('check') : ''}</span></button>`).join('') : '<p class="empty">No tasks yet</p>')
+      ? ts.map(t => `<div class="row sub2" style="grid-template-columns:minmax(0,1fr) 24px" tabindex="-1"><span>${esc(t.text)}<span class="cap">${when(t)}</span></span>${rmB(`pickn:${t.id}:${esc(n)}`, 'Remove task')}</div>`).join('') +
+        (all.some(t => !t.names.includes(n)) ? addB(`menu:addmt:${g}:${esc(n)}`, 'Add Task').replace('class="row add', 'class="row add sub2') : '')
       : (ts.length ? ts.map(t => { const on = !!at[tickKey(n, t.id)]; return `<div class="row g-chk sub2">${lv ? `<span class="ck lv">${ic('circle')}</span>` : `<button class="ck${on ? ' on' : ''}" data-a="tick:${g}:${esc(n)}:${t.id}" aria-pressed="${on}" aria-label="${esc(t.text)} done">${ic(on ? 'check-fill' : 'circle')}</button>`}<span>${esc(t.text)}<span class="cap">${when(t)}${on ? '　' + at[tickKey(n, t.id)] : ''}</span></span></div>`; }).join('') : '<p class="empty">No tasks yet</p>');
     return `<div class="mrow${open ? ' open' : ''}">${head.replace('row g-mem', `row g-mem gx${open ? ' open' : ''}`)}<div class="gbody">${body}</div></div>`; }).join('');
   return `<section class="sec"><p class="sh">Members</p><div class="list">${rows}</div></section>`;
@@ -1200,6 +1202,8 @@ function menuItems(k, arg) {
   if (k === 'addsay') { const lists = Object.entries(ev.awards || {}).flatMap(([lid, l]) => l.awards.filter(a => a.award && unread(ev, {type: 'award', list: lid, award: a.id}).length).map(a => [`addsay:${arg}:award:${lid}:${a.id}`, 'users', a.award]));
     const guests = ev.guests && unread(ev, {type: 'guests'}).length ? [[`addsay:${arg}:guests`, 'guests', 'Guest List']] : [];
     return [[`addsay:${arg}:line`, 'line', 'MC Line'], [`addsay:${arg}:cue`, 'cue', 'Stage Direction'], ...lists, ...guests]; }
+  if (k === 'addmt') { const [g, n] = arg.split(':');
+    return sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && !t.names.includes(n))).map(t => [`pickn:${t.id}:${n}`, t.row ? 'list' : 'calendar', [t.text, t.row ? (rowOf(ev, t.row) || {}).time : md(t.date || '')].filter(Boolean).join('　')]); }
   if (k === 'addtask') return [['addtask:date', 'calendar', 'Before the Event'], ...ev.rows.map(r => [`addtask:row:${r.id}`, 'list', [r.time, r.title].filter(Boolean).join(' ')])];
   if (k === 'addgroup') return ['MC', 'Backstage', 'Reception'].flatMap(kk => rotation(ev, kk).filter(x => !ev.groups.some(y => y.name === x.g)).map((x, i) => [`addgroup:${x.g}`, SYM[kk] + ':g' + x.g.slice(-1), `${x.g}${i === 0 ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}`]));
   return [];
@@ -1605,7 +1609,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '7fc25d88c336';
+const PAGE_VER = 'a3685924e9d4';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
