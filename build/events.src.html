@@ -1237,8 +1237,18 @@ function mentionCheck(t) {
   const el = MENT.el = document.createElement('div'); el.className = 'mpop glass'; el.setAttribute('role', 'listbox');
   el.innerHTML = items.map((n, j) => { const w = personOf(n); return `<button role="option" data-m="${j}" class="${j === keep ? 'on' : ''}" aria-selected="${j === keep}"><span class="av">${avatar(n)}</span><span>${esc(n)}<span class="cap">${esc([w.pos, w.g].filter(Boolean).join(' · '))}</span></span></button>`; }).join('');
   document.body.appendChild(el);
-  const r = t.getBoundingClientRect(), h = el.offsetHeight, below = innerHeight - r.bottom > h + 12;
-  el.style.left = Math.max(16, Math.min(r.left, innerWidth - el.offsetWidth - 16)) + 'px'; el.style.top = (below ? r.bottom + 6 : Math.max(8, r.top - h - 6)) + 'px';
+  // Directly under the @ (26/10/03): where the @ sits in the field, found with a hidden copy of the field's text
+  const at = caretAt(t, k), h = el.offsetHeight, below = innerHeight - at.bottom > h + 12;
+  el.style.left = Math.max(16, Math.min(at.left - 10, innerWidth - el.offsetWidth - 16)) + 'px'; el.style.top = (below ? at.bottom + 4 : Math.max(8, at.top - h - 4)) + 'px';
+}
+// The screen position of character i in a text field: a copy of the field with the same font, width and wrapping, cut at i
+function caretAt(t, i) {
+  const cs = getComputedStyle(t), m = document.createElement('div'), r = t.getBoundingClientRect();
+  ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderLeftWidth', 'boxSizing', 'textIndent'].forEach(k => m.style[k] = cs[k]);
+  Object.assign(m.style, {position: 'fixed', visibility: 'hidden', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: cs.wordBreak});
+  m.textContent = t.value.slice(0, i); const mk = document.createElement('span'); mk.textContent = t.value.slice(i, i + 1) || '.'; m.appendChild(mk);
+  document.body.appendChild(m); const b = mk.getBoundingClientRect(); m.remove();
+  return {left: b.left - t.scrollLeft, top: b.top - t.scrollTop, bottom: b.bottom - t.scrollTop};
 }
 function mentionPick(j) {
   const m = MENT; if (!m) return; const t = m.field, n = m.items[j], v = t.value, ins = '@' + n + ' ';
