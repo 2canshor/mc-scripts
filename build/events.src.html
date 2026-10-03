@@ -182,17 +182,14 @@ button.tk:active{background:var(--current)}
 .ck{width:44px;height:44px;margin:-10px -6px -10px -11px;display:grid;place-items:center;color:var(--caption)}
 .ck svg.i{width:24px;height:24px}
 .ck.on{color:var(--present)}
-.g-mem{grid-template-columns:22px minmax(0,1fr) auto 18px}
-.g-mem.e{grid-template-columns:minmax(0,1fr) auto 18px}
+.g-mem{grid-template-columns:minmax(0,1fr) auto 18px}
 .g-mem.lv .nmw{opacity:.45}
 .nmw{display:flex;align-items:center;gap:8px;min-width:0}
 .nmw .pn .av{width:28px;height:28px;font-size:13px}
 .nmw .pn{gap:10px}
 .g-chk{grid-template-columns:22px minmax(0,1fr)}
-.sub2{padding-left:56px}
-.g-mem.e+.gbody .sub2,.mrow .g-mem.e~.gbody .sub2{padding-left:20px}
-.ring circle{fill:none;stroke:currentColor;stroke-width:1.8}
-.ring .arc{stroke:var(--present);stroke-width:2.6;stroke-linecap:round}
+.nmw .tm{display:inline-flex;align-items:center;gap:4px}
+.okm{width:16px;height:16px;color:var(--present)}
 .ck.lv{color:var(--caption)}
 .nmw .tm{font-size:15px;color:var(--secondary);font-variant-numeric:tabular-nums}
 /* ---------- Edit: the same page; a field is as wide as its text, grows as you type and wraps only at the edge ---------- */
@@ -754,10 +751,10 @@ function yourPart(ev, ed) {
     return `<div class="row g-p top">${gsym(g)}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('')}</span>` : ''}</span></div>`; }).join('');
   return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + (isDay(ev) ? daySec(ev) : allTasks(ev));
 }
-// A group's members (26/10/03). Attendance is ticked task by task: tapping a member's row (not the photo or name, which open
-// their card) opens their tasks, each with a circle; the member's own circle fills as their tasks are ticked and is complete
-// only when all are. A double tap on the member's circle marks On Leave (the name is locked); another double tap undoes it.
-// In Edit the circles go and the rest moves to their place; an open member lists all the group's tasks to give them.
+// A group's members (26/10/03). Attendance is ticked task by task, never per member: tapping a member's row (not the photo
+// or name, which open their card) opens their tasks, each with a circle. All ticked = Attended; any left = Absent. A double
+// tap on the row marks On Leave (the name is locked); another double tap undoes it. In Edit an open member shows their own
+// tasks to remove, and Add Task to give another.
 // One open at a time in a list (26/10/03): opening a duty group or a member closes the one open beside it
 function toggleOpen(key) {
   const was = !!S.open[key], pre = key.replace(/^([^:]+:[gm]:).*$/, '$1');
@@ -772,15 +769,11 @@ function syncAtt(ev, g, n) {
   if (!ts.length) return;
   if (times.every(Boolean)) at[n] = times.sort().pop(); else delete at[n];
 }
-const ring = (k, all) => { const c = 2 * Math.PI * 9, f = all ? k / all : 0;
-  return `<svg class="i ring" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/>${f ? `<circle class="arc" cx="12" cy="12" r="9" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 12 12)"/>` : ''}</svg>`; };
 function memberList(ev, g, ed) {
   const lead = roster(g).lead[1], at = ev.att[g] || {}, all = sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All')));
   const when = t => t.row ? esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' ')) : md(t.date || '');
-  const rows = members(g).map(n => { const lv = onLeave(ev, g, n), key = `${ev.id}:m:${n}`, open = !!S.open[key], ts = memberTasks(ev, g, n), k = ts.filter(t => at[tickKey(n, t.id)]).length, done = !!at[n];
-    const circ = lv ? ic('leave') : done ? ic('check-fill') : ring(k, ts.length);
-    const ck = ed ? '' : `<button class="ck${done && !lv ? ' on' : ''}${lv ? ' lv' : ''}" data-a="mc:${g}:${esc(n)}" aria-label="${esc(n)}: ${lv ? 'On Leave' : done ? 'all tasks done' : `${k} of ${ts.length} tasks done`}">${circ}</button>`;
-    const head = `<div class="row g-mem${ed ? ' e' : ''}${lv ? ' lv' : ''}" data-a="gx:${key}" aria-expanded="${open}">${ck}<span class="nmw">${mention(n)}${done && !lv && at[n] ? `<span class="tm">${at[n]}</span>` : ''}</span><span class="tags">${n === lead ? '<span class="tag">Group Lead</span>' : ''}</span>${ic('chev-d', 'go dis')}</div>`;
+  const rows = members(g).map(n => { const lv = onLeave(ev, g, n), key = `${ev.id}:m:${n}`, open = !!S.open[key], ts = memberTasks(ev, g, n), done = !!at[n];
+    const head = `<div class="row g-mem${lv ? ' lv' : ''}" data-a="${ed ? 'gx:' + key : `mr:${g}:${esc(n)}`}" aria-expanded="${open}"><span class="nmw">${mention(n)}${done && !lv && at[n] ? `<span class="tm">${ic('check-fill', 'okm')}${at[n]}</span>` : ''}</span><span class="tags">${lv ? '<span class="tag">On Leave</span>' : ''}${n === lead ? '<span class="tag">Group Lead</span>' : ''}</span>${ic('chev-d', 'go dis')}</div>`;
     if (!open) return head;
     // Edit: the member's own tasks, each with a remove; Add Task chooses one of the group's other tasks from a menu (26/10/03)
     const body = ed
@@ -1117,9 +1110,10 @@ document.addEventListener('click', async e => {
     case 'rollaw': { const [lid, aid, i] = arg.split(':'), a2 = ev.awards[lid].awards.find(x => x.id === aid), k = `${aid}:${a2.rows[+i][1]}`, m = ((ev.roll = ev.roll || {}).aw = ev.roll.aw || {}); if (m[k]) delete m[k]; else m[k] = NOW(); render(); break; }
     case 'rollgu': { const m = ((ev.roll = ev.roll || {}).gu = ev.roll.gu || {}); if (m[arg]) delete m[arg]; else m[arg] = NOW(); render(); break; }
     case 'tick': { const [g, n, tid] = arg.split(':'), a2 = ev.att[g] = ev.att[g] || {}, k = tickKey(n, tid); if (a2[k]) delete a2[k]; else a2[k] = NOW(); syncAtt(ev, g, n); render(); break; }
-    case 'mc': { const [g, n] = arg.split(':'), key = `${ev.id}:m:${n}`, now = Date.now();
-      if (S.lastMc && S.lastMc.k === key && now - S.lastMc.t < 400) { S.lastMc = null; toggleOpen(key); const l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
-      S.lastMc = {k: key, t: now}; toggleOpen(key); render(); break; }
+    // A tap on a member's row opens it once no second tap follows (300 ms), so a double tap (On Leave) never opens or moves rows first
+    case 'mr': { const [g, n] = arg.split(':'), key = `${ev.id}:m:${n}`;
+      if (S.tapT && S.tapK === key) { clearTimeout(S.tapT); S.tapT = null; const l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
+      clearTimeout(S.tapT); S.tapK = key; S.tapT = setTimeout(() => { S.tapT = null; toggleOpen(key); render(); }, 300); break; }
     case 'leave': { const [g, n] = arg.split(':'), l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
     case 'offduty': ev.groups = ev.groups.filter(g => g.name !== arg); dropTasks(ev, arg); log(ev, 'Took ' + arg + ' off duty'); render(); break;
     // A new task goes to the only duty group, or waits for its group to be chosen
@@ -1678,7 +1672,8 @@ function statusOf(ev, g, n) {
   if (!gr) return ev.groups.some(x => x.covers === g) ? 'Excluded' : '';
   if (((ev.att || {})[g] || {})[n]) return gr.covers ? 'Covering' : 'Attended';
   if (onLeave(ev, g, n)) return 'Off';
-  return roster(g).lead[1] === n || ev.tasks.some(t => t.to.includes(g) && t.names.includes(n)) ? 'Absent' : '';
+  // Absent: a task left unticked. Before 26/10/03 (one tick per member) the Group Lead was expected even without a task.
+  return ev.tasks.some(t => t.to.includes(g) && t.names.includes(n)) || (roster(g).lead[1] === n && ev.date < '26/10/03') ? 'Absent' : '';
 }
 // The year's attendance as an Excel file in the List of Members' own style (26/10/03): the Members sheet, an Attendance band
 // over one column per event that has taken place, each person's cell in the status colour, and the legend under the list.
