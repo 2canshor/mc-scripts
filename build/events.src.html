@@ -308,6 +308,16 @@ html.locked,html.locked body{overflow:hidden}
 /* Sign in, Loading and Who Are You? fit one screen: no page padding, so they never scroll */
 .page.fixed{padding:0}
 .gate{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;max-width:480px;margin:0 auto;padding-block:40px}
+/* A tag inside a Remark reads as part of the sentence: a small photo, the name on the same line as the words around it */
+.pre .pn,.cap .pn{vertical-align:top;height:1.5em;margin:0 3px;gap:4px}
+.cap .pn{height:1.45em}
+.pre .pn .av,.cap .pn .av{width:18px;height:18px;font-size:10px}
+.mpop{position:fixed;z-index:42;min-width:220px;max-width:calc(100vw - 32px);max-height:320px;overflow-y:auto;padding:6px;border-radius:18px;background:var(--glass-hi);display:flex;flex-direction:column}
+.mpop button{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:10px;align-items:center;min-height:44px;padding:4px 10px;border-radius:12px;font-size:16px;line-height:1.3}
+.mpop button .av{width:28px;height:28px;font-size:13px}
+.mpop button .cap{font-size:13px;margin:0}
+.mpop button.on{background:var(--field)}
+@media (hover:hover){.mpop button:hover{background:var(--field)}}
 .toast{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));padding:10px 18px;border-radius:999px;font-size:15px;max-width:calc(100vw - 48px)}
 .toast.act{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 18px}
 .toast .msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -513,7 +523,15 @@ const groupTasks = (ev, g) => ev.tasks.filter(t => !t.role && (t.to.includes(g) 
 const owner = t => t.to.includes('All') ? sym('all', 'Everyone', 'ic gAll') : t.to.length ? gsym(t.to[0]) : `<span class="ic">${nobody()}</span>`;
 const names = t => { if (t.to.includes('All') && !t.names.length) return ''; const v = V();
   return `<span class="who">${t.names.length ? t.names.map(n => mention(n, n === v.name)).join('') : nobody(t.to[0])}</span>`; };
-const remark = t => t.remark ? `<span class="cap">${esc(t.remark)}</span>` : '';
+const remark = t => t.remark ? `<span class="cap">${rich(t.remark)}</span>` : '';
+// Everyone who can be tagged with @ in a Remark (26/10/03, as in Teams): the chairs and every group's members
+const taggable = () => [...new Set([...CHAIRS, ...ALL_GROUPS.flatMap(members)].filter(Boolean))];
+// A Remark as read: links open, and @Name of a known person shows their photo and name (longest names first, so 陳大文 wins over 陳大)
+function rich(s) {
+  const ns = taggable().sort((a, b) => b.length - a.length).map(n => esc(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const html = linked(s);
+  return ns.length ? html.replace(new RegExp('@(' + ns.join('|') + ')', 'g'), (m, n) => mention(n.replace(/&amp;/g, '&'), V() && n === V().name)) : html;
+}
 const named = ev => (ev.mcs || []).filter(m => m[1]);
 // Awardee and guest paragraphs: the rows they read, by index into the list; rows not yet read elsewhere go into a new one
 const hasSource = (ev, s) => s.type === 'award' ? !!(ev.awards || {})[s.list] : s.type === 'guests' ? !!ev.guests : true;
@@ -674,7 +692,7 @@ function facts(ev, ed) {
     ${ev.venue ? row('pin', 'Venue', esc(ev.venue)) : ''}
     ${t ? row('teacher', 'Teachers', t) : ''}
     ${ev.lead ? row('flag', 'Event Lead', mention(ev.lead)) : ''}
-    ${ev.remarks ? row('note', 'Remarks', `<span class="pre">${linked(ev.remarks)}</span>`, true) : ''}</section>`;
+    ${ev.remarks ? row('note', 'Remarks', `<span class="pre">${rich(ev.remarks)}</span>`, true) : ''}</section>`;
 }
 // A list of tasks holds one kind of time only, dates: the work before the event. On the event's day the page shows the
 // Rundown in its place (lines and their tasks, by time), and the Rundown leaves Documents; after the day it is back as before.
@@ -808,7 +826,7 @@ function runLines(ev) {
   const v = V(), mineGl = t => vt(ev) === 'gl' && !t.to.includes('All') && t.to.includes(v.group);
   const tk = t => `<${mineGl(t) ? `button data-a="sheet:assign:${t.id}"` : 'div'} class="tk">${dot(`${ev.id}:t:${t.id}`)}${owner(t)}<span>${esc(t.text)}${remark(t)}${names(t)}</span>${mineGl(t) ? ic('chev-r', 'go') : ''}</${mineGl(t) ? 'button' : 'div'}>`;
   const next = isDay(ev) ? ev.rows.find(r => r.time >= NOW()) : null;
-  const lines = ev.rows.map(r => `<div class="ln${r === next ? ' current' : ''}">${dot(`${ev.id}:r:${r.id}`)}<span class="t">${r.time}</span><div class="lb"><span class="lt">${esc(r.title)}</span>　<span class="muted">${esc(r.place)}</span>${r.remark ? `<span class="cap">${esc(r.remark)}</span>` : ''}${ev.tasks.filter(t => t.row === r.id && !t.role).map(tk).join('')}</div></div>`).join('');
+  const lines = ev.rows.map(r => `<div class="ln${r === next ? ' current' : ''}">${dot(`${ev.id}:r:${r.id}`)}<span class="t">${r.time}</span><div class="lb"><span class="lt">${esc(r.title)}</span>　<span class="muted">${esc(r.place)}</span>${r.remark ? `<span class="cap">${rich(r.remark)}</span>` : ''}${ev.tasks.filter(t => t.row === r.id && !t.role).map(tk).join('')}</div></div>`).join('');
   return `<div class="list">${lines}</div>${lines ? '' : '<p class="empty">No lines yet</p>'}`;
 }
 const runEdit = ev => `<div class="list">${ev.rows.map(r => `<div class="ln e" data-drag="rows" data-id="${r.id}"><span>${timeF(`row:${r.id}:time`, r.time)}</span><span><span class="fl">${fld(`row:${r.id}:title`, r.title, 'Title')}${fld(`row:${r.id}:place`, r.place, 'Place')}</span><span class="rmkl">${box(`row:${r.id}:remark`, r.remark || '', 'Remark')}</span></span><span class="rg">${rmB('askrow:' + r.id, 'Delete line')}${grip('Move line')}</span></div>`).join('')}${addB('addrow', 'Add Line', 'var(--tc)').replace('class="row add', `class="row add${ev.rows.length ? ' ins-alt' : ''}`)}</div>`;
@@ -1204,8 +1222,41 @@ document.addEventListener('click', async e => {
 // Adding a document ends the event's Edit and opens the new document in Edit
 const openNew = id => { const ev = EV(); S.edit = false; go({p: 'doc', ev: ev.id, id}); S.edit = true; S.snap = snapOf(); render(); };
 const focus = sel => { const f = app.querySelector(sel) || lay.querySelector(sel); if (f && !matchMedia('(pointer:coarse)').matches) f.focus(); };
+/* ---------- @ in a Remark: a list of people to tag, filtered as you type (Teams' mention picker) ---------- */
+const TAGGED = /^(ev:remarks|(task|row):[^:]+:remark)$/;
+let MENT = null;
+function mentionClose() { if (MENT && MENT.el) MENT.el.remove(); MENT = null; }
+function mentionCheck(t) {
+  if (!TAGGED.test((t.dataset || {}).b || '')) return mentionClose();
+  const v = t.value, c = t.selectionStart, k = v.lastIndexOf('@', c - 1), q = k < 0 ? '' : v.slice(k + 1, c);
+  if (k < 0 || /\s/.test(q) || (k > 0 && /[A-Za-z0-9._%+-]/.test(v[k - 1]))) return mentionClose();  // a letter before @ is an email address
+  const items = taggable().filter(n => n.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
+  if (!items.length) return mentionClose();
+  const keep = MENT && MENT.field === t ? Math.min(MENT.i, items.length - 1) : 0;
+  mentionClose(); MENT = {field: t, at: k, end: c, items, i: keep};
+  const el = MENT.el = document.createElement('div'); el.className = 'mpop glass'; el.setAttribute('role', 'listbox');
+  el.innerHTML = items.map((n, j) => { const w = personOf(n); return `<button role="option" data-m="${j}" class="${j === keep ? 'on' : ''}" aria-selected="${j === keep}"><span class="av">${avatar(n)}</span><span>${esc(n)}<span class="cap">${esc([w.pos, w.g].filter(Boolean).join(' · '))}</span></span></button>`; }).join('');
+  document.body.appendChild(el);
+  const r = t.getBoundingClientRect(), h = el.offsetHeight, below = innerHeight - r.bottom > h + 12;
+  el.style.left = Math.max(16, Math.min(r.left, innerWidth - el.offsetWidth - 16)) + 'px'; el.style.top = (below ? r.bottom + 6 : Math.max(8, r.top - h - 6)) + 'px';
+}
+function mentionPick(j) {
+  const m = MENT; if (!m) return; const t = m.field, n = m.items[j], v = t.value, ins = '@' + n + ' ';
+  t.value = v.slice(0, m.at) + ins + v.slice(m.end); const at = m.at + ins.length; mentionClose();
+  t.focus(); t.setSelectionRange(at, at); t.dispatchEvent(new Event('input', {bubbles: true}));
+}
+document.addEventListener('mousedown', e => { const b = e.target.closest && e.target.closest('.mpop [data-m]'); if (!b) return; e.preventDefault(); mentionPick(+b.dataset.m); });
+document.addEventListener('focusout', e => { if (MENT && e.target === MENT.field) setTimeout(() => { if (MENT && document.activeElement !== MENT.field) mentionClose(); }, 120); });
+document.addEventListener('keydown', e => {
+  if (!MENT || e.target !== MENT.field || e.isComposing) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); MENT.i = (MENT.i + (e.key === 'ArrowDown' ? 1 : MENT.items.length - 1)) % MENT.items.length;
+    MENT.el.querySelectorAll('[data-m]').forEach((b, j) => { b.classList.toggle('on', j === MENT.i); b.setAttribute('aria-selected', j === MENT.i); }); }
+  else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopImmediatePropagation(); mentionPick(MENT.i); }
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); mentionClose(); }
+}, true);
 document.addEventListener('input', e => {
   const t = e.target, d = t.dataset || {};
+  if (TAGGED.test(d.b || '') || MENT) mentionCheck(t);
   if (d.find !== undefined) { S.find = t.value; const o = route(); app.innerHTML = `<main class="page root">${o.body}</main>`; return; }
   if (!d.b) return;
   if (t.tagName === 'TEXTAREA') fit(t);
