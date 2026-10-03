@@ -621,7 +621,7 @@ function idSym() { const a = ACCT(); if (!a) return ['flag', ''];
   if (a.type === 'teacher') return [a.tv ? 'teacher' : 'eye', ''];
   return [SYM[kind(a.group)], ' g' + a.group.slice(-1)]; }
 function pLoading() { const [n, c] = idSym();
-  return {fixed: true, body: `<div class="gate load"><span class="bigic${c}" role="img" aria-label="${SYNC.offline ? 'No connection yet' : 'Loading'}">${ic(n)}</span>${SYNC.offline ? '<p class="sub">No connection yet</p>' : ''}</div>`}; }
+  return {fixed: true, body: `<div class="gate load"><span class="bigic${c}" role="img" aria-label="${SYNC.offline ? 'No Internet Connection' : 'Loading'}">${ic(n)}</span>${SYNC.offline ? '<p class="sub">No Internet Connection</p>' : ''}</div>`}; }
 function pWho() {
   const a = ACCT();
   return {fixed: true, body: `<div class="gate"><h1>Who Are You?</h1><p class="sub">${esc(a.id)}</p><div class="faces">${peopleOf(a).map(n => `<button class="face" data-a="be:${esc(n)}"><span class="av">${avatar(n)}</span><span>${esc(n)}</span></button>`).join('')}</div>
@@ -1494,9 +1494,10 @@ async function loadAll() {
     refresh();
   } catch (e) {
     if (String(e.message) === 'signin') return;
-    SYNC.offline = true;
+    // Only a failed request means no connection; anything else keeps the loading symbol and tries again (26/10/03)
+    SYNC.offline = e instanceof TypeError || !navigator.onLine;
     if (!SYNC.loaded) render();
-    setTimeout(loadAll, 8000);
+    clearTimeout(loadAll.t); loadAll.t = setTimeout(loadAll, SYNC.offline ? 8000 : 3000);
   }
 }
 async function pull(full) {
@@ -1516,7 +1517,7 @@ async function pull(full) {
 function catchUp() { if (SYNC.later.size) { SYNC.later.clear(); pull(true); } }
 setInterval(pull, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { pull(); persist(); } });
-addEventListener('online', () => { persist(); pull(); });
+addEventListener('online', () => { if (SYNC.token && !SYNC.loaded) { clearTimeout(loadAll.t); loadAll(); } persist(); pull(); });
 
 // Saving
 function persistSoon(ms = 600) { clearTimeout(SYNC.timer); SYNC.timer = setTimeout(persist, ms); }
