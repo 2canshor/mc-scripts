@@ -758,6 +758,12 @@ function yourPart(ev, ed) {
 // their card) opens their tasks, each with a circle; the member's own circle fills as their tasks are ticked and is complete
 // only when all are. A double tap on the member's circle marks On Leave (the name is locked); another double tap undoes it.
 // In Edit the circles go and the rest moves to their place; an open member lists all the group's tasks to give them.
+// One open at a time in a list (26/10/03): opening a duty group or a member closes the one open beside it
+function toggleOpen(key) {
+  const was = !!S.open[key], pre = key.replace(/^([^:]+:[gm]:).*$/, '$1');
+  Object.keys(S.open).forEach(k => { if (k.startsWith(pre)) delete S.open[k]; });
+  if (!was) S.open[key] = true;
+}
 const tickKey = (n, tid) => n + '\t' + tid;
 const memberTasks = (ev, g, n) => sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && t.names.includes(n)));
 // The member's attendance follows their ticks: complete when every task is ticked, with the time of the last tick
@@ -1112,8 +1118,8 @@ document.addEventListener('click', async e => {
     case 'rollgu': { const m = ((ev.roll = ev.roll || {}).gu = ev.roll.gu || {}); if (m[arg]) delete m[arg]; else m[arg] = NOW(); render(); break; }
     case 'tick': { const [g, n, tid] = arg.split(':'), a2 = ev.att[g] = ev.att[g] || {}, k = tickKey(n, tid); if (a2[k]) delete a2[k]; else a2[k] = NOW(); syncAtt(ev, g, n); render(); break; }
     case 'mc': { const [g, n] = arg.split(':'), key = `${ev.id}:m:${n}`, now = Date.now();
-      if (S.lastMc && S.lastMc.k === key && now - S.lastMc.t < 400) { S.lastMc = null; S.open[key] = !S.open[key]; const l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
-      S.lastMc = {k: key, t: now}; S.open[key] = !S.open[key]; render(); break; }
+      if (S.lastMc && S.lastMc.k === key && now - S.lastMc.t < 400) { S.lastMc = null; toggleOpen(key); const l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
+      S.lastMc = {k: key, t: now}; toggleOpen(key); render(); break; }
     case 'leave': { const [g, n] = arg.split(':'), l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
     case 'offduty': ev.groups = ev.groups.filter(g => g.name !== arg); dropTasks(ev, arg); log(ev, 'Took ' + arg + ' off duty'); render(); break;
     // A new task goes to the only duty group, or waits for its group to be chosen
@@ -1173,7 +1179,7 @@ document.addEventListener('click', async e => {
     case 'gremove': ev.groups = ev.groups.filter(x => x.name !== arg); dropTasks(ev, arg); S.alert = null; render(); break;
     case 'signout': signOut(); break;
     case 'card': S.sheet = {k: 'card', n: arg}; layer(); break;
-    case 'gx': S.open[arg] = !S.open[arg]; render(); break;
+    case 'gx': toggleOpen(arg); render(); break;
     // Recently Deleted opens in place on Events (26/10/03), fetching the list the first time
     case 'delx': S.delOpen = !S.delOpen; render(); if (S.delOpen) { S.deleted = null; try { const r2 = await api('deleted'); S.deleted = r2.ok ? await r2.json() : []; } catch (err) { S.deleted = []; } render(); } break;
     case 'cardopen': S.sheet = null; layer(); go({p: 'event', ev: arg}); break;
