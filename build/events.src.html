@@ -1126,7 +1126,7 @@ document.addEventListener('click', async e => {
     case 'askrestore': S.alert = {t: 'Restore This Version?', m: `The event goes back to how it was before “${ev.log[+arg].what}”. Later changes go too; History keeps them, so you can restore again.`, verb: 'Restore', act: 'restore:' + arg}; layer(); break;
     case 'restore': { const e = ev.log[+arg]; if (!e || !e.snap) break; const keep = {log: ev.log, upd: ev.upd, att: ev.att, leave: ev.leave};
       Object.keys(ev).forEach(k => delete ev[k]); Object.assign(ev, JSON.parse(J(e.snap)), keep); log(ev, 'Restored the version before “' + e.what + '”'); S.alert = null; S.sheet = null; S.edit = false; render(); catchUp(); break; }
-    case 'deltask': ev.tasks = ev.tasks.filter(t => t.id !== arg); layer(); break;
+    case 'deltask': ev.tasks = ev.tasks.filter(t => t.id !== arg); render(); break;
     case 'addrow': { const rw = {id: uid(), time: '', title: '', place: ev.venue || '', say: []}; ev.rows.push(rw); render(); focus(`[data-b="row:${rw.id}:title"]`); break; }
     case 'askrow': { const n = ev.tasks.filter(t => t.row === arg).length; if (!n) { ev.rows = ev.rows.filter(x => x.id !== arg); render(); break; }
       S.alert = {t: 'Delete This Line?', m: `Its ${n} ${n > 1 ? 'tasks go' : 'task goes'} with it.`, verb: 'Delete', act: 'delrow:' + arg}; layer(); break; }
