@@ -182,16 +182,19 @@ button.tk:active{background:var(--current)}
 .ck{width:44px;height:44px;margin:-10px -6px -10px -11px;display:grid;place-items:center;color:var(--caption)}
 .ck svg.i{width:24px;height:24px}
 .ck.on{color:var(--present)}
-.g-mem{grid-template-columns:22px minmax(0,1fr)}
-.nmb{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;column-gap:10px;align-items:center;min-height:44px;margin:calc(0px - var(--rp)) -20px calc(0px - var(--rp)) 0;padding:var(--rp) 20px var(--rp) 0;border-radius:0 12px 12px 0}
-.nmb:active{background:var(--current)}
-.nmb .tm{font-size:15px;color:var(--secondary);margin-left:8px;font-variant-numeric:tabular-nums}
-/* Swipe a member left for On Leave (Group Lead) */
-.sw{position:relative;overflow:hidden;width:calc(100% + 40px);margin:0 -20px;border-radius:12px}
-.sw>.row{width:100%;margin:0;background:var(--canvas);transition:transform .2s ease;touch-action:pan-y;z-index:1}
-.swa{position:absolute;inset:0 0 0 auto;display:flex}
-.swa button{width:96px;display:grid;place-items:center;font-size:15px;background:var(--secondary);color:var(--canvas)}
-.sw:not(.open):not(.moving) .swa{visibility:hidden}
+.g-mem{grid-template-columns:22px minmax(0,1fr) auto 18px}
+.g-mem.e{grid-template-columns:minmax(0,1fr) auto 18px}
+.g-mem.lv .nmw{opacity:.45}
+.nmw{display:flex;align-items:center;gap:8px;min-width:0}
+.nmw .pn .av{width:28px;height:28px;font-size:13px}
+.nmw .pn{gap:10px}
+.g-chk{grid-template-columns:22px minmax(0,1fr)}
+.sub2{padding-left:56px}
+.g-mem.e+.gbody .sub2,.mrow .g-mem.e~.gbody .sub2{padding-left:20px}
+.ring circle{fill:none;stroke:currentColor;stroke-width:1.8}
+.ring .arc{stroke:var(--present);stroke-width:2.6;stroke-linecap:round}
+.ck.lv{color:var(--caption)}
+.nmw .tm{font-size:15px;color:var(--secondary);font-variant-numeric:tabular-nums}
 /* ---------- Edit: the same page; a field is as wide as its text, grows as you type and wraps only at the edge ---------- */
 .fld{font:inherit;color:inherit;background:transparent;border:0;outline:none;margin:0;padding:0;border-radius:8px;box-sizing:content-box;min-width:2em;max-width:calc(100% - .9em);vertical-align:top;line-height:1.5;resize:none;overflow:hidden;-webkit-appearance:none;appearance:none}
 textarea.fld{display:inline-block}
@@ -322,6 +325,11 @@ html.locked,html.locked body{overflow:hidden}
 .alert .b .d{color:var(--danger);font-weight:600}
 @media (min-width:600px){:root{--tc:4.2em}}
 /* Sign in, and pick your name on a shared account */
+.gate.load{align-items:center;justify-content:center;gap:24px}
+.bigic{color:var(--secondary);display:grid;place-items:center;animation:breathe 1.6s ease-in-out infinite}
+.bigic svg.i{width:128px;height:128px;stroke-width:1.2} /* stroke-ok: a large symbol keeps a fine line */
+@keyframes breathe{0%,100%{transform:scale(.92);opacity:.55}50%{transform:scale(1.04);opacity:1}}
+@media (prefers-reduced-motion:reduce){.bigic{animation:none}}
 .gate .in{display:block;width:100%;height:50px;border:0;outline:none;border-radius:12px;background:var(--field);padding:0 14px;font-size:17px;margin:0 0 10px;-webkit-appearance:none;appearance:none}
 .gate .in:focus{background:var(--current)}
 .gate .in::placeholder{color:var(--caption)}
@@ -760,7 +768,7 @@ const sorted = (ev, list) => list.map((t, i) => [t, i]).sort((a, b) => order(ev,
 // The tasks a duty group sees: its own and Everyone's, in the event's own order
 const groupTasks = (ev, g) => ev.tasks.filter(t => !t.role && (t.to.includes(g) || t.to.includes('All')));
 const owner = t => t.to.includes('All') ? sym('all', 'Everyone', 'ic gAll') : t.to.length ? gsym(t.to[0]) : `<span class="ic">${nobody()}</span>`;
-const names = t => { if (t.to.includes('All')) return ''; const v = V();
+const names = t => { if (t.to.includes('All') && !t.names.length) return ''; const v = V();
   return `<span class="who">${t.names.length ? t.names.map(n => mention(n, n === v.name)).join('') : nobody(t.to[0])}</span>`; };
 const remark = t => t.remark ? `<span class="cap">${esc(t.remark)}</span>` : '';
 const named = ev => (ev.mcs || []).filter(m => m[1]);
@@ -864,7 +872,13 @@ function pSignIn() {
   return {fixed: true, body: `<div class="gate"><h1>Event Centre</h1><form id="signin" class="sec"><input class="in" id="acct" aria-label="Account" placeholder="Account" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false">
     <input class="in" id="pw" type="password" aria-label="Password" placeholder="Password" autocomplete="current-password"><button class="nb pri" type="submit">Sign In</button></form><p class="err" role="alert"></p></div>`};
 }
-function pLoading() { return {fixed: true, body: `<div class="gate"><h1>Event Centre</h1><p class="sub">${SYNC.offline ? 'No connection yet' : 'Loading'}</p></div>`}; }
+// Loading: the signed-in account's own symbol, large in the middle of the screen, breathing until the events arrive (26/10/03)
+function idSym() { const a = ACCT(); if (!a) return ['flag', ''];
+  if (a.type === 'lead') return [a.admin ? 'pencil' : 'flag', ''];
+  if (a.type === 'teacher') return [a.tv ? 'teacher' : 'eye', ''];
+  return [SYM[kind(a.group)], ' g' + a.group.slice(-1)]; }
+function pLoading() { const [n, c] = idSym();
+  return {fixed: true, body: `<div class="gate load"><span class="bigic${c}" role="img" aria-label="${SYNC.offline ? 'No connection yet' : 'Loading'}">${ic(n)}</span>${SYNC.offline ? '<p class="sub">No connection yet</p>' : ''}</div>`}; }
 function pWho() {
   const a = ACCT();
   return {fixed: true, body: `<div class="gate"><h1>Who Are You?</h1><p class="sub">${esc(a.id)}</p><div class="faces">${peopleOf(a).map(n => `<button class="face" data-a="be:${esc(n)}"><span class="av">${avatar(n)}</span><span>${esc(n)}</span></button>`).join('')}</div>
@@ -881,17 +895,17 @@ function pEvents() {
     ${up.length || !q ? `<section class="sec"><p class="sh">Upcoming</p>${up.length ? `<div class="list">${rows(up)}</div>` : '<p class="empty">No events yet</p>'}</section>` : ''}
     ${past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${rows(past)}</div></section>` : ''}
     ${q && !list.length ? '<p class="empty sec">No results</p>' : ''}
-    ${isLead() && !q ? `<section class="sec"><div class="list"><button class="row g-ic" data-a="sheet:deleted">${sym('trash', '')}<span>Recently Deleted</span><span></span>${ic('chev-r', 'go')}</button></div></section>` : ''}`};
+    ${isLead() && !q ? `<section class="sec"><div class="list"><button class="row g-ic gx${S.delOpen ? ' open' : ''}" data-a="delx" aria-expanded="${!!S.delOpen}">${sym('trash', '')}<span>Recently Deleted</span><span></span>${ic('chev-d', 'go dis')}</button>${S.delOpen ? `<div class="gbody">${!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('') : '<p class="empty">No deleted events</p>'}</div>` : ''}</div></section>` : ''}`};
 }
 
 // The event: title, its facts, your part, its documents. The same order for everyone.
 function pEvent(ev) {
   const ed = S.edit;
-  const own = !isLead() && menuItems('adddoc')[0], bar = editBar(isLead(),  `<div class="glass grp"><button class="nb" data-a="sheet:history" aria-label="History">${ic('history')}</button><button class="nb danger" data-a="sheet:delete" aria-label="Delete Event">${ic('trash')}</button></div>`);
+  const own = !isLead() && !ed && menuItems('adddoc')[0], bar = editBar(isLead() || vt(ev) === 'gl', !isLead() ? '' : `<div class="glass grp"><button class="nb" data-a="sheet:history" aria-label="History">${ic('history')}</button><button class="nb danger" data-a="sheet:delete" aria-label="Delete Event">${ic('trash')}</button></div>`);
   const title = ed && isLead()
     ? `<h1 class="tline"><span class="tpre">${dateF('ev:date', ev.date)}<span class="sep">｜</span></span><textarea class="fld f tname" rows="1" data-b="ev:name" placeholder="Event Name" aria-label="Event Name">${esc(ev.name)}</textarea></h1>` // tell-ok: CA title convention date｜name, bar in secondary
     : `<h1>${evTitle(ev)}</h1>`;
-  return {...bar, fab: own ? {act: own[0], label: 'New ' + own[2]} : null, title: ev.name, body: title + facts(ev, ed && isLead()) + yourPart(ev, ed && isLead()) + documents(ev, ed)};
+  return {...bar, fab: own ? {act: own[0], label: 'New ' + own[2]} : null, title: ev.name, body: title + facts(ev, ed && isLead()) + yourPart(ev, ed) + documents(ev, ed && isLead())};
 }
 // Facts: a symbol and a value, no labels (each label is the symbol's spoken name). The event begins at Assembly.
 // Teachers: one field each, and one empty field after them for the next (as the Script's MC line)
@@ -927,7 +941,7 @@ const taskSec = (ev, head, tasks, render) => { const rows = taskRows(ev, tasks, 
 const gtag = g => g === 'All' ? `<span class="nw"><span class="isym gAll">${ic('all')}</span> Everyone</span>` : `<span class="nw"><span class="isym${gcls(g)}">${ic(SYM[kind(g)])}</span> ${gname(g)}</span>`;
 // Under a task in reading, the group is its symbol alone (26/10/02), then the names; Everyone keeps its word, having no names after it
 const gicon = g => `<span class="isym${gcls(g)}" role="img" aria-label="${esc(g)}" title="${esc(g)}">${ic(SYM[kind(g)])}</span>`;
-const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}</span>` : `<span class="who">${t.to.length ? gicon(t.to[0]) + ' ' : ''}${t.names.length ? t.names.map(n => mention(n, n === V().name)).join('') : nobody(t.to[0])}</span>`;
+const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}${t.names.map(n => mention(n, n === V().name)).join('')}</span>` : `<span class="who">${t.to.length ? gicon(t.to[0]) + ' ' : ''}${t.names.length ? t.names.map(n => mention(n, n === V().name)).join('') : nobody(t.to[0])}</span>`;
 // Every task of the event, for the Teacher (the Event Lead sees them in their duty groups)
 function allTasks(ev) {
   const list = sorted(ev, ev.tasks.filter(t => !t.role));
@@ -963,10 +977,10 @@ function dutyGroups(ev, ed) {
       const head = gr ? `<div class="row g-p gh" data-head="g" data-g="${esc(k)}" tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto">${keySym(k)}<span><span class="fl">${pick(`dg:${k}`, gname(k), dutyOpts(ev, kind(k), k), 'Group')}</span>${cov}</span>${rmB('askgroup:' + k, 'Remove duty group')}</div>`
         : `<div class="row g-p gh" data-head="g" data-g="${esc(k)}">${keySym(k)}<span>${keyName(k)}</span></div>`;
       return head + `<p class="sub" data-head="before" data-g="${esc(k)}">Before the Event</p>${l.filter(t => !t.row).map(row).join('')}<p class="sub" data-head="day" data-g="${esc(k)}">On the Day</p>${l.filter(t => t.row).map(row).join('')}`; }).join('');
-    return `<section class="sec"><p class="sh">Duty Groups</p><div class="list tasks gl">${body}</div><div class="list">${addB('menu:addgroup', 'Add Duty Group')}${addB('menu:addtask', 'Add Task').replace('class="row add', 'class="row add ins-alt')}</div></section>`;
+    return `<section class="sec"><p class="sh">Duty Groups</p><div class="list tasks gl">${body}</div><div class="list">${addB('menu:addtask', 'Add Task').replace('class="row add', 'class="row add ins-alt')}${addB('menu:addgroup', 'Add Duty Group')}</div></section>`;
   }
   if (!keys.length) return `<section class="sec"><p class="sh">Duty Groups</p><p class="empty">No duty groups yet</p></section>`;
-  const read = (t, when) => `<div class="row g-tm">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${t.to.includes('All') ? '' : names(t)}</span></div>`;
+  const read = (t, when) => `<button class="row g-tm" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
   const rows = keys.map(k => { const gr = ev.groups.find(x => x.name === k), l = tasksOfKey(ev, k), open = !!S.open[`${ev.id}:g:${k}`];
     const n = k === 'All' ? 0 : l.filter(t => !t.names.length).length, cov = gr && gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
     const changed = l.some(t => isNew(`${ev.id}:t:${t.id}`)) && !open ? '<span class="udot" role="img" aria-label="Updated"></span>' : '';
@@ -985,23 +999,41 @@ function yourPart(ev, ed) {
   if (type === 'gl') {
     const g = v.group, mine = groupTasks(ev, g);
     const render = (t, when, now) => t.to.includes('All') ? `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}<span class="who">${gtag('All')}</span></span></div>` : `<button class="row g-tm${now ? ' current' : ''}" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
-    return (isDay(ev) ? daySec(ev) : bothSecs(ev, mine, render)) + memberList(ev, g);
+    return (isDay(ev) ? daySec(ev) : bothSecs(ev, mine, render)) + memberList(ev, g, ed);
   }
-  if (type === 'lead') return dutyGroups(ev, ed) + (isDay(ev) ? (ed ? `<section class="sec"><p class="sh">Rundown</p>${runEdit(ev)}</section>` : daySec(ev)) : '');
+  if (type === 'lead') return dutyGroups(ev, ed && isLead()) + (isDay(ev) ? (ed ? `<section class="sec"><p class="sh">Rundown</p>${runEdit(ev)}</section>` : daySec(ev)) : '');
   // Teacher: who is responsible
   const who = ev.groups.map(gr => { const g = gr.name, ns = [...new Set(ev.tasks.filter(t => t.to.includes(g)).flatMap(t => t.names))];
     const lines = ns.map(n => mention(n));
     return `<div class="row g-p top">${gsym(g)}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('')}</span>` : ''}</span></div>`; }).join('');
   return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + (isDay(ev) ? daySec(ev) : allTasks(ev));
 }
-// A group's members: attendance | name, time, Group Lead | ›. Each is ticked one by one. The row opens their tasks.
-function memberList(ev, g) {
-  const lead = roster(g).lead[1], at = ev.att[g] || {};
-  const rows = members(g).map(n => { const t = at[n], lv = onLeave(ev, g, n), rs = n === lead ? ['Group Lead'] : [];
-    const ck = lv && !t ? `<span class="ck" role="img" aria-label="On Leave">${ic('leave')}</span>` : `<button class="ck${t ? ' on' : ''}" data-a="here:${g}:${n}" aria-pressed="${!!t}" aria-label="${esc(n)} is here">${ic(t ? 'check-fill' : 'circle')}</button>`;
-    const inner = `<span class="nw opt-n">${pav(n)}<span>${esc(n)}${t ? `<span class="tm">${t}</span>` : ''}</span></span><span class="tags">${rs.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</span>`;
-    const row = `<div class="row g-mem">${ck}${n === lead ? `<button class="nmb" data-a="sheet:person:${g}:${n}">${inner}${ic('chev-r', 'go')}</button>` : `<button class="nmb" data-a="sheet:person:${g}:${n}">${inner}${ic('chev-r', 'go')}</button>`}</div>`;
-    return n === lead ? row : `<div class="sw">${row}<div class="swa"><button data-a="leave:${g}:${n}">${lv ? 'Back' : 'On Leave'}</button></div></div>`; }).join('');
+// A group's members (26/10/03). Attendance is ticked task by task: tapping a member's row (not the photo or name, which open
+// their card) opens their tasks, each with a circle; the member's own circle fills as their tasks are ticked and is complete
+// only when all are. A double tap on the member's circle marks On Leave (the name is locked); another double tap undoes it.
+// In Edit the circles go and the rest moves to their place; an open member lists all the group's tasks to give them.
+const tickKey = (n, tid) => n + '\t' + tid;
+const memberTasks = (ev, g, n) => sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && t.names.includes(n)));
+// The member's attendance follows their ticks: complete when every task is ticked, with the time of the last tick
+function syncAtt(ev, g, n) {
+  const at = ev.att[g] = ev.att[g] || {}, ts = memberTasks(ev, g, n), times = ts.map(t => at[tickKey(n, t.id)]);
+  if (!ts.length) return;
+  if (times.every(Boolean)) at[n] = times.sort().pop(); else delete at[n];
+}
+const ring = (k, all) => { const c = 2 * Math.PI * 9, f = all ? k / all : 0;
+  return `<svg class="i ring" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/>${f ? `<circle class="arc" cx="12" cy="12" r="9" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 12 12)"/>` : ''}</svg>`; };
+function memberList(ev, g, ed) {
+  const lead = roster(g).lead[1], at = ev.att[g] || {}, all = sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All')));
+  const when = t => t.row ? esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' ')) : md(t.date || '');
+  const rows = members(g).map(n => { const lv = onLeave(ev, g, n), key = `${ev.id}:m:${n}`, open = !!S.open[key], ts = memberTasks(ev, g, n), k = ts.filter(t => at[tickKey(n, t.id)]).length, done = !!at[n];
+    const circ = lv ? ic('leave') : done ? ic('check-fill') : ring(k, ts.length);
+    const ck = ed ? '' : `<button class="ck${done && !lv ? ' on' : ''}${lv ? ' lv' : ''}" data-a="mc:${g}:${esc(n)}" aria-label="${esc(n)}: ${lv ? 'On Leave' : done ? 'all tasks done' : `${k} of ${ts.length} tasks done`}">${circ}</button>`;
+    const head = `<div class="row g-mem${ed ? ' e' : ''}${lv ? ' lv' : ''}" data-a="gx:${key}" aria-expanded="${open}">${ck}<span class="nmw">${mention(n)}${done && !lv && at[n] ? `<span class="tm">${at[n]}</span>` : ''}</span><span class="tags">${n === lead ? '<span class="tag">Group Lead</span>' : ''}</span>${ic('chev-d', 'go dis')}</div>`;
+    if (!open) return head;
+    const body = ed
+      ? (all.length ? all.map(t => `<button class="row g-opt sub2" data-a="pickn:${t.id}:${esc(n)}"><span>${esc(t.text)}<span class="cap">${when(t)}</span></span><span>${t.names.includes(n) ? ic('check') : ''}</span></button>`).join('') : '<p class="empty">No tasks yet</p>')
+      : (ts.length ? ts.map(t => { const on = !!at[tickKey(n, t.id)]; return `<div class="row g-chk sub2">${lv ? `<span class="ck lv">${ic('circle')}</span>` : `<button class="ck${on ? ' on' : ''}" data-a="tick:${g}:${esc(n)}:${t.id}" aria-pressed="${on}" aria-label="${esc(t.text)} done">${ic(on ? 'check-fill' : 'circle')}</button>`}<span>${esc(t.text)}<span class="cap">${when(t)}${on ? '　' + at[tickKey(n, t.id)] : ''}</span></span></div>`; }).join('') : '<p class="empty">No tasks yet</p>');
+    return `<div class="mrow${open ? ' open' : ''}">${head.replace('row g-mem', `row g-mem gx${open ? ' open' : ''}`)}<div class="gbody">${body}</div></div>`; }).join('');
   return `<section class="sec"><p class="sh">Members</p><div class="list">${rows}</div></section>`;
 }
 function documents(ev, ed) {
@@ -1127,20 +1159,14 @@ function sheet() {
       <div class="row g-p">${sym('pin', 'Venue')}<span class="fl">${fld('draft:venue', n.venue, 'Venue')}</span></div>
       <div class="row g-p">${sym('teacher', 'Leading Teacher')}<span class="fl">${fld('draft:leading', n.leading, 'Leading Teacher')}</span></div></div>`;
   }
+  // People on a task: a Group Lead adds their group's members; the Event Lead or an Editor adds anyone on any task, from the
+  // task's group and from the chairs (Event Lead), never CA's teachers (26/10/03)
   if (s.k === 'assign') {
-    const t = ev.tasks.find(x => x.id === s.id), g = V().group;
-    h = bar(close, `People<span class="s2">${esc(t.text)}</span>`, '') + `<div class="list">${members(g).map(n => onLeave(ev, g, n) && !t.names.includes(n) ? `<div class="row g-opt" aria-disabled="true"><span class="muted opt-n">${pav(n)}<span>${esc(n)}</span></span>${sym('leave', 'On Leave')}</div>` : `<button class="row g-opt" data-a="pickn:${t.id}:${n}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span>${check(t.names.includes(n))}</button>`).join('')}</div>`;
-  }
-  // A member's tasks: the group's tasks, ticked for this member (as People, from the member's side); then On Leave
-  if (s.k === 'person') {
-    const [g, n] = [s.g, s.n];
-    const list = sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g)));
-    // Before the Event (dates) and On the Day (lines) are the sheet's two sections, so a date and a time never share a place
-    const one = (t, when) => `<button class="row g-opt" data-a="pickn:${t.id}:${esc(n)}"><span>${esc(t.text)}<span class="cap">${when}</span></span>${check(t.names.includes(n))}</button>`;
-    const sec = (head, l, when) => l.length ? `<section class="sec"><p class="sh">${head}</p><div class="list">${l.map(t => one(t, when(t))).join('')}</div></section>` : '';
-    const card = cardOf(n), cut = card.indexOf('<section'), head = cut < 0 ? card : card.slice(0, cut), rest = cut < 0 ? '' : card.slice(cut);
-    h = bar(close, '', '') + head + (n === roster(g).lead[1] ? '' : (list.length ? sec('Before the Event', list.filter(t => !t.row), t => md(t.date || '')) + sec('On the Day', list.filter(t => t.row), t => esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' '))) : '<p class="empty">No tasks yet</p>') +
-      `<section class="sec"><div class="list"><label class="row" style="grid-template-columns:minmax(0,1fr) auto;cursor:pointer"><span>On Leave</span><input type="checkbox" class="switch" data-a="leave:${g}:${n}"${onLeave(ev, g, n) ? ' checked' : ''}></label></div></section>`) + rest;
+    const t = ev.tasks.find(x => x.id === s.id), lead = isLead(), g = lead ? (ev.groups.some(x => x.name === t.to[0]) ? t.to[0] : '') : V().group;
+    const opt = n => `<button class="row g-opt" data-a="pickn:${t.id}:${esc(n)}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span>${check(t.names.includes(n))}</button>`;
+    const chairs = lead ? CHAIRS.filter(Boolean) : [];
+    h = bar(close, `People<span class="s2">${esc(t.text)}</span>`, '') + (g && chairs.length ? `<p class="sh">${gname(g)}</p>` : '') + `<div class="list">${(g ? members(g) : []).map(n => onLeave(ev, g, n) && !t.names.includes(n) ? `<div class="row g-opt" aria-disabled="true"><span class="muted opt-n">${pav(n)}<span>${esc(n)}</span></span>${sym('leave', 'On Leave')}</div>` : `<button class="row g-opt" data-a="pickn:${t.id}:${n}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span>${check(t.names.includes(n))}</button>`).join('')}</div>` +
+      (chairs.length ? `<section class="sec"><p class="sh">Event Lead</p><div class="list">${chairs.map(opt).join('')}</div></section>` : '');
   }
   if (s.k === 'account') {
     const v = V(), others = peopleOf(ACCT()).filter(x => x !== v.name), pn = photoName();
@@ -1162,7 +1188,6 @@ function sheet() {
   }
   if (s.k === 'card') h = bar(close, '', '') + cardOf(s.n);
   // Recently Deleted: events deleted in the last 30 days; Restore brings one back as it was
-  if (s.k === 'deleted') h = bar(close, 'Recently Deleted', '') + (!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? `<div class="list">${S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('')}</div>` : '<p class="empty">No deleted events</p>');
   if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map((e, i) => { const txt = `<span>${esc(e.what)}<span class="cap">${esc(dmy(e.at.slice(0, 8)) + e.at.slice(8))}　${mention(e.who)}</span></span>`;
     return e.snap && isLead() ? `<button class="row" data-a="askrestore:${i}" style="grid-template-columns:minmax(0,1fr) auto">${txt}<span class="muted">Restore</span></button>` : `<div class="row">${txt}</div>`; }).join('') || '<p class="empty">No changes yet</p>'}</div>`; // tell-ok: history time and person
   if (s.k === 'delete') h = bar(cancel(), 'Delete Event?', '') + `<p class="note">${esc(ev.name)}: its Rundown, tasks and documents go for everyone.</p><button class="nb glass danger" style="width:100%;font-weight:600" data-a="delevent">Delete Event</button>`;
@@ -1302,7 +1327,6 @@ function replaceGroup(ev, from, g) {
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-a]'); if (!b) return;
   if (b.dataset.a === 'bg' && e.target !== b) return;
-  if (b.closest('.sw') && b.closest('.sw').dataset.dragged) { delete b.closest('.sw').dataset.dragged; return; }
   const [a, ...r] = b.dataset.a.split(':'), arg = r.join(':'), ev = cur() && cur().ev ? EV() : null;
   if (b.closest('.menu')) S.menu = null;
   switch (a) {
@@ -1327,17 +1351,19 @@ document.addEventListener('click', async e => {
     case 'closemenu': S.menu = null; layer(); break;
     case 'sheet': { const [k, x, y] = arg.split(':');
       if (k === 'new') S.draft = {name: '', date: '', asmTime: '', venue: '', leading: ''};
-      S.sheet = k === 'person' ? {k, g: x, n: y} : {k, id: x}; layer();
-      if (k === 'deleted') { S.deleted = null; try { const r2 = await api('deleted'); S.deleted = r2.ok ? await r2.json() : []; } catch (err) { S.deleted = []; } layer(); }
+      S.sheet = {k, id: x}; layer();
       break; }
     case 'close': case 'bg': S.sheet = null; render(); break;
     case 'create': { const n = S.draft, id = uid();
       EVENTS.push({id, v: 4, date: n.date, name: n.name.trim(), asmTime: n.asmTime, venue: n.venue, leading: n.leading ? n.leading.split(/[、,，]/).map(x => x.trim()).filter(Boolean) : [], support: [], lead: CHAIRS.includes(V().name) ? V().name : '', remarks: '', groups: [], mcs: [], rows: [], tasks: [], awards: {}, guests: null, att: {}, leave: {}, log: [], upd: {}});
       log(EVENTS[EVENTS.length - 1], 'Created the event'); S.sheet = null; go({p: 'event', ev: id}); persistSoon(0); break; }
-    case 'pickn': { const [tid, n] = arg.split(':'), t = ev.tasks.find(x => x.id === tid); t.names = t.names.includes(n) ? t.names.filter(x => x !== n) : [...t.names, n]; log(ev, `${t.text}: ${t.names.join('、') || 'no one'}`); render(); break; }
-    case 'here': { const [g, n] = arg.split(':'), a2 = ev.att[g] = ev.att[g] || {}; if (a2[n]) delete a2[n]; else a2[n] = NOW(); render(); break; }
+    case 'pickn': { const [tid, n] = arg.split(':'), t = ev.tasks.find(x => x.id === tid); t.names = t.names.includes(n) ? t.names.filter(x => x !== n) : [...t.names, n]; if (t.to[0] && ev.groups.some(x => x.name === t.to[0])) syncAtt(ev, t.to[0], n); log(ev, `${t.text}: ${t.names.join('、') || 'no one'}`); render(); break; }
     case 'rollaw': { const [lid, aid, i] = arg.split(':'), a2 = ev.awards[lid].awards.find(x => x.id === aid), k = `${aid}:${a2.rows[+i][1]}`, m = ((ev.roll = ev.roll || {}).aw = ev.roll.aw || {}); if (m[k]) delete m[k]; else m[k] = NOW(); render(); break; }
     case 'rollgu': { const m = ((ev.roll = ev.roll || {}).gu = ev.roll.gu || {}); if (m[arg]) delete m[arg]; else m[arg] = NOW(); render(); break; }
+    case 'tick': { const [g, n, tid] = arg.split(':'), a2 = ev.att[g] = ev.att[g] || {}, k = tickKey(n, tid); if (a2[k]) delete a2[k]; else a2[k] = NOW(); syncAtt(ev, g, n); render(); break; }
+    case 'mc': { const [g, n] = arg.split(':'), key = `${ev.id}:m:${n}`, now = Date.now();
+      if (S.lastMc && S.lastMc.k === key && now - S.lastMc.t < 400) { S.lastMc = null; S.open[key] = !S.open[key]; const l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
+      S.lastMc = {k: key, t: now}; S.open[key] = !S.open[key]; render(); break; }
     case 'leave': { const [g, n] = arg.split(':'), l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
     case 'offduty': ev.groups = ev.groups.filter(g => g.name !== arg); dropTasks(ev, arg); log(ev, 'Took ' + arg + ' off duty'); render(); break;
     // A new task goes to the only duty group, or waits for its group to be chosen
@@ -1374,7 +1400,7 @@ document.addEventListener('click', async e => {
     case 'delguest': ev.guests = ev.guests.filter(x => x.id !== arg); render(); break;
     case 'askundelete': { const x = S.deleted[+arg]; S.alert = {t: 'Restore This Event?', m: `${dmy(x.date)}｜${x.name} comes back as it was when deleted.`, no: 'Cancel', verb: 'Restore', act: 'undelete:' + arg}; layer(); break; }
     case 'undelete': { const x = S.deleted[+arg]; S.alert = null; layer();
-      try { const r2 = await api('events/' + x.id, {method: 'PUT', body: JSON.stringify({rev: x.rev, data: x.data})}); if (!r2.ok) throw new Error(); S.deleted.splice(+arg, 1); toast('Restored'); await pull(true); layer(); }
+      try { const r2 = await api('events/' + x.id, {method: 'PUT', body: JSON.stringify({rev: x.rev, data: x.data})}); if (!r2.ok) throw new Error(); S.deleted.splice(+arg, 1); toast('Restored'); await pull(true); render(); }
       catch (err) { toast(SYNC.offline ? 'No connection. Not restored' : 'Not restored'); } break; }
     case 'delevent': EVENTS = EVENTS.filter(x => x !== ev); S.sheet = null; S.edit = false; S.stack = [{p: 'events'}]; render(); toast('Event deleted'); break;
     case 'addchair': CHAIRS.push(''); render(); focus(`[data-b="chair:${CHAIRS.length - 1}"]`); break;
@@ -1398,6 +1424,8 @@ document.addEventListener('click', async e => {
     case 'signout': signOut(); break;
     case 'card': S.sheet = {k: 'card', n: arg}; layer(); break;
     case 'gx': S.open[arg] = !S.open[arg]; render(); break;
+    // Recently Deleted opens in place on Events (26/10/03), fetching the list the first time
+    case 'delx': S.delOpen = !S.delOpen; render(); if (S.delOpen) { S.deleted = null; try { const r2 = await api('deleted'); S.deleted = r2.ok ? await r2.json() : []; } catch (err) { S.deleted = []; } render(); } break;
     case 'cardopen': S.sheet = null; layer(); go({p: 'event', ev: arg}); break;
     case 'standin': S.sheet = {k: 'standin', g: arg}; S.made = null; S.pick = null; layer(); break;
     case 'standinpick': S.pick = arg; layer(); break;
@@ -1459,14 +1487,6 @@ document.addEventListener('change', async e => {
   try { const r = await api('applications', {method: 'PUT', body: JSON.stringify({url: e.target.value.trim()})}); APPS = {url: e.target.value.trim(), error: !r.ok}; } catch (x) { return; }
   if (S.sheet) layer(); await pull(true);
 });
-// Swipe a member left for On Leave
-let sw = null;
-document.addEventListener('pointerdown', e => { const w = e.target.closest('.sw'); document.querySelectorAll('.sw.open').forEach(x => { if (x !== w) { x.classList.remove('open'); x.firstElementChild.style.transform = ''; } }); if (!w || e.target.closest('.swa')) return; sw = {w, x: e.clientX, y: e.clientY, dx: 0, on: w.classList.contains('open')}; });
-document.addEventListener('pointermove', e => { if (!sw) return; const dx = e.clientX - sw.x; if (!sw.moved && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(e.clientY - sw.y)) { sw.moved = true; sw.w.classList.add('moving'); } if (!sw.moved) return;
-  const max = sw.w.querySelector('.swa').offsetWidth, x = Math.max(-max, Math.min(0, (sw.on ? -max : 0) + dx)); sw.dx = x; sw.w.firstElementChild.style.transition = 'none'; sw.w.firstElementChild.style.transform = `translateX(${x}px)`; });
-document.addEventListener('pointerup', () => { if (!sw) return; const w = sw.w, r = w.firstElementChild; r.style.transition = ''; w.classList.remove('moving');
-  if (sw.moved) { const max = w.querySelector('.swa').offsetWidth, open = sw.dx < -max / 2; w.classList.toggle('open', open); r.style.transform = open ? `translateX(${-max}px)` : ''; w.dataset.dragged = '1'; setTimeout(() => delete w.dataset.dragged, 50); }
-  sw = null; });
 
 /* ---------- Insert between two rows (Rundown lines; the event's tasks in Edit) ----------
    With a mouse: near the gap between two rows a gold line appears with a ＋ at the leading edge (fixed there, as in
@@ -1585,7 +1605,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '7f8e38b575d1';
+const PAGE_VER = '7fc25d88c336';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
