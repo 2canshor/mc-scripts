@@ -85,14 +85,18 @@ h1 .sep,.sep{color:var(--secondary);font-weight:400}
 /* A Remark is edited where it reads: caption size and colour, as wide as its text (only the event's Remarks is a box) */
 .rmkl{display:block;margin-top:6px}
 .rmkl .fld{font-size:15px;line-height:1.45;color:var(--secondary)}
-.who{display:block;font-size:15px;color:var(--secondary)}
+.who{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;font-size:15px;line-height:1.45;color:var(--secondary);margin-top:2px}
+.who>*{vertical-align:0}
+.who .pn{margin-right:0}
+.who .nw{display:inline-flex;align-items:center;gap:5px}
+.who .isym,.who .nob{display:grid;place-items:center}
 .muted,.t{color:var(--secondary)}
 .t,.tn{font-variant-numeric:tabular-nums}
 .empty{color:var(--secondary);margin:6px 0}
 /* Rows sit on the canvas. A fill shows only when pressed, or for what is happening now. */
 .list{display:flex;flex-direction:column}
 /* A row's fill reaches 20 px beyond its text, so an update dot (12 px left of the text) sits inside it, as Mail's unread dot */
-.row{position:relative;display:grid;column-gap:14px;align-items:center;width:calc(100% + 40px);min-height:50px;margin:0 -20px;padding:12px 20px;border-radius:12px;background:transparent}
+.row{--rp:12px;position:relative;display:grid;column-gap:14px;align-items:center;width:calc(100% + 40px);min-height:50px;margin:0 -20px;padding:var(--rp) 20px;border-radius:12px;background:transparent}
 button.row:active,[data-a].row:active{background:var(--current)}
 @media (hover:hover){button.row:hover,div.row[data-a]:hover{background:var(--current)}}
 [data-a].row{cursor:pointer}
@@ -110,7 +114,6 @@ button.row:active,[data-a].row:active{background:var(--current)}
 /* The Rundown line a task is on, named above the task; in Edit, when and which group are chosen there */
 .lnm{display:block;font-size:15px;color:var(--secondary);line-height:1.45}
 .lpk{font-size:15px;color:var(--secondary);margin-bottom:2px}
-.gpk{margin:6px 0 0}
 .list.tasks>.sh{margin:0 0 2px}
 .list.tasks>.row+.sh,.list.tasks>.sh+.sh{margin-top:24px}
 .fld+.box{margin-top:6px}
@@ -123,7 +126,13 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .go{width:18px;height:18px;color:var(--caption)}
 .me{font-weight:600}
 /* An update not yet seen: a Strong Yellow dot in the margin, as Mail's unread dot (not for the person who made it) */
-.udot{position:absolute;left:4px;top:calc(9px + .75em - 4px);width:8px;height:8px;border-radius:50%;background:var(--primary)}
+.go.dis{transition:transform .2s ease}
+.gx.open .go.dis{transform:rotate(180deg)}
+.gbody{padding-bottom:8px}
+.ssec{margin-top:2px}
+.list.gl>.gh+.sub,.list.gl>.sub:first-child{margin-top:2px}
+.list.gl>.row+.gh,.list.gl>.sub+.gh{margin-top:18px}
+.udot{position:absolute;left:4px;top:calc(var(--rp,9px) + .75em - 4px);width:8px;height:8px;border-radius:50%;background:var(--primary)}
 .tk{position:relative}
 .tk>.udot{left:-14px;top:calc(5px + .75em - 4px)}
 .ln>.udot{top:calc(10px + .75em - 4px)}
@@ -174,7 +183,7 @@ button.tk:active{background:var(--current)}
 .ck svg.i{width:24px;height:24px}
 .ck.on{color:var(--present)}
 .g-mem{grid-template-columns:22px minmax(0,1fr)}
-.nmb{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;column-gap:10px;align-items:center;min-height:44px;margin:-9px -20px -9px 0;padding:9px 20px 9px 0;border-radius:0 12px 12px 0}
+.nmb{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;column-gap:10px;align-items:center;min-height:44px;margin:calc(0px - var(--rp)) -20px calc(0px - var(--rp)) 0;padding:var(--rp) 20px var(--rp) 0;border-radius:0 12px 12px 0}
 .nmb:active{background:var(--current)}
 .nmb .tm{font-size:15px;color:var(--secondary);margin-left:8px;font-variant-numeric:tabular-nums}
 /* Swipe a member left for On Leave (Group Lead) */
@@ -590,6 +599,8 @@ if (typeof module !== "undefined") module.exports = ScriptGen;
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
 <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-gq" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="2.6 2.4"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.4v.6"/><path d="M12 16.8h.01"/></symbol>
 <symbol id="i-chev-ud" viewBox="0 0 24 24"><path d="m7 9 5-5 5 5"/><path d="m7 15 5 5 5-5"/></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
 <symbol id="i-plus-c" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M12 7.5v9M7.5 12h9" stroke="#FFFFFF" stroke-width="2"/></symbol> <!-- stroke-ok: white mark inside a filled symbol -->
@@ -915,17 +926,51 @@ const gtag = g => g === 'All' ? `<span class="nw"><span class="isym gAll">${ic('
 // Under a task in reading, the group is its symbol alone (26/10/02), then the names; Everyone keeps its word, having no names after it
 const gicon = g => `<span class="isym${gcls(g)}" role="img" aria-label="${esc(g)}" title="${esc(g)}">${ic(SYM[kind(g)])}</span>`;
 const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}</span>` : `<span class="who">${t.to.length ? gicon(t.to[0]) + ' ' : ''}${t.names.length ? t.names.map(n => mention(n, n === V().name)).join('') : nobody(t.to[0])}</span>`;
-// Every task of the event (Event Lead and Teacher). In Edit each task chooses when (Before the Event or a Rundown line) and which group.
-function allTasks(ev, ed) {
+// Every task of the event, for the Teacher (the Event Lead sees them in their duty groups)
+function allTasks(ev) {
   const list = sorted(ev, ev.tasks.filter(t => !t.role));
-  if (!ed) return taskSec(ev, 'Tasks', list, (t, when, now) => `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${whoLine(t)}</span></div>`);
-  // Edit: Before the Event (dates) and On the Day (each line's time) as headings, so the first column holds one kind of time.
-  // A task moves by its handle anywhere in the list; dropped under the other heading, or beside another date or line, it takes that one.
-  const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
-  const toOpts = t => `<option value="" disabled${t.to.length ? '' : ' selected'}></option>` + ev.groups.map(gr => `<option value="${esc(gr.name)}"${t.to[0] === gr.name ? ' selected' : ''}>${esc(gr.name)}</option>`).join('') + `<option value="All"${t.to.includes('All') ? ' selected' : ''}>Everyone</option>`;
-  const row = t => `<div class="row g-tme" data-drag="task" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
-    <span>${t.row ? `<span class="fl lpk">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span><span class="fl lpk gpk">${pick(`task:${t.id}:to`, t.to.includes('All') ? gtag('All') : t.to.length ? gtag(t.to[0]) : '', toOpts(t), 'Group')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
-  return `<section class="sec"><div class="list tasks"><p class="sh" data-head="before">Before the Event</p>${list.filter(t => !t.row).map(row).join('')}<p class="sh" data-head="day">On the Day</p>${list.filter(t => t.row).map(row).join('')}</div><div class="list">${addB('menu:addtask', 'Add Task', 'var(--tc)').replace('class="row add', 'class="row add ins-alt')}</div></section>`;
+  return taskSec(ev, 'Tasks', list, (t, when, now) => `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${whoLine(t)}</span></div>`);
+}
+// Tasks in two sections shown together, Before the Event (dates) and On the Day (each line's time), so a Group Lead
+// sees all their group's work at once and gives it out (26/10/03)
+function bothSecs(ev, tasks, render) {
+  const l = sorted(ev, tasks), b = l.filter(t => !t.row), d = l.filter(t => t.row);
+  if (!l.length) return `<section class="sec"><p class="sh">Tasks</p><p class="empty">No tasks yet</p></section>`;
+  return (b.length ? `<section class="sec"><p class="sh">Before the Event</p><div class="list">${b.map(t => render(t, whenOf(ev, t), false)).join('')}</div></section>` : '') +
+    (d.length ? `<section class="sec"><p class="sh">On the Day</p><div class="list">${d.map(t => render(t, whenOf(ev, t), false)).join('')}</div></section>` : '');
+}
+// The Event Lead's duty groups, each opening to its tasks (26/10/03): a red count of tasks without a name sits left of the
+// disclosure chevron and falls as names are added (it stays while the group is open, 26/10/03); Everyone, and Unassigned (a ? symbol: no group, or one no longer on
+// duty), are groups too. In Edit every group is open and a task moves to another group, or between Before the Event and
+// On the Day, by its handle.
+const UNASSIGNED = '';
+function groupKeys(ev, ed) {
+  const live = ev.tasks.filter(t => !t.role);
+  return [...ev.groups.map(x => x.name), ...(ed || live.some(t => t.to.includes('All')) ? ['All'] : []), ...(live.some(t => tasksOfKey(ev, UNASSIGNED).includes(t)) ? [UNASSIGNED] : [])];
+}
+const tasksOfKey = (ev, k) => ev.tasks.filter(t => !t.role && (k === 'All' ? t.to.includes('All') : k === UNASSIGNED ? !t.to.includes('All') && !ev.groups.some(x => x.name === t.to[0]) : !t.to.includes('All') && t.to[0] === k));
+const keySym = k => k === 'All' ? sym('all', 'Everyone', 'ic gAll') : k === UNASSIGNED ? sym('gq', 'Unassigned') : gsym(k);
+const keyName = k => k === 'All' ? 'Everyone' : k === UNASSIGNED ? 'Unassigned' : gname(k);
+function dutyGroups(ev, ed) {
+  const keys = groupKeys(ev, ed);
+  if (ed) {
+    const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
+    const row = t => `<div class="row g-tme" data-drag="task" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
+      <span>${t.row ? `<span class="fl lpk">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
+    const body = keys.map(k => { const gr = ev.groups.find(x => x.name === k), l = sorted(ev, tasksOfKey(ev, k)), cov = gr && gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
+      const head = gr ? `<div class="row g-p gh" data-head="g" data-g="${esc(k)}" tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto">${keySym(k)}<span><span class="fl">${pick(`dg:${k}`, gname(k), dutyOpts(ev, kind(k), k), 'Group')}</span>${cov}</span>${rmB('askgroup:' + k, 'Remove duty group')}</div>`
+        : `<div class="row g-p gh" data-head="g" data-g="${esc(k)}">${keySym(k)}<span>${keyName(k)}</span></div>`;
+      return head + `<p class="sub" data-head="before" data-g="${esc(k)}">Before the Event</p>${l.filter(t => !t.row).map(row).join('')}<p class="sub" data-head="day" data-g="${esc(k)}">On the Day</p>${l.filter(t => t.row).map(row).join('')}`; }).join('');
+    return `<section class="sec"><p class="sh">Duty Groups</p><div class="list tasks gl">${body}</div><div class="list">${addB('menu:addgroup', 'Add Duty Group')}${addB('menu:addtask', 'Add Task').replace('class="row add', 'class="row add ins-alt')}</div></section>`;
+  }
+  if (!keys.length) return `<section class="sec"><p class="sh">Duty Groups</p><p class="empty">No duty groups yet</p></section>`;
+  const read = (t, when) => `<div class="row g-tm">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${t.to.includes('All') ? '' : names(t)}</span></div>`;
+  const rows = keys.map(k => { const gr = ev.groups.find(x => x.name === k), l = tasksOfKey(ev, k), open = !!S.open[`${ev.id}:g:${k}`];
+    const n = k === 'All' ? 0 : l.filter(t => !t.names.length).length, cov = gr && gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
+    const changed = l.some(t => isNew(`${ev.id}:t:${t.id}`)) && !open ? '<span class="udot" role="img" aria-label="Updated"></span>' : '';
+    return `<button class="row g-ic gx${open ? ' open' : ''}" data-a="gx:${ev.id}:g:${esc(k)}" aria-expanded="${open}">${changed}${keySym(k)}<span>${keyName(k)}${cov}</span><span>${n && (k === UNASSIGNED || fills(k)) ? badge(n) : ''}</span>${ic('chev-d', 'go dis')}</button>` +
+      (open ? `<div class="gbody">${bothSecs(ev, l, read).replace(/<section class="sec"><p class="sh">/g, '<section class="ssec"><p class="sub">')}</div>` : ''); }).join('');
+  return `<section class="sec"><p class="sh">Duty Groups</p><div class="list">${rows}</div></section>`;
 }
 function yourPart(ev, ed) {
   const v = V(), type = vt(ev);
@@ -938,20 +983,14 @@ function yourPart(ev, ed) {
   if (type === 'gl') {
     const g = v.group, mine = groupTasks(ev, g);
     const render = (t, when, now) => t.to.includes('All') ? `<div class="row g-tm${now ? ' current' : ''}">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}<span class="who">${gtag('All')}</span></span></div>` : `<button class="row g-tm${now ? ' current' : ''}" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
-    return (isDay(ev) ? daySec(ev) : taskSec(ev, 'Tasks', mine, render)) + memberList(ev, g);
+    return (isDay(ev) ? daySec(ev) : bothSecs(ev, mine, render)) + memberList(ev, g);
   }
-  if (type === 'lead') {
-    // Duty groups: who is on duty, with the number of tasks still without a name. Their tasks are in Tasks below.
-    const rows = ev.groups.map(gr => { const g = gr.name, n = openCount(ev, g), cov = gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
-      if (ed) return `<div class="row g-p" tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto">${gsym(g)}<span><span class="fl">${pick(`dg:${g}`, gname(g), dutyOpts(ev, kind(g), g), 'Group')}</span>${cov}</span>${rmB('askgroup:' + g, 'Remove duty group')}</div>`;
-      return `<div class="row g-p" style="grid-template-columns:22px minmax(0,1fr) auto">${gsym(g)}<span>${gname(g)}${cov}</span><span>${n && fills(g) ? badge(n) : ''}</span></div>`; }).join('');
-    return `<section class="sec"><p class="sh">Duty Groups</p><div class="list">${rows}${ed ? addB('menu:addgroup', 'Add Duty Group') : ''}</div>${!rows && !ed ? '<p class="empty">No duty groups yet</p>' : ''}</section>` + (ed ? (isDay(ev) ? `<section class="sec"><p class="sh">Rundown</p>${runEdit(ev)}</section>` : '') + allTasks(ev, true) : isDay(ev) ? daySec(ev) : allTasks(ev, false));
-  }
+  if (type === 'lead') return dutyGroups(ev, ed) + (isDay(ev) ? (ed ? `<section class="sec"><p class="sh">Rundown</p>${runEdit(ev)}</section>` : daySec(ev)) : '');
   // Teacher: who is responsible
   const who = ev.groups.map(gr => { const g = gr.name, ns = [...new Set(ev.tasks.filter(t => t.to.includes(g)).flatMap(t => t.names))];
     const lines = ns.map(n => mention(n));
     return `<div class="row g-p top">${gsym(g)}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('')}</span>` : ''}</span></div>`; }).join('');
-  return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + (isDay(ev) ? daySec(ev) : allTasks(ev, false));
+  return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + (isDay(ev) ? daySec(ev) : allTasks(ev));
 }
 // A group's members: attendance | name, time, Group Lead | ›. Each is ticked one by one. The row opens their tasks.
 function memberList(ev, g) {
@@ -965,14 +1004,12 @@ function memberList(ev, g) {
 }
 function documents(ev, ed) {
   const items = isDay(ev) ? [] : [['rundown', 'list', 'Rundown', '']];
-  // The Rundown's red count: tasks with no name yet that this viewer fills (Event Lead: every group's; Group Lead: their own group's)
-  const open = ev.groups.filter(x => fills(x.name)).reduce((k, x) => k + openCount(ev, x.name), 0);
   if (hasScript(ev) || (ev.mcs || []).length) items.push(['script', 'doc', 'Script', ed ? 'delscript' : '']);
   Object.entries(ev.awards || {}).forEach(([id, d]) => items.push(['aw:' + id, 'users', 'Participant List', ed ? 'deldoc:aw:' + id : '']));
   if (ev.guests) items.push(['guests', 'guests', 'Guest List', ed ? 'deldoc:guests' : '']);
   const rows = items.map(([id, n, name, del]) => ed
     ? `<div class="row g-ic">${sym(n, '')}<span>${esc(name)}</span><span></span><span></span></div>`
-    : `<button class="row g-ic" data-a="doc:${id}">${dot(`${ev.id}:d:${id}`, true)}${sym(n, '')}<span>${esc(name)}</span><span>${id === 'rundown' && open ? badge(open) : ''}</span>${ic('chev-r', 'go')}</button>`).join('');
+    : `<button class="row g-ic" data-a="doc:${id}">${dot(`${ev.id}:d:${id}`, true)}${sym(n, '')}<span>${esc(name)}</span><span></span>${ic('chev-r', 'go')}</button>`).join('');
   const add = ed && menuItems('adddoc').length ? addB('menu:adddoc', 'Add Document') : '';
   return rows || add ? `<section class="sec"><p class="sh">Documents</p><div class="list">${rows}${add}</div></section>` : '';
 }
@@ -1358,6 +1395,7 @@ document.addEventListener('click', async e => {
     case 'gremove': ev.groups = ev.groups.filter(x => x.name !== arg); dropTasks(ev, arg); S.alert = null; render(); break;
     case 'signout': signOut(); break;
     case 'card': S.sheet = {k: 'card', n: arg}; layer(); break;
+    case 'gx': S.open[arg] = !S.open[arg]; render(); break;
     case 'cardopen': S.sheet = null; layer(); go({p: 'event', ev: arg}); break;
     case 'standin': S.sheet = {k: 'standin', g: arg}; S.made = null; S.pick = null; layer(); break;
     case 'standinpick': S.pick = arg; layer(); break;
@@ -1433,6 +1471,10 @@ document.addEventListener('pointerup', () => { if (!sw) return; const w = sw.w, 
    WordPress's between-block inserter and Word's row inserter, so it is easy to hit and never covers a field); the ＋
    inserts a row right there and puts the cursor in it. With touch or a keyboard: Return in a line's title or a task
    adds the next one below it, as in Notes. A new row takes the date or line of the row above it. */
+const placeOf = (sibs, at) => { let sec = null;
+  for (let j = at - 1; j >= 0; j--) { const h = sibs[j].dataset; if (!h.head) continue; if (!sec && h.head !== 'g') sec = h.head; if (h.g !== undefined) return {sec: sec || 'before', g: h.g}; }
+  return {sec: sec || 'before'}; };
+const toOfKey = g => g === 'All' ? ['All'] : g ? [g] : [];
 function insertAt(list, at) {  // at: the index among the list's rows and headings that the new row goes before
   const ev = EV(), sibs = [...list.children].filter(x => x.dataset && (x.dataset.drag || x.dataset.head)), kindKey = (sibs.find(x => x.dataset.drag) || {}).dataset;
   const before = sibs[at], above = (() => { for (let j = at - 1; j >= 0; j--) { if (sibs[j].dataset.head) return null; return sibs[j]; } return null; })();
@@ -1442,9 +1484,9 @@ function insertAt(list, at) {  // at: the index among the list's rows and headin
     const i = below ? ev.rows.findIndex(r => r.id === below.dataset.id) : above ? ev.rows.findIndex(r => r.id === above.dataset.id) + 1 : ev.rows.length;
     ev.rows.splice(i < 0 ? ev.rows.length : i, 0, rw); render(); focus(`[data-b="row:${rw.id}:title"]`); return;
   }
-  let head = null; for (let j = at - 1; j >= 0; j--) if (sibs[j].dataset.head) { head = sibs[j].dataset.head; break; }
+  const pl = placeOf(sibs, at), head = pl.sec;
   const ref = above || below, rt = ref && ev.tasks.find(x => x.id === ref.dataset.id);
-  const t = {id: uid(), text: '', to: rt && rt.to.length ? [...rt.to] : ev.groups.length === 1 ? [ev.groups[0].name] : [], names: [], remark: ''};
+  const t = {id: uid(), text: '', to: pl.g !== undefined ? toOfKey(pl.g) : rt && rt.to.length ? [...rt.to] : ev.groups.length === 1 ? [ev.groups[0].name] : [], names: [], remark: ''};
   if (head === 'day') { t.row = rt ? rt.row : (ev.rows[0] || {}).id; if (!t.row) { delete t.row; t.date = dayBefore(ev); } } else t.date = rt ? rt.date : dayBefore(ev);
   const i = above ? ev.tasks.findIndex(x => x.id === above.dataset.id) + 1 : below ? ev.tasks.findIndex(x => x.id === below.dataset.id) : ev.tasks.length;
   ev.tasks.splice(i < 0 ? ev.tasks.length : i, 0, t); render(); focus(`[data-b="task:${t.id}:text"]`);
@@ -1520,7 +1562,8 @@ function drop(row, sibs, from, to) {
   const above = near(-1), below = near(1);
   if (row.dataset.drag === 'task') {
     const ev = EV(), t = ev.tasks.find(x => x.id === row.dataset.id), ref = above || below, rt = ref && ev.tasks.find(x => x.id === ref.dataset.id);
-    let head = null; for (let j = i - 1; j >= 0; j--) if (order[j].dataset.head) { head = order[j].dataset.head; break; }
+    const pl = placeOf(order, i), head = pl.sec;
+    if (pl.g !== undefined) { const to = toOfKey(pl.g); if (J(to) !== J(t.to)) { t.to = to; t.names = []; } }
     if (head === 'day') { const line = rt ? rt.row : (ev.rows[0] || {}).id; if (line) { t.row = line; delete t.date; } }
     else if (head === 'before') { t.date = rt ? rt.date : t.date || dayBefore(ev); delete t.row; }
   }
@@ -1540,7 +1583,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = 'e1a4e8dfdffe';
+const PAGE_VER = '42ac1fb99113';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
@@ -1846,12 +1889,11 @@ function signOut() {
   signedOut();
 }
 
-/* ---------- Export: attendance as CSV; a document as a Word file ---------- */
+/* ---------- Export: attendance as an Excel file; a document as a Word file ---------- */
 function saveFile(name, blob) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
-const saveCsv = (name, rows) => saveFile(name, new Blob(['﻿' + rows.map(r => r.map(x => { const s = String(x ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\r\n')], {type: 'text/csv'}));
 // A member's status at an event, in the List of Members' words
 function statusOf(ev, g, n) {
   const gr = ev.groups.find(x => x.name === g);
@@ -1860,13 +1902,60 @@ function statusOf(ev, g, n) {
   if (onLeave(ev, g, n)) return 'Off';
   return roster(g).lead[1] === n || ev.tasks.some(t => t.to.includes(g) && t.names.includes(n)) ? 'Absent' : '';
 }
-// The year's attendance, one column per event that has taken place (the Event Lead: every group; a Group Lead: their own)
-function exportAttendance() {
+// The year's attendance as an Excel file in the List of Members' own style (26/10/03): the Members sheet, an Attendance band
+// over one column per event that has taken place, each person's cell in the status colour, and the legend under the list.
+// The Event Lead gets every group; a Group Lead only their own group's people (the others' attendance is never sent to them).
+const ZH_KIND = {MC: '司儀', Backstage: '後台', Reception: '接待'};
+const zhGroup = g => ZH_KIND[kind(g)] + g.slice(-1) + '組';
+const STATUS_FILL = {Attended: 8, Off: 9, Absent: 10, Covering: 11, Excluded: 12};
+const colName = i => { let s = ''; for (i++; i; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+async function exportAttendance() {
   const v = V(), groups = v.type === 'lead' ? ALL_GROUPS : [v.group];
   const evs = EVENTS.filter(e => e.date && e.date <= TODAY && (v.type === 'lead' || e.groups.some(g => g.name === v.group || g.covers === v.group))).sort((a, b) => a.date.localeCompare(b.date));
-  const rows = [['Group', 'Class', 'Name', ...evs.map(e => `${e.date} ${e.name}`)]];
-  groups.forEach(g => members(g).forEach(n => rows.push([g, clsOf(g, n), n, ...evs.map(e => statusOf(e, g, n))])));
-  saveCsv(`${v.type === 'lead' ? '' : v.group + ' '}Attendance ${TODAY.replace(/\//g, '')}.csv`, rows);
+  // People: by group; members by class, then the Group Lead (as List of Members)
+  const people = groups.flatMap(g => { const r = roster(g), lead = r.lead[1];
+    return [...r.people.filter(p => p[1]).slice().sort((a, b) => a[0].localeCompare(b[0])).map(p => ({g, cls: p[0], n: p[1], lead: false})), ...(lead ? [{g, cls: r.lead[0], n: lead, lead: true}] : [])]; });
+  const first = 5, last = first + evs.length - 1, rows = [];
+  const cell = (c, r, st, val) => val === undefined || val === '' ? `<c r="${colName(c)}${r}" s="${st}"/>` : `<c r="${colName(c)}${r}" s="${st}" t="inlineStr"><is><t xml:space="preserve">${xesc(val)}</t></is></c>`;
+  const row = (r, ht, cells) => `<row r="${r}" ht="${ht}" customHeight="1">${cells.join('')}</row>`;
+  rows.push(row(1, 42, [cell(1, 1, 1, 'Members')]));
+  if (evs.length) rows.push(row(2, 19.5, [cell(first, 2, 3, 'Attendance'), ...evs.slice(1).map((e, k) => cell(first + 1 + k, 2, 3))]));
+  rows.push(row(3, 79.5, [cell(1, 3, 2, 'No'), cell(2, 3, 2, 'Name'), cell(3, 3, 2, 'Role'), cell(4, 3, 2, 'Group'), ...evs.map((e, k) => cell(first + k, 3, 2, `${e.date} ${e.name}`))]));
+  people.forEach((p, k) => { const r = 4 + k, lat = p.lead ? 6 : 4, zh = p.lead ? 7 : 5;
+    rows.push(row(r, 19.5, [cell(1, r, lat, p.cls), cell(2, r, zh, p.n), cell(3, r, zh, p.lead ? '組長' : '組員'), cell(4, r, zh, zhGroup(p.g)),
+      ...evs.map((e, j) => cell(first + j, r, STATUS_FILL[statusOf(e, p.g, p.n)] || 13))])); });
+  const lg = 4 + people.length + 1;
+  ['Attended', 'Off', 'Absent', 'Covering', 'Excluded'].forEach((w, k) => rows.push(row(lg + k, 19.5, [cell(1, lg + k, 14 + k), cell(2, lg + k, 19, w)])));
+  const lastCol = colName(evs.length ? last : 4), cols = [[1, 1, 5.83], [2, 2, 13], [3, 3, 10.83], [4, 4, 5.83], [5, 5, 10.83]].map(([a, b, w]) => `<col min="${a}" max="${b}" width="${w}" style="0" customWidth="1"/>`).join('') +
+    (evs.length ? `<col min="${first + 1}" max="${last + 1}" width="30.83" style="0" customWidth="1"/>` : '') + `<col min="${Math.max(last, first) + 2}" max="40" width="10.83" style="0" customWidth="1"/>`;
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView showGridLines="0" zoomScale="143" zoomScaleNormal="143" workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="19.5" customHeight="1"/><cols>${cols}</cols><sheetData>${rows.join('')}</sheetData>${people.length ? `<autoFilter ref="B3:${lastCol}3"/>` : ''}${evs.length > 1 ? `<mergeCells count="1"><mergeCell ref="${colName(first)}2:${colName(last)}2"/></mergeCells>` : ''}<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`;
+  const font = (name, sz, b, rgb) => `<font>${b ? '<b/>' : ''}<sz val="${sz}"/><color rgb="FF${rgb}"/><name val="${name}"/></font>`;
+  const fill = rgb => `<fill><patternFill patternType="solid"><fgColor rgb="FF${rgb}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const thin = `<border><left style="thin"><color rgb="FFDAD8D0"/></left><right style="thin"><color rgb="FFDAD8D0"/></right><top style="thin"><color rgb="FFDAD8D0"/></top><bottom style="thin"><color rgb="FFDAD8D0"/></bottom><diagonal/></border>`;
+  const xf = (f, fl, b, al) => `<xf numFmtId="0" fontId="${f}" fillId="${fl}" borderId="${b}" applyFont="1" applyFill="1" applyBorder="1"${al ? ` applyAlignment="1">${al}</xf>` : '/>'}`;
+  const vc = '<alignment vertical="center"/>', hc = '<alignment vertical="center" wrapText="1"/>';
+  // fills: 2 ivory, 3 cloud, 4 sand (Group Lead), 5–9 the statuses
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4">${font('Anthropic Serif Text Medium', 11, false, '1A1A18')}${font('Anthropic Serif Text Medium', 11, true, '1A1A18')}${font('Anthropic Serif Display Medium', 22, false, '1A1A18')}${font('Noto Serif TC', 11, false, '1A1A18')}</fonts>
+<fills count="10"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${['FBFAF7', 'EDEBE3', 'EDE3C8', '64C77B', '91BAE4', 'F49D92', 'D2B34C', 'EDEBE3'].map(fill).join('')}</fills>
+<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border>${thin}<border><left/><right/><top/><bottom style="medium"><color rgb="FF1A1A18"/></bottom><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="20">${[xf(0, 2, 0), xf(2, 2, 0, vc), xf(1, 3, 2, hc), xf(1, 3, 2, '<alignment horizontal="left" vertical="center"/>'),
+    xf(0, 2, 1, vc), xf(3, 2, 1, vc), xf(0, 4, 1, vc), xf(3, 4, 1, vc),
+    xf(0, 5, 1), xf(0, 6, 1), xf(0, 7, 1), xf(0, 8, 1), xf(0, 9, 1), xf(0, 2, 1),
+    xf(0, 5, 0), xf(0, 6, 0), xf(0, 7, 0), xf(0, 8, 0), xf(0, 9, 0), xf(0, 2, 0, vc)].join('')}</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  try {
+    const Z = await loadZip(), z = new Z();
+    z.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`);
+    z.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+    z.file('xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Members" sheetId="1" r:id="rId1"/></sheets>${people.length ? `<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Members!$B$3:$${lastCol}$3</definedName></definedNames>` : ''}</workbook>`);
+    z.file('xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
+    z.file('xl/styles.xml', styles); z.file('xl/worksheets/sheet1.xml', sheet);
+    const blob = await z.generateAsync({type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    saveFile(`${v.type === 'lead' ? '' : v.group + ' '}Attendance ${TODAY.replace(/\//g, '')}.xlsx`, blob);
+  } catch (e) { toast(SYNC.offline ? 'No connection. Not exported' : 'Not exported'); }
 }
 const MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const TEMPLATE_B64 = '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';
