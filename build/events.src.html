@@ -1362,8 +1362,11 @@ function insertAt(list, at, rc) {  // at: the index among the list's rows and he
   ev.tasks.splice(i < 0 ? ev.tasks.length : i, 0, t); render(); focus(`[data-b="task:${t.id}:text"]`);
 }
 let INS = null;
+const typing = () => { const a = document.activeElement; return !!(a && a.matches && a.matches('textarea,[contenteditable="true"],input:not([type=checkbox]):not([type=radio]):not([type=button])')); };
+const dropIns = () => { if (INS) { INS.remove(); INS = null; } };
 if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.addEventListener('pointermove', e => {
   if (!S.edit || DRAG || S.sheet || S.menu || S.alert) return;
+  if (typing()) return dropIns();  // the insert line stays away while a field is being typed in
   if (e.target.closest && e.target.closest('.ins')) return;
   const list = e.target.closest && e.target.closest('.list'), hide = () => { if (INS) { INS.remove(); INS = null; } };
   if (!list || !list.querySelector('[data-drag]')) return hide();
@@ -1379,7 +1382,9 @@ if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.addEventL
   INS.style.top = (best.y - lr.top) + 'px'; INS.dataset.at = best.at;
 });
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ins-b'); if (!b) return; const ins = b.parentElement, list = ins.parentElement, at = +ins.dataset.at, rc = b.getBoundingClientRect(); ins.remove(); INS = null; insertAt(list, at, rc); });
-document.addEventListener('pointerleave', () => { if (INS) { INS.remove(); INS = null; } });
+document.addEventListener('pointerleave', dropIns);
+document.addEventListener('focusin', () => { if (typing()) dropIns(); });
+document.addEventListener('keydown', dropIns);
 
 /* ---------- Move a row by its handle (Rundown lines; the event's tasks in Edit, across Before the Event and On the Day) ---------- */
 // The row lifts and follows the finger; the rows it passes make room; near the top or bottom the list scrolls.
