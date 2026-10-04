@@ -1374,6 +1374,7 @@ const pwView = (id, ed, copy) => { if (ed) return `<span class="pw">${fld('pw:' 
   const on = (S.pwOpen || new Set()).has(id), v = on && PWSHOW ? PWSHOW[id] : '';
   return `<span class="pw"><span class="pv${on ? '' : ' mask'}">${on ? (v ? esc(v) : '—') : '••••••'}</span><button class="ib eye" data-a="pweye:${esc(id)}" aria-label="${on ? 'Hide' : 'Show'} Password">${ic(on ? 'eye-off' : 'eye')}</button>${copy ? `<button class="ib eye" data-a="copypw:${esc(id)}" aria-label="Copy Account">${ic('copy')}</button>` : ''}</span>`; };
 // A group's stand-in: who, and until when; it opens the Stand-in sheet
+const standinDuties = g => EVENTS.filter(e => e.date >= TODAY && e.groups.some(x => x.name === g)).sort((a, b) => a.date.localeCompare(b.date) || byTime(a, b));
 const standinRow = g => { const x = STANDINS.find(y => y.grp === g);
   return `<button class="row g-ic" data-a="standin:${g}">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) + ' · Until ' + hkAt(x.until) : 'None'}</span>${ic('chev-r', 'go')}</button>`; };
 const acctRow = (id, ed, copy) => `<div class="row g-acct">${sym('key', 'Account')}<span>${esc(id)}</span>${pwView(id, ed, copy)}</div>`;
@@ -1449,11 +1450,14 @@ function sheet() {
   // A stand-in for a Group Lead: pick a member; the account and its password show once, with Copy, to send to them
   if (s.k === 'standin') {
     const g = s.g, x = STANDINS.find(y => y.grp === g), made = S.made && S.made.grp === g ? S.made : null;
+    // The Stand-in lasts until the end of one duty day: the group's only upcoming duty, or the one chosen here (Build Brief 261004 item 11)
+    const duties = standinDuties(g), evId = duties.length === 1 ? duties[0].id : S.pickEv;
+    const dutySec = duties.length === 1 ? '' : `<section class="sec"><p class="sh">Choose a Duty</p>${duties.length ? `<div class="list">${duties.map(e => `<button class="row g-opt" data-a="standinev:${e.id}"><span>${evTitle(e)}</span>${check(S.pickEv === e.id)}</button>`).join('')}</div>` : '<p class="empty">No upcoming duty</p>'}</section>`;
     const kv = (k, val) => `<div class="row" style="grid-template-columns:6em minmax(0,1fr)"><span class="t">${k}</span><span>${val}</span></div>`;
     h = made ? bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + `<div class="list">${kv('Member', esc(made.person))}${kv('Account', esc(made.id))}${kv('Password', esc(made.password))}${kv('Until', hkAt(made.until))}</div><button class="nb pri" style="width:100%;margin-top:16px" data-a="copyacct:standin">Copy</button>`
       : bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + (x ? `<div class="list"><div class="row g-acct">${sym('key', 'Account')}<span>${esc(x.person)}<span class="cap">${esc(x.id)} · Until ${hkAt(x.until)}</span></span>${isLead() ? pwView(x.id, false) : ''}</div><button class="row g-sw danger" data-a="standinoff:${g}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>End Stand-in</span></button></div>` : '') +
-      `<section class="sec"><p class="sh">Choose a Member</p><div class="list">${roster(g).people.map(p => p[1]).filter(n => n && !(x && x.person === n)).map(n => `<button class="row g-opt" data-a="standinpick:${esc(n)}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span>${check(S.pick === n)}</button>`).join('') || '<p class="empty">No members</p>'}</div></section>
-      <button class="nb pri" style="width:100%;margin-top:16px" data-a="standinon:${g}:${esc(S.pick || '')}"${S.pick ? '' : ' disabled'}>Next</button>`;
+      dutySec + `<section class="sec"><p class="sh">Choose a Member</p><div class="list">${roster(g).people.map(p => p[1]).filter(n => n && !(x && x.person === n)).map(n => `<button class="row g-opt" data-a="standinpick:${esc(n)}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span>${check(S.pick === n)}</button>`).join('') || '<p class="empty">No members</p>'}</div></section>
+      <button class="nb pri" style="width:100%;margin-top:16px" data-a="standinon:${g}:${esc(S.pick || '')}"${S.pick && evId ? '' : ' disabled'}>Next</button>`;
   }
   if (s.k === 'card') h = bar(close, '', '') + cardOf(s.n);
   if (s.k === 'gcard') h = bar(close, '', '') + gcardOf(s.g);
@@ -1823,14 +1827,16 @@ document.addEventListener('click', async e => {
     // Recently Deleted opens in place on Events (26/10/03), fetching the list the first time
     case 'delx': S.delOpen = !S.delOpen; render(); if (S.delOpen) { S.deleted = null; try { const r2 = await api('deleted'); S.deleted = r2.ok ? await r2.json() : []; } catch (err) { S.deleted = []; } render(); } break;
     case 'cardopen': S.sheet = null; layer(); go({p: 'event', ev: arg}); break;
-    case 'standin': S.sheet = {k: 'standin', g: arg}; S.made = null; S.pick = null; layer(); break;
+    case 'standin': S.sheet = {k: 'standin', g: arg}; S.made = null; S.pick = null; S.pickEv = null; layer(); break;
     case 'standinpick': S.pick = arg; layer(); break;
+    case 'standinev': S.pickEv = arg; layer(); break;
     case 'standinon': case 'standinoff': { const [g, n] = arg.split(':');
-      if (a === 'standinon' && !n) break;
-      try { const r2 = await api('standin', {method: a === 'standinon' ? 'POST' : 'DELETE', body: JSON.stringify({group: g, person: n})}), b2 = await r2.json();
+      const ds = standinDuties(g), evId = ds.length === 1 ? ds[0].id : S.pickEv;
+      if (a === 'standinon' && !(n && evId)) break;
+      try { const r2 = await api('standin', {method: a === 'standinon' ? 'POST' : 'DELETE', body: JSON.stringify({group: g, person: n, event: evId})}), b2 = await r2.json();
         if (!r2.ok) throw new Error(b2.error);
         STANDINS = STANDINS.filter(y => y.grp !== g); PWSHOW = null;
-        if (a === 'standinon') { S.made = {...b2, grp: g}; S.pick = null; STANDINS.push({id: b2.id, grp: g, person: b2.person, until: b2.until}); } else toast('Stand-in ended');
+        if (a === 'standinon') { S.made = {...b2, grp: g}; S.pick = null; S.pickEv = null; STANDINS.push({id: b2.id, grp: g, person: b2.person, until: b2.until}); } else toast('Stand-in ended');
         S.xaccts = null; render(); }
       catch (err) { toast(SYNC.offline ? 'No connection' : 'Not changed'); } break; }
     case 'copyacct': { const text = arg === 'standin' ? signInText(S.made.id, S.made.password, `${S.made.person}：${S.made.grp} Stand-in，有效至 ${hkAt(S.made.until)}`)
@@ -2079,7 +2085,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '77958ba1f12f';
+const PAGE_VER = '6cb70f25c040';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};

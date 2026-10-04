@@ -40,7 +40,7 @@ export function ensureEventTables(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS login_fail (account TEXT PRIMARY KEY, n INTEGER NOT NULL, since INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS photos (name TEXT PRIMARY KEY, data TEXT NOT NULL, updated INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS vault (id TEXT PRIMARY KEY, sealed TEXT NOT NULL)"),
-    // Accounts added while the site runs (Carson, 26/10/02): a Group Lead's stand-in for 3 days, and one per teacher
+    // Accounts added while the site runs (Carson, 26/10/02): a Group Lead's stand-in until the end of a duty day, and one per teacher
     db.prepare("CREATE TABLE IF NOT EXISTS xaccounts (id TEXT PRIMARY KEY, kind TEXT NOT NULL, grp TEXT, code TEXT, person TEXT, until INTEGER, created INTEGER NOT NULL, by TEXT)"),
     // Post-event questionnaire answers, kept apart from the event data: one per event and person (one per group for its Group Lead)
     db.prepare("CREATE TABLE IF NOT EXISTS feedback (event TEXT NOT NULL, who TEXT NOT NULL, role TEXT NOT NULL, grp TEXT, name TEXT, date TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (event, who))"),
@@ -61,7 +61,6 @@ async function accountOf(env, id) {
   if (!r || (r.until && r.until < Date.now())) return null;
   return r.kind === "standin" ? { id: r.id, type: "gl", group: r.grp, person: r.person, until: r.until, standin: true } : { id: r.id, type: "teacher", code: r.code, tv: true };
 }
-const STANDIN_MS = 3 * 864e5;
 const WORDS = ["overture", "encore", "finale", "prelude", "sonata", "chorus", "aria", "cadenza", "rhapsody", "minuet", "tempo", "motif", "lantern", "harbour", "compass", "beacon", "meadow", "summit"];
 const newPassword = () => { const r = crypto.getRandomValues(new Uint8Array(2)); return WORDS[r[0] % WORDS.length] + String(10 + (r[1] % 90)); };
 async function setPassword(env, id, pw) {
@@ -725,17 +724,22 @@ export async function handleEvents(request, env, url, path) {
       ...xs.map((x) => ({ id: x.id, type: x.kind, group: x.grp, code: x.code, person: x.person, until: x.until, created: x.created, changed: changed[x.id] || 0 }))] });
   }
   // A stand-in for a Group Lead (Carson, 26/10/02): made by that Group Lead, or by the Event Lead or an Editor, for one member
-  // of the group; 3 days; one per group (a new one ends the old); a stand-in cannot make another.
+  // of the group, until the end of the duty day chosen; one per group (a new one ends the old); a stand-in cannot make another.
   if (path === "standin" && (request.method === "POST" || request.method === "DELETE")) {
     let body; try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
     const g = String(body.group || "");
     if (!GROUPS.includes(g) || !(acct.type === "lead" || (acct.type === "gl" && !acct.standin && acct.group === g))) return json({ error: "forbidden" }, 403);
     const id = g + " Stand-in";
-    await dropAccount(env, id);
-    if (request.method === "DELETE") return json({ ok: true });
+    if (request.method === "DELETE") { await dropAccount(env, id); return json({ ok: true }); }
     const r = ((await settingOf(env, "rosters")) || {})[g] || {}, person = String(body.person || "");
     if (!(r.people || []).some((p) => p.name === person)) return json({ error: "bad request" }, 400);
-    const pw = newPassword(), until = Date.now() + STANDIN_MS;
+    // Until 23:59 Hong Kong time on the day of the duty chosen: one of the group's events from today on (Build Brief 261004 item 11)
+    const row = await env.DB.prepare("SELECT data FROM events WHERE id = ? AND deleted = 0").bind(String(body.event || "")).first();
+    const ev = row ? upgrade(JSON.parse(row.data)) : null;
+    if (!ev || !ev.date || ev.date < hkToday() || !(ev.groups || []).some((x) => x.name === g)) return json({ error: "no duty" }, 400);
+    const [y, mo, d] = ev.date.split("/").map(Number), until = Date.UTC(2000 + y, mo - 1, d, 15, 59, 59, 999);
+    await dropAccount(env, id);
+    const pw = newPassword();
     await env.DB.prepare("INSERT INTO xaccounts (id, kind, grp, person, until, created, by) VALUES (?1, 'standin', ?2, ?3, ?4, ?5, ?6)").bind(id, g, person, until, Date.now(), await whoOf(env, acct)).run();
     await setPassword(env, id, pw);
     return json({ id, password: pw, until, person });
