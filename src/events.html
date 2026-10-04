@@ -135,7 +135,21 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .gbody{padding-bottom:8px}
 /* An open disclosure and everything it shows sit in one callout of the pressed colour (26/10/04), so the opened part reads
    as belonging to its row; inside it, a pressed row takes the next fill */
-.opened{margin:0 -20px;padding:0 20px;border-radius:12px;background:var(--current)}
+.opened{position:relative;isolation:isolate;margin:0 -20px;padding:0 20px;border-radius:16px;background:var(--current)}
+@supports (corner-shape:squircle){.opened{corner-shape:squircle}}
+/* Apple's continuous corner (a squircle): an SVG drawn behind the callout at its size (squircles()); Safari has no corner-shape */
+.opened.sq{background:transparent;border-radius:0}
+.opened>svg.sqbg{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;overflow:visible}
+.list[data-range]{position:relative;isolation:isolate}
+.list[data-range]:not(.moving-list)>p.sub.emp{display:none}
+/* Inside a callout a pressed row is inset 8 px from the callout's edges, its corners concentric with the callout's (16 - 8) */
+.opened .gbody .row,.opened>.row:not(:first-child),.list[data-range]>[data-in].row:not(.gx){width:calc(100% + 24px);margin-left:-12px;margin-right:-12px;padding-left:12px;padding-right:12px;border-radius:8px}
+.list[data-range]>svg.sqbg{position:absolute;z-index:-1;pointer-events:none;overflow:visible}
+.list[data-range]:not(.sq)>[data-in]{background:var(--current)}
+.opened>svg.sqbg path,.list[data-range]>svg.sqbg path{fill:var(--current)}
+.list[data-range]>.gx[data-in],.list[data-range]>.gx[data-in]:hover,.list[data-range]>.gx[data-in]:active{background:transparent!important}
+/* The disclosure is pressed while it is open: it belongs to the callout and takes no fill of its own */
+.opened>.row:first-child,.opened>.row:first-child:hover,.opened>.row:first-child:active{background:transparent!important}
 .opened button.row:active,.opened [data-a].row:active,.opened .row.current{background:var(--field)}
 @media (hover:hover){.opened button.row:hover,.opened div.row[data-a]:hover{background:var(--field)}}
 .ssec{margin-top:2px}
@@ -955,7 +969,7 @@ function pEvents() {
     ${up.length || !q ? `<section class="sec"><p class="sh">Upcoming</p>${up.length ? `<div class="list">${rows(up)}</div>` : '<p class="empty">No events yet</p>'}</section>` : ''}
     ${past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${rows(past)}</div></section>` : ''}
     ${q && !list.length ? '<p class="empty sec">No results</p>' : ''}
-    ${isLead() && !q ? `<section class="sec"><div class="list"><div class="${S.delOpen ? 'opened' : ''}"><button class="row g-ic gx${S.delOpen ? ' open' : ''}" data-a="delx" aria-expanded="${!!S.delOpen}">${sym('trash', '')}<span>Recently Deleted</span><span></span>${ic('chev-d', 'go dis')}</button>${S.delOpen ? `<div class="gbody">${!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('') : '<p class="empty">No deleted events</p>'}</div>` : ''}</div></div></section>` : ''}`};
+    ${isLead() && !q ? `<section class="sec"><div class="list"><div${S.delOpen ? ' class="opened" data-shut="del"' : ''}><button class="row g-ic gx${S.delOpen ? ' open' : ''}" data-a="delx" aria-expanded="${!!S.delOpen}">${sym('trash', '')}<span>Recently Deleted</span><span></span>${ic('chev-d', 'go dis')}</button>${S.delOpen ? `<div class="gbody">${!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('') : '<p class="empty">No deleted events</p>'}</div>` : ''}</div></div></section>` : ''}`};
 }
 
 // The event: title, its facts, your part, its documents. The same order for everyone.
@@ -1031,20 +1045,28 @@ function dutyGroups(ev, ed) {
   const keys = groupKeys(ev, ed);
   if (ed) {
     const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
-    const row = t => `<div class="row g-tme" data-drag="task" data-id="${t.id}"><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
+    const row = t => `<div class="row g-tme" data-drag="task" data-id="${t.id}" data-in><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
       <span>${t.row ? `<span class="fl lpk">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
+    // One group is edited at a time (26/10/04): each group is a disclosure, as in reading, and only the open one shows its tasks
+    // and its own Add Task. The rows stay one flat list, so a task dragged onto a closed group's row moves into that group.
+    let shutKey = '';
     const body = keys.map(k => { const gr = ev.groups.find(x => x.name === k), l = sorted(ev, tasksOfKey(ev, k)), cov = gr && gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
-      const head = gr ? `<div class="row g-p gh" data-head="g" data-g="${esc(k)}" tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto">${keySym(k)}<span><span class="fl">${pick(`dg:${k}`, gname(k), dutyOpts(ev, kind(k), k), 'Group')}</span>${cov}</span>${rmB('askgroup:' + k, 'Remove duty group')}</div>`
-        : `<div class="row g-p gh" data-head="g" data-g="${esc(k)}">${keySym(k)}<span>${keyName(k)}</span></div>`;
-      return head + `<p class="sub" data-head="before" data-g="${esc(k)}">Before the Event</p>${l.filter(t => !t.row).map(row).join('')}<p class="sub" data-head="day" data-g="${esc(k)}">On the Day</p>${l.filter(t => t.row).map(row).join('')}`; }).join('');
-    return `<section class="sec"><p class="sh">Duty Groups</p><div class="list tasks gl">${body}</div><div class="list">${addB('menu:addtask', 'Add Task')}${addB('menu:addgroup', 'Add Duty Group')}</div></section>`;
+      const key = `${ev.id}:g:${k}`, open = !!S.open[key], inA = open ? ' data-in' : '', chev = ic('chev-d', 'go dis');
+      if (open) shutKey = 'g:' + key;
+      const head = gr ? `<div class="row g-p gh gx${open ? ' open' : ''}" data-head="g" data-g="${esc(k)}" data-a="gx:${esc(key)}" aria-expanded="${open}"${inA} tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto 18px">${keySym(k)}<span><span class="fl">${pick(`dg:${k}`, gname(k), dutyOpts(ev, kind(k), k), 'Group')}</span>${cov}</span>${rmB('askgroup:' + k, 'Remove duty group')}${chev}</div>`
+        : `<div class="row g-p gh gx${open ? ' open' : ''}" data-head="g" data-g="${esc(k)}" data-a="gx:${esc(key)}" aria-expanded="${open}"${inA} style="grid-template-columns:22px minmax(0,1fr) 18px">${keySym(k)}<span>${keyName(k)}</span>${chev}</div>`;
+      if (!open) return head;
+      const bl = l.filter(t => !t.row), dl = l.filter(t => t.row);
+      return head + `<p class="sub${bl.length ? '' : ' emp'}" data-head="before" data-g="${esc(k)}" data-in>Before the Event</p>${bl.map(row).join('')}<p class="sub${dl.length ? '' : ' emp'}" data-head="day" data-g="${esc(k)}" data-in>On the Day</p>${dl.map(row).join('')}` +
+        addB(`menu:addtask:${k}`, 'Add Task').replace('class="row add', 'data-in class="row add'); }).join('');
+    return `<section class="sec"><p class="sh">Duty Groups</p><div class="list tasks gl"${shutKey ? ` data-range="${esc(shutKey)}"` : ''}>${body}</div><div class="list">${addB('menu:addgroup', 'Add Duty Group')}</div></section>`;
   }
   if (!keys.length) return `<section class="sec"><p class="sh">Duty Groups</p><p class="empty">No duty groups yet</p></section>`;
   const read = (t, when) => `<button class="row g-tm" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
   const rows = keys.map(k => { const gr = ev.groups.find(x => x.name === k), l = tasksOfKey(ev, k), open = !!S.open[`${ev.id}:g:${k}`];
     const n = k === 'All' ? 0 : l.filter(t => !t.names.length).length, cov = gr && gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
     const changed = l.some(t => isNew(`${ev.id}:t:${t.id}`)) && !open ? '<span class="udot" role="img" aria-label="Updated"></span>' : '';
-    return (open ? '<div class="opened">' : '') + `<button class="row g-ic gx${open ? ' open' : ''}" data-a="gx:${ev.id}:g:${esc(k)}" aria-expanded="${open}">${changed}${gtap(k, keySym(k), ' gs')}<span>${gtap(k, keyName(k))}${cov}</span><span>${n && (k === UNASSIGNED || fills(k)) ? badge(n) : ''}</span>${ic('chev-d', 'go dis')}</button>` +
+    return (open ? `<div class="opened" data-shut="g:${esc(`${ev.id}:g:${k}`)}">` : '') + `<button class="row g-ic gx${open ? ' open' : ''}" data-a="gx:${ev.id}:g:${esc(k)}" aria-expanded="${open}">${changed}${gtap(k, keySym(k), ' gs')}<span>${gtap(k, keyName(k))}${cov}</span><span>${n && (k === UNASSIGNED || fills(k)) ? badge(n) : ''}</span>${ic('chev-d', 'go dis')}</button>` +
       (open ? `<div class="gbody">${bothSecs(ev, l, read).replace(/<section class="sec"><p class="sh">/g, '<section class="ssec"><p class="sub">')}</div></div>` : ''); }).join('');
   return `<section class="sec"><p class="sh">Duty Groups</p><div class="list">${rows}</div></section>`;
 }
@@ -1097,7 +1119,7 @@ function memberList(ev, g, ed) {
       ? ts.map(t => `<div class="row sub2" style="grid-template-columns:minmax(0,1fr) 24px" tabindex="-1"><span>${esc(t.text)}<span class="cap">${when(t)}</span></span>${rmB(`pickn:${t.id}:${esc(n)}`, 'Remove task')}</div>`).join('') +
         (all.some(t => !t.names.includes(n)) ? addB(`menu:addmt:${g}:${esc(n)}`, 'Add Task').replace('class="row add', 'class="row add sub2') : '')
       : (ts.length ? ts.map(t => { const on = !!at[tickKey(n, t.id)]; return `<div class="row g-chk sub2">${lv ? `<span class="ck lv">${ic('circle')}</span>` : `<button class="ck${on ? ' on' : ''}" data-a="tick:${g}:${esc(n)}:${t.id}" aria-pressed="${on}" aria-label="${esc(t.text)} done">${ic(on ? 'check-fill' : 'circle')}</button>`}<span>${esc(t.text)}<span class="cap">${when(t)}${on ? '　' + at[tickKey(n, t.id)] : ''}</span></span></div>`; }).join('') : '<p class="empty">No tasks yet</p>');
-    return `<div class="mrow opened">${head.replace('row g-mem', `row g-mem gx${open ? ' open' : ''}`)}<div class="gbody">${body}</div></div>`; }).join('');
+    return `<div class="mrow opened" data-shut="g:${esc(key)}">${head.replace('row g-mem', `row g-mem gx${open ? ' open' : ''}`)}<div class="gbody">${body}</div></div>`; }).join('');
   return `<section class="sec"><p class="sh">Members</p><div class="list">${rows}</div></section>`;
 }
 function documents(ev, ed) {
@@ -1242,7 +1264,7 @@ function sheet() {
     h = bar(close, 'Account', '') +
       `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === ACCT().id ? '' : ACCT().id) : v.standin ? `${v.group} Stand-in · Until ${hkAt(ACCT().until)}` : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
       (others.length ? `<section class="sec"><p class="sh">Switch Person</p><div class="list">${others.map(x => `<button class="row g-sw" data-a="switch:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
-      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Users &amp; Groups</span>${ic('chev-r', 'go')}</button><div class="${S.appsOpen ? 'opened' : ''}"><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}</div>` : ''}${v.type === 'gl' && !v.standin ? (x => `<button class="row g-sw" data-a="standin:${v.group}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) : 'None'}</span></button>`)(STANDINS.find(y => y.grp === v.group)) : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
+      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Users &amp; Groups</span>${ic('chev-r', 'go')}</button><div${S.appsOpen ? ' class="opened" data-shut="apps"' : ''}><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}</div>` : ''}${v.type === 'gl' && !v.standin ? (x => `<button class="row g-sw" data-a="standin:${v.group}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) : 'None'}</span></button>`)(STANDINS.find(y => y.grp === v.group)) : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
       `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="signout"><span class="ic" style="color:inherit">${ic('logout')}</span><span>Sign Out</span></button></div></section>`;
   }
   // A stand-in for a Group Lead: pick a member; the account and its password show once, with Copy, to send to them
@@ -1271,7 +1293,7 @@ function menuItems(k, arg) {
     return [[`addsay:${arg}:line`, 'line', 'MC Line'], [`addsay:${arg}:cue`, 'cue', 'Stage Direction'], ...lists, ...guests]; }
   if (k === 'addmt') { const [g, n] = arg.split(':');
     return sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && !t.names.includes(n))).map(t => [`pickn:${t.id}:${n}`, t.row ? 'list' : 'calendar', [t.text, t.row ? (rowOf(ev, t.row) || {}).time : md(t.date || '')].filter(Boolean).join('　')]); }
-  if (k === 'addtask') return [['addtask:date', 'calendar', 'Before the Event'], ...ev.rows.map(r => [`addtask:row:${r.id}`, 'list', [r.time, r.title].filter(Boolean).join(' ')])];
+  if (k === 'addtask') return [[`addtask:date:${arg || ''}`, 'calendar', 'Before the Event'], ...ev.rows.map(r => [`addtask:row:${r.id}:${arg || ''}`, 'list', [r.time, r.title].filter(Boolean).join(' ')])];
   if (k === 'addgroup') return ['MC', 'Backstage', 'Reception'].flatMap(kk => rotation(ev, kk).filter(x => !ev.groups.some(y => y.name === x.g)).map((x, i) => [`addgroup:${x.g}`, SYM[kk] + ':g' + x.g.slice(-1), `${x.g}${i === 0 ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}`]));
   return [];
 }
@@ -1311,8 +1333,39 @@ function layer() {
   const al = S.alert ? `<div class="alert" role="alertdialog" aria-modal="true"><div><h2>${esc(S.alert.t)}</h2><p>${esc(S.alert.m)}</p><div class="b"><button data-a="keep">${esc(S.alert.no || 'Cancel')}</button><button class="d" data-a="${S.alert.act}">${esc(S.alert.verb)}</button></div></div></div>` : '';
   lay.innerHTML = sheet() + m + al + (S.toast ? `<div class="toast glass${S.toastAct ? ' act' : ''}" role="status"><span class="msg">${esc(S.toast)}</span>${S.toastAct ? `<button class="tb" data-a="${esc(S.toastAct[0])}">${esc(S.toastAct[1])}</button>` : ''}</div>` : '');
   const y0 = scrollY; document.documentElement.classList.toggle('locked', !!(S.sheet || S.menu || S.alert));
-  fitAll(lay); if (Math.abs(scrollY - y0) > 1) scrollTo(0, y0);
+  fitAll(lay); if (Math.abs(scrollY - y0) > 1) scrollTo(0, y0); squircles();
 }
+// Apple's continuous corner for every open callout: a path of straight sides and three curves per corner (the corner runs
+// 1.528 times its radius along each side), redrawn whenever the callout changes size
+const SQ_R = 16, sqRO = 'ResizeObserver' in window ? new ResizeObserver(es => es.forEach(e => drawSq(e.target))) : null;
+function sqPath(w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2 / 1.528, h / 2 / 1.528)); const k = n => +(n * r).toFixed(2), a = k(1.528), b = k(1.0885), c = k(0.8684), d = k(0.6315), e = k(0.0749), f = k(0.3728), g = k(0.1691);
+  return `M${a} 0H${w - a}C${w - b} 0 ${w - c} 0 ${w - d} ${e}C${w - f} ${g} ${w - g} ${f} ${w - e} ${d}C${w} ${c} ${w} ${b} ${w} ${a}` +
+    `V${h - a}C${w} ${h - b} ${w} ${h - c} ${w - e} ${h - d}C${w - g} ${h - f} ${w - f} ${h - g} ${w - d} ${h - e}C${w - c} ${h} ${w - b} ${h} ${w - a} ${h}` +
+    `H${a}C${b} ${h} ${c} ${h} ${d} ${h - e}C${f} ${h - g} ${g} ${h - f} ${e} ${h - d}C0 ${h - c} 0 ${h - b} 0 ${h - a}` +
+    `V${a}C0 ${b} 0 ${c} ${e} ${d}C${g} ${f} ${f} ${g} ${d} ${e}C${c} 0 ${b} 0 ${a} 0Z`;
+}
+// A callout over a run of rows in one flat list (the duty group being edited): the svg spans its first to last row
+function drawSq(el) { const s = el.querySelector(':scope>svg.sqbg'); if (!s) return;
+  if (el.dataset.range !== undefined) { const ins = [...el.querySelectorAll(':scope>[data-in]')]; if (!ins.length) return;
+    const top = ins[0].offsetTop, bot = Math.max(...ins.map(x => x.offsetTop + x.offsetHeight)) + 8, w = el.clientWidth + 40, h = bot - top;
+    Object.assign(s.style, {inset: 'auto', top: top + 'px', height: h + 'px', left: '-20px', width: w + 'px'}); s.setAttribute('viewBox', `0 0 ${w} ${h}`); s.firstChild.setAttribute('d', sqPath(w, h, SQ_R)); return; }
+  const w = el.offsetWidth, h = el.offsetHeight; if (!w || !h) return;
+  s.setAttribute('viewBox', `0 0 ${w} ${h}`); s.firstChild.setAttribute('d', sqPath(w, h, SQ_R)); }
+function squircles() { if (!sqRO) return;
+  document.querySelectorAll('.opened:not(.sq),.list[data-range]:not(.sq)').forEach(el => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('class', 'sqbg'); s.setAttribute('aria-hidden', 'true'); s.setAttribute('preserveAspectRatio', 'none');
+    s.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'path')); el.appendChild(s); el.classList.add('sq'); drawSq(el); sqRO.observe(el); }); }
+// Tapping another row folds an open group, member or list, and the tap still does its own job. An open part of the page
+// stays open while a sheet or menu above it is used; an open part inside a sheet folds on any other tap in that sheet.
+function shut(k) { if (k === 'del') S.delOpen = false; else if (k === 'apps') S.appsOpen = false; else delete S.open[k.slice(2)]; }
+function foldOthers(t) { let n = 0;
+  const inside = o => o.dataset.range !== undefined ? [...o.querySelectorAll(':scope>[data-in]')].some(x => x.contains(t)) : o.contains(t);
+  document.querySelectorAll('.opened[data-shut],.list[data-range]').forEach(o => { if (!inside(o) && (lay.contains(o) || !lay.contains(t))) { shut(o.dataset.shut || o.dataset.range); n++; } });
+  return n > 0; }
+// After folding, a field that was tapped keeps its cursor
+function refold(t) { const f = t.closest && t.closest('input[data-b],textarea[data-b],select[data-b]'), fb = f && f.dataset.b; render();
+  if (fb) { const n = app.querySelector(`[data-b="${CSS.escape(fb)}"]`); if (n) n.focus(); } }
 // MC Scripts' fit: a field is as wide as its text (or its placeholder); it wraps, and grows in height, only at the edge
 const measure = document.createElement('canvas').getContext('2d');
 function fit(t) {
@@ -1435,8 +1488,8 @@ function replaceGroup(ev, from, g) {
 
 /* ---------- Actions ---------- */
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-a]'); if (!b) return;
-  if (b.dataset.a === 'bg' && e.target !== b) return;
+  const folded = foldOthers(e.target), b = e.target.closest('[data-a]'); if (!b) { if (folded) refold(e.target); return; }
+  if (b.dataset.a === 'bg' && e.target !== b) { if (folded) refold(e.target); return; }
   const [a, ...r] = b.dataset.a.split(':'), arg = r.join(':'), ev = cur() && cur().ev ? EV() : null;
   if (b.closest('.menu')) S.menu = null;
   switch (a) {
@@ -1481,7 +1534,7 @@ document.addEventListener('click', async e => {
     case 'leave': { const [g, n] = arg.split(':'), l = ev.leave[g] = ev.leave[g] || {}; if (l[n]) delete l[n]; else l[n] = true; render(); break; }
     case 'offduty': ev.groups = ev.groups.filter(g => g.name !== arg); dropTasks(ev, arg); log(ev, 'Took ' + arg + ' off duty'); render(); break;
     // A new task goes to the only duty group, or waits for its group to be chosen
-    case 'addtask': { const t = {id: uid(), text: '', to: ev.groups.length === 1 ? [ev.groups[0].name] : [], names: [], remark: ''};
+    case 'addtask': { const g = r[0] === 'date' ? r[1] : r[2], t = {id: uid(), text: '', to: g !== undefined ? toOfKey(g) : ev.groups.length === 1 ? [ev.groups[0].name] : [], names: [], remark: ''};
       if (r[0] === 'date') t.date = dayBefore(ev); else t.row = r[1];
       ev.tasks.push(t); render(); focus(`[data-b="task:${t.id}:text"]`); break; }
     case 'addgroup': ev.groups.push({name: arg, since: TODAY}); render(); break;
@@ -1542,7 +1595,7 @@ document.addEventListener('click', async e => {
     case 'gcard': S.sheet = {k: 'gcard', g: arg, prev: S.sheet || null}; layer(); if (lay.querySelector('.sheet')) lay.querySelector('.sheet').scrollTop = 0; break;
     case 'card': S.sheet = {k: 'card', n: arg, prev: S.sheet || null}; layer(); if (lay.querySelector('.sheet')) lay.querySelector('.sheet').scrollTop = 0; break;
     case 'sback': S.sheet = S.sheet.prev; layer(); break;
-    case 'gx': toggleOpen(arg); render(); break;
+    case 'gx': { const f = e.target.closest('select,input,textarea,.fl'); if (f && b.contains(f)) break; toggleOpen(arg); render(); break; }
     // Recently Deleted opens in place on Events (26/10/03), fetching the list the first time
     case 'delx': S.delOpen = !S.delOpen; render(); if (S.delOpen) { S.deleted = null; try { const r2 = await api('deleted'); S.deleted = r2.ok ? await r2.json() : []; } catch (err) { S.deleted = []; } render(); } break;
     case 'cardopen': S.sheet = null; layer(); go({p: 'event', ev: arg}); break;
@@ -1564,6 +1617,7 @@ document.addEventListener('click', async e => {
       try { const r2 = await api('account', {method: 'DELETE', body: JSON.stringify({id: arg})}); if (!r2.ok) throw new Error(); S.xaccts = null; S.stack.pop(); render(); toast('Account deleted'); }
       catch (err) { layer(); toast('Not deleted'); } break;
   }
+  if (folded) refold(e.target);
 });
 // Adding a document ends the event's Edit and opens the new document in Edit
 const openNew = id => { const ev = EV(); S.edit = false; go({p: 'doc', ev: ev.id, id}); S.edit = true; S.snap = snapOf(); render(); };
@@ -1671,8 +1725,8 @@ document.addEventListener('change', async e => {
    inserts a row right there and puts the cursor in it. With touch or a keyboard: Return in a line's title or a task
    adds the next one below it, as in Notes. A new row takes the date or line of the row above it. */
 const placeOf = (sibs, at) => { let sec = null;
-  for (let j = at - 1; j >= 0; j--) { const h = sibs[j].dataset; if (!h.head) continue; if (!sec && h.head !== 'g') sec = h.head; if (h.g !== undefined) return {sec: sec || 'before', g: h.g}; }
-  return {sec: sec || 'before'}; };
+  for (let j = at - 1; j >= 0; j--) { const h = sibs[j].dataset; if (!h.head) continue; if (!sec && h.head !== 'g') sec = h.head; if (h.g !== undefined) return {sec: sec || 'before', g: h.g, sub: !!sec}; }
+  return {sec: sec || 'before', sub: !!sec}; };
 const toOfKey = g => g === 'All' ? ['All'] : g ? [g] : [];
 function insertAt(list, at, rc) {  // at: the index among the list's rows and headings that the new row goes before
   const ev = EV(), sibs = [...list.children].filter(x => x.dataset && (x.dataset.drag || x.dataset.head)), kindKey = (sibs.find(x => x.dataset.drag) || {}).dataset;
@@ -1744,6 +1798,7 @@ document.addEventListener('pointerdown', e => {
   const h = e.target.closest('[data-grip]'), row = h && h.closest('[data-drag]'); if (!row) return;
   e.preventDefault();
   const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur();  // a typed time or date is kept first
+  row.parentElement.classList.add('moving-list');  // shows empty section headings before the rows are measured
   const sibs = dragSibs(row), sc = row.closest('.sheet');
   DRAG = {row, sibs, from: sibs.indexOf(row), to: sibs.indexOf(row), y0: e.clientY, y: e.clientY, sc, s0: sc ? sc.scrollTop : scrollY, rects: sibs.map(x => x.getBoundingClientRect())};
   try { h.setPointerCapture(e.pointerId); } catch (x) {}
@@ -1779,8 +1834,8 @@ function drop(row, sibs, from, to) {
     placeSay(row.dataset.id, rid, above && above.dataset.id, below && below.dataset.id); return; }
   if (row.dataset.drag === 'task') {
     const ev = EV(), t = ev.tasks.find(x => x.id === row.dataset.id), ref = above || below, rt = ref && ev.tasks.find(x => x.id === ref.dataset.id);
-    const pl = placeOf(order, i), head = pl.sec;
-    if (pl.g !== undefined) { const to = toOfKey(pl.g); if (J(to) !== J(t.to)) { t.to = to; t.names = []; } }
+    const pl = placeOf(order, i), head = pl.sub ? pl.sec : null;
+    if (pl.g !== undefined) { const to = toOfKey(pl.g); if (J(to) !== J(t.to)) { t.to = to; t.names = []; if (!pl.sub) toggleOpen(`${ev.id}:g:${pl.g}`); } }
     if (head === 'day') { const line = rt ? rt.row : (ev.rows[0] || {}).id; if (line) { t.row = line; delete t.date; } }
     else if (head === 'before') { t.date = rt ? rt.date : t.date || dayBefore(ev); delete t.row; }
   }
@@ -1800,7 +1855,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '826c6ac4e3e7';
+const PAGE_VER = 'd6c14b869a21';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
