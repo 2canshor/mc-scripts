@@ -1656,8 +1656,9 @@ function setVal(b, val, el) {
 const dropTasks = (ev, g) => { ev.tasks = ev.tasks.filter(t => !(t.to.length === 1 && t.to[0] === g)).map(t => t.to.includes(g) ? {...t, to: t.to.filter(x => x !== g)} : t); };
 const dayBefore = ev => { const d = new Date(iso(ev.date) + 'T12:00'); d.setDate(d.getDate() - 1); return d.toISOString().slice(2, 10).replace(/-/g, '/'); };
 // 預設 Task (Build Brief 261004 items 3 and 4): the first duty group of a main group comes with that main group's usual Tasks,
-// their Remarks word for word from the Event Lead SOP. Work before the day goes under Before the Event; work on the day goes on
-// the first Rundown line, for the Event Lead to move.
+// their Remarks word for word from the Event Lead SOP. Work before the day is dated [usual, late application] school days before
+// the event, Monday to Friday (the site has no school calendar; the Event Lead moves a date that falls on a holiday). Work on the
+// day goes on the first Rundown line, for the Event Lead to move.
 const R_MC = '按 Script 主持，只讀出 Script 上的名字。';
 const DEFAULT_TASKS = {
   MC: [['主持 1', R_MC], ['主持 2', R_MC],
@@ -1671,10 +1672,18 @@ const DEFAULT_TASKS = {
   Reception: [['整理嘉賓名單', '按老師的名單輸入 Guest List，完成後在活動群組告訴司儀 Group Lead。（影片：建立嘉賓名單）', [4, 3]],
     ['簽到', '活動當日在 Guest List 為到場的嘉賓點名。（影片：記錄嘉賓出席）'], ['帶位', '帶嘉賓到座位。'], ['交接', '把頒獎嘉賓帶到後台，交給後台。'], ['送客', '活動完結後送嘉賓離開。']]
 };
+const ymdOf = d => d.toISOString().slice(2, 10).replace(/-/g, '/');
+const schoolDaysBefore = (date, n) => { const d = new Date(iso(date) + 'T12:00'); while (n > 0) { d.setDate(d.getDate() - 1); if (d.getDay() % 6) n--; } return ymdOf(d); };
+// Working days strictly between two dates, Monday to Friday
+const workingBetween = (a, b) => { let n = 0; const d = new Date(iso(a) + 'T12:00'), end = new Date(iso(b) + 'T12:00'); for (d.setDate(d.getDate() + 1); d < end; d.setDate(d.getDate() + 1)) if (d.getDay() % 6) n++; return n; };
+// The application arrived when the event first appeared (from the CA Support form, or made by hand); late with fewer than seven working days left
+const arrivedOn = ev => { const ts = Math.min(...(ev.log || []).map(l => l.ts || Infinity)); return isFinite(ts) ? ymdOf(new Date(ts + 8 * 3600e3)) : TODAY; };
+const isLate = ev => workingBetween(arrivedOn(ev), ev.date) < 7;
 function addDefaults(ev, g) {
   const list = DEFAULT_TASKS[kind(g)]; if (!list || !ev.date) return;
+  const late = isLate(ev);
   if (list.some(x => !x[2]) && !ev.rows.length) ev.rows.push({id: uid(), time: ev.asmTime, title: '', place: ev.venue, say: []});
-  list.forEach(([text, remark, d]) => { const t = {id: uid(), text, to: [g], names: [], remark}; if (d) t.date = dayBefore(ev); else t.row = ev.rows[0].id; ev.tasks.push(t); });
+  list.forEach(([text, remark, d]) => { const t = {id: uid(), text, to: [g], names: [], remark}; if (d) t.date = schoolDaysBefore(ev.date, d[late ? 1 : 0]); else t.row = ev.rows[0].id; ev.tasks.push(t); });
 }
 function replaceGroup(ev, from, g) {
   const gr = ev.groups.find(x => x.name === from), days = Math.round((new Date(iso(ev.date)) - new Date(iso(TODAY))) / 864e5);
@@ -2057,7 +2066,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '4f55a8a1ce07';
+const PAGE_VER = 'fe58619e4101';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
