@@ -1,0 +1,865 @@
+{
+  "source": "Event Centre help videos, 38 groups",
+  "videos": [
+    {
+      "id": "assembly-time",
+      "title": "查看集合時間和地點",
+      "sec": [
+        "A"
+      ],
+      "search": [
+        "集合",
+        "幾點到",
+        "喺邊度",
+        "查集合時間和地點",
+        "知道幾點、在哪裏集合",
+        "查看集合時間和地點"
+      ],
+      "duration": 11.1,
+      "bytes": 117603,
+      "video": "assembly-time.mp4",
+      "poster": "assembly-time.png"
+    },
+    {
+      "id": "find-event-lead",
+      "title": "聯絡活動負責主席",
+      "sec": [
+        "A"
+      ],
+      "search": [
+        "問邊個",
+        "負責人",
+        "Event Lead 係邊個",
+        "找 Event Lead",
+        "找負責這場活動的主席",
+        "聯絡負責主席",
+        "聯絡活動負責主席"
+      ],
+      "duration": 11.8,
+      "bytes": 209902,
+      "video": "find-event-lead.mp4",
+      "poster": "find-event-lead.png"
+    },
+    {
+      "id": "find-group-lead",
+      "title": "聯絡組長",
+      "sec": [
+        "A"
+      ],
+      "search": [
+        "請假",
+        "組長係邊個",
+        "問邊個",
+        "找自己的 Group Lead（組長）",
+        "找我的組長",
+        "聯絡組長"
+      ],
+      "duration": 14.4,
+      "bytes": 180709,
+      "video": "find-group-lead.mp4",
+      "poster": "find-group-lead.png"
+    },
+    {
+      "id": "download-script",
+      "title": "下載講稿",
+      "sec": [
+        "A"
+      ],
+      "search": [
+        "下載講稿",
+        "Word",
+        "列印講稿",
+        "邊份講稿",
+        "下載講稿 Word 檔"
+      ],
+      "duration": 12.2,
+      "bytes": 170259,
+      "video": "download-script.mp4",
+      "poster": "download-script.png"
+    },
+    {
+      "id": "search-events",
+      "title": "搜尋活動",
+      "sec": [
+        "A"
+      ],
+      "search": [
+        "搵活動",
+        "search",
+        "搜尋活動",
+        "找一場活動"
+      ],
+      "duration": 10.9,
+      "bytes": 108909,
+      "video": "search-events.mp4",
+      "poster": "search-events.png"
+    },
+    {
+      "id": "change-photo",
+      "title": "更換頭像",
+      "sec": [
+        "A"
+      ],
+      "search": [
+        "頭像",
+        "相片",
+        "profile photo",
+        "換頭像",
+        "換我的相片",
+        "更換頭像"
+      ],
+      "duration": 11.4,
+      "bytes": 119047,
+      "video": "change-photo.mp4",
+      "poster": "change-photo.png"
+    },
+    {
+      "id": "sign-out",
+      "title": "登出帳戶",
+      "sec": [
+        "A"
+      ],
+      "search": [
+        "登出",
+        "sign out",
+        "換帳戶",
+        "登出帳戶"
+      ],
+      "duration": 9.7,
+      "bytes": 111020,
+      "video": "sign-out.mp4",
+      "poster": "sign-out.png"
+    },
+    {
+      "id": "sign-in",
+      "title": "登入帳戶",
+      "sec": [
+        "A"
+      ],
+      "search": [
+        "登入",
+        "揀名",
+        "Who Are You",
+        "密碼",
+        "登入並揀名字",
+        "登入，揀自己的名字",
+        "登入組員帳戶",
+        "揀錯名",
+        "換人",
+        "switch",
+        "揀錯名，轉換身分",
+        "揀錯名字，換回自己",
+        "重新選擇名字",
+        "重新選擇登入名字",
+        "組長登入",
+        "Group Lead 帳戶",
+        "Group Lead（組長）登入",
+        "登入組長帳戶",
+        "代理組長登入",
+        "Stand-in（代理組長）登入",
+        "代組長登入",
+        "登入代任帳戶",
+        "登入代任組長帳戶",
+        "Chair 登入",
+        "老師登入 Editor",
+        "登入並揀名字（Event Lead）",
+        "主席登入",
+        "登入主席帳戶",
+        "老師登入",
+        "老師密碼",
+        "登入老師帳戶",
+        "代任組長登入"
+      ],
+      "duration": 26.2,
+      "bytes": 254662,
+      "video": "sign-in.mp4",
+      "poster": "sign-in.png"
+    },
+    {
+      "id": "my-tasks",
+      "title": "查看我的工作",
+      "sec": [
+        "M"
+      ],
+      "search": [
+        "我要做咩",
+        "睇唔到我個名",
+        "我嘅 task",
+        "看我的 Task",
+        "看我要做甚麼",
+        "查看我的工作",
+        "當日做咩",
+        "On the Day",
+        "幾點到位",
+        "找當日要做的 Task",
+        "看活動當日我要做甚麼",
+        "查看當日工作",
+        "查看活動當日工作"
+      ],
+      "duration": 19,
+      "bytes": 183001,
+      "video": "my-tasks.mp4",
+      "poster": "my-tasks.png"
+    },
+    {
+      "id": "new-script",
+      "title": "撰寫講稿",
+      "sec": [
+        "M"
+      ],
+      "search": [
+        "開講稿",
+        "新講稿",
+        "New Script",
+        "開新講稿",
+        "開一份新講稿",
+        "建立講稿",
+        "改講稿",
+        "寫稿",
+        "邊份講稿",
+        "司儀稿",
+        "寫講稿（MC Line、Stage Direction）",
+        "寫講稿、加讀音提示",
+        "撰寫講稿",
+        "刪段",
+        "刪稿",
+        "刪除講稿段落",
+        "刪除講稿其中一段",
+        "讀得獎名單",
+        "頒獎名單入稿",
+        "把得獎者名單加入講稿",
+        "把得獎名單放入講稿",
+        "插入得獎名單",
+        "加入得獎名單",
+        "在講稿加入得獎名單"
+      ],
+      "duration": 52.6,
+      "bytes": 588683,
+      "video": "new-script.mp4",
+      "poster": "new-script.png"
+    },
+    {
+      "id": "new-participant-list",
+      "title": "建立得獎名單",
+      "sec": [
+        "M"
+      ],
+      "search": [
+        "得獎名單",
+        "參與者名單",
+        "Participant List",
+        "開 Participant List（得獎名單）並加人",
+        "開得獎名單，加入得獎者",
+        "建立得獎名單"
+      ],
+      "duration": 27.9,
+      "bytes": 310972,
+      "video": "new-participant-list.mp4",
+      "poster": "new-participant-list.png"
+    },
+    {
+      "id": "roll-call-participants",
+      "title": "記錄得獎者出席",
+      "sec": [
+        "M"
+      ],
+      "search": [
+        "點名",
+        "到場",
+        "剔名",
+        "點名 Participant List",
+        "得獎者到了，打剔",
+        "記錄得獎者出席"
+      ],
+      "duration": 14.8,
+      "bytes": 165160,
+      "video": "roll-call-participants.mp4",
+      "poster": "roll-call-participants.png"
+    },
+    {
+      "id": "new-guest-list",
+      "title": "建立嘉賓名單",
+      "sec": [
+        "M"
+      ],
+      "search": [
+        "嘉賓名單",
+        "Guest List",
+        "開 Guest List（嘉賓名單）並加嘉賓",
+        "開嘉賓名單，加入嘉賓",
+        "建立嘉賓名單"
+      ],
+      "duration": 25.2,
+      "bytes": 263457,
+      "video": "new-guest-list.mp4",
+      "poster": "new-guest-list.png"
+    },
+    {
+      "id": "roll-call-guests",
+      "title": "記錄嘉賓出席",
+      "sec": [
+        "M"
+      ],
+      "search": [
+        "嘉賓到場",
+        "點名嘉賓",
+        "點名 Guest List",
+        "嘉賓到了，打剔",
+        "記錄嘉賓出席"
+      ],
+      "duration": 11.5,
+      "bytes": 143789,
+      "video": "roll-call-guests.mp4",
+      "poster": "roll-call-guests.png"
+    },
+    {
+      "id": "group-tasks",
+      "title": "查看本組工作",
+      "sec": [
+        "L"
+      ],
+      "search": [
+        "本組工作",
+        "組長睇 task",
+        "看本組 Task",
+        "看我組要做的工作",
+        "查看本組工作"
+      ],
+      "duration": 13.6,
+      "bytes": 192348,
+      "video": "group-tasks.mp4",
+      "poster": "group-tasks.png"
+    },
+    {
+      "id": "add-member-to-task",
+      "title": "分配組員工作",
+      "sec": [
+        "L",
+        "E"
+      ],
+      "search": [
+        "分工",
+        "派 task",
+        "加人",
+        "編更",
+        "把組員加到 Task",
+        "把工作分給組員",
+        "分配工作",
+        "分配組員工作",
+        "取消分工",
+        "移走組員",
+        "把組員從 Task 移走",
+        "把組員從工作移走",
+        "移除工作負責人",
+        "當日改人",
+        "即場派 task",
+        "當日在 Rundown 分配 Task",
+        "活動當日分工作",
+        "分配當日工作",
+        "Chair 跟 task",
+        "紅色數字",
+        "把人加到 Task（包括 Chair）",
+        "把人加到工作（包括主席）",
+        "指派負責人",
+        "指派工作負責人"
+      ],
+      "duration": 36,
+      "bytes": 577900,
+      "video": "add-member-to-task.mp4",
+      "poster": "add-member-to-task.png"
+    },
+    {
+      "id": "tick-task",
+      "title": "記錄組員出席",
+      "sec": [
+        "L"
+      ],
+      "search": [
+        "剔名",
+        "記出席",
+        "點名組員",
+        "attendance",
+        "剔 Task（記出席）",
+        "組員做完，打剔（記出席）",
+        "記錄組員出席",
+        "剔錯",
+        "取消出席",
+        "取消剔 Task",
+        "剔錯了，取消",
+        "更正出席紀錄"
+      ],
+      "duration": 22.2,
+      "bytes": 389243,
+      "video": "tick-task.mp4",
+      "poster": "tick-task.png"
+    },
+    {
+      "id": "mark-on-leave",
+      "title": "記錄組員請假",
+      "sec": [
+        "L"
+      ],
+      "search": [
+        "請假",
+        "病假",
+        "On Leave",
+        "唔嚟",
+        "標 On Leave（請假）",
+        "組員請假，標記請假",
+        "記錄組員請假",
+        "取消請假",
+        "取消 On Leave",
+        "取消請假紀錄"
+      ],
+      "duration": 15.4,
+      "bytes": 275896,
+      "video": "mark-on-leave.mp4",
+      "poster": "mark-on-leave.png"
+    },
+    {
+      "id": "stand-in",
+      "title": "委任代任組長",
+      "sec": [
+        "L"
+      ],
+      "search": [
+        "代理組長",
+        "Stand-in",
+        "組長唔得閒",
+        "揀 Stand-in（代理組長）",
+        "我來不到，找組員代我做組長",
+        "委任代任組長",
+        "取消代理組長",
+        "結束 Stand-in（代理組長）",
+        "結束代組長",
+        "結束代任安排"
+      ],
+      "duration": 35.8,
+      "bytes": 411393,
+      "video": "stand-in.mp4",
+      "poster": "stand-in.png"
+    },
+    {
+      "id": "export-attendance",
+      "title": "下載出席紀錄",
+      "sec": [
+        "L",
+        "E"
+      ],
+      "search": [
+        "出席紀錄",
+        "下載出席",
+        "Excel",
+        "Export Attendance（本組出席紀錄）",
+        "下載我組的出席紀錄",
+        "下載本組出席紀錄",
+        "全年出席",
+        "List of Members",
+        "Export Attendance（全部出席紀錄）",
+        "下載全部出席紀錄",
+        "下載全年出席紀錄"
+      ],
+      "duration": 12,
+      "bytes": 128023,
+      "video": "export-attendance.mp4",
+      "poster": "export-attendance.png"
+    },
+    {
+      "id": "new-event",
+      "title": "新增活動",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "開活動",
+        "新活動",
+        "New Event",
+        "新增活動",
+        "開一場新活動"
+      ],
+      "duration": 25.3,
+      "bytes": 287345,
+      "video": "new-event.mp4",
+      "poster": "new-event.png"
+    },
+    {
+      "id": "edit-event",
+      "title": "修改活動資料",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "改時間",
+        "改地點",
+        "改 Event Lead",
+        "Remarks",
+        "改活動資料",
+        "修改活動資料",
+        "負責老師",
+        "跟進老師",
+        "加老師",
+        "設 Leading／Supporting Teacher",
+        "填負責老師",
+        "指定負責老師",
+        "指定活動負責老師"
+      ],
+      "duration": 26.6,
+      "bytes": 414425,
+      "video": "edit-event.mp4",
+      "poster": "edit-event.png"
+    },
+    {
+      "id": "copy-teacher-account",
+      "title": "管理老師帳戶",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "老師帳戶",
+        "老師密碼",
+        "send 老師登入",
+        "複製新老師帳戶",
+        "把帳戶傳給新老師",
+        "提供老師登入資料",
+        "刪老師帳戶",
+        "刪除老師帳戶"
+      ],
+      "duration": 37.5,
+      "bytes": 627732,
+      "video": "copy-teacher-account.mp4",
+      "poster": "copy-teacher-account.png"
+    },
+    {
+      "id": "add-duty-group",
+      "title": "安排當值小組",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "加當值組",
+        "排組",
+        "Duty Group",
+        "Add Duty Group（加當值組）",
+        "派一組當值",
+        "安排當值小組",
+        "換組",
+        "調組",
+        "Covering",
+        "換 Duty Group（當值組）",
+        "換另一組當值",
+        "更換當值小組",
+        "刪當值組",
+        "移除 Duty Group（當值組）",
+        "取消一組的當值",
+        "取消小組當值"
+      ],
+      "duration": 34.5,
+      "bytes": 813277,
+      "video": "add-duty-group.mp4",
+      "poster": "add-duty-group.png"
+    },
+    {
+      "id": "add-task-before",
+      "title": "新增小組工作",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "加 task",
+        "加工作",
+        "事前工作",
+        "Add Task（Before the Event）",
+        "加活動前的工作",
+        "新增活動前工作",
+        "當日 task",
+        "時段工作",
+        "Add Task（On the Day）",
+        "加活動當日的工作",
+        "新增當日工作",
+        "刪 task",
+        "刪除 Task",
+        "刪除工作"
+      ],
+      "duration": 35.9,
+      "bytes": 665800,
+      "video": "add-task-before.mp4",
+      "poster": "add-task-before.png"
+    },
+    {
+      "id": "move-task",
+      "title": "改派小組工作",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "拖 task",
+        "移 task",
+        "Unassigned",
+        "問號組",
+        "移動 Task（換組、換時段、處理 Unassigned）",
+        "把工作搬去另一組或另一個時間",
+        "轉交工作",
+        "改派小組工作"
+      ],
+      "duration": 17,
+      "bytes": 493953,
+      "video": "move-task.mp4",
+      "poster": "move-task.png"
+    },
+    {
+      "id": "tag-in-remark",
+      "title": "在備註標示相關同學",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "@人",
+        "tag 人",
+        "標記",
+        "在 Remark 用 @ 標記人",
+        "在備註提及某人",
+        "提及同學",
+        "在備註標示相關同學"
+      ],
+      "duration": 15.7,
+      "bytes": 302951,
+      "video": "tag-in-remark.mp4",
+      "poster": "tag-in-remark.png"
+    },
+    {
+      "id": "write-rundown",
+      "title": "編寫活動流程",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "程序表",
+        "加時段",
+        "Add Line",
+        "編寫 Rundown（程序表）",
+        "寫活動當日的流程",
+        "編寫活動流程",
+        "刪時段",
+        "調次序",
+        "移動或刪除 Rundown line",
+        "搬動或刪除流程其中一行",
+        "調整活動流程"
+      ],
+      "duration": 42.4,
+      "bytes": 497654,
+      "video": "write-rundown.mp4",
+      "poster": "write-rundown.png"
+    },
+    {
+      "id": "add-document",
+      "title": "新增活動文件",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "加文件",
+        "開講稿",
+        "開名單",
+        "Add Document",
+        "加文件（講稿、名單）",
+        "新增文件",
+        "新增活動文件",
+        "刪講稿",
+        "刪名單",
+        "刪除整份文件",
+        "刪除文件",
+        "刪除活動文件"
+      ],
+      "duration": 22.6,
+      "bytes": 434118,
+      "video": "add-document.mp4",
+      "poster": "add-document.png"
+    },
+    {
+      "id": "discard-changes",
+      "title": "放棄未儲存修改",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "改錯",
+        "取消修改",
+        "Discard",
+        "放棄修改",
+        "不儲存，放棄修改",
+        "放棄未儲存修改"
+      ],
+      "duration": 15.9,
+      "bytes": 318689,
+      "video": "discard-changes.mp4",
+      "poster": "discard-changes.png"
+    },
+    {
+      "id": "restore-version",
+      "title": "還原活動舊版本",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "改動紀錄",
+        "還原",
+        "undo",
+        "History",
+        "看 History 並還原版本",
+        "看修改紀錄，還原舊版本",
+        "還原舊版本",
+        "還原活動舊版本"
+      ],
+      "duration": 18.4,
+      "bytes": 351428,
+      "video": "restore-version.mp4",
+      "poster": "restore-version.png"
+    },
+    {
+      "id": "delete-event",
+      "title": "刪除活動",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "刪活動",
+        "取消活動",
+        "刪除活動",
+        "救返活動",
+        "刪錯活動",
+        "Recently Deleted",
+        "還原刪除了的活動",
+        "救回刪除了的活動",
+        "復原已刪活動"
+      ],
+      "duration": 25,
+      "bytes": 400228,
+      "video": "delete-event.mp4",
+      "poster": "delete-event.png"
+    },
+    {
+      "id": "edit-roster",
+      "title": "修改組員名單",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "加組員",
+        "名單",
+        "roster",
+        "Users & Groups",
+        "改組員名單",
+        "修改組員名單",
+        "換組長",
+        "改 Group Lead（組長）",
+        "更換組長"
+      ],
+      "duration": 31.1,
+      "bytes": 408788,
+      "video": "edit-roster.mp4",
+      "poster": "edit-roster.png"
+    },
+    {
+      "id": "change-password",
+      "title": "管理帳戶密碼",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "改密碼",
+        "重設密碼",
+        "改帳戶密碼",
+        "更改密碼",
+        "更改帳戶密碼",
+        "睇密碼",
+        "忘記密碼",
+        "看帳戶密碼",
+        "查看密碼",
+        "查看帳戶密碼"
+      ],
+      "duration": 23.1,
+      "bytes": 270561,
+      "video": "change-password.mp4",
+      "poster": "change-password.png"
+    },
+    {
+      "id": "edit-chairs-editors",
+      "title": "管理主席及老師名單",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "加 Chair",
+        "加 CA 老師",
+        "加減 Chair 或 Editor 老師",
+        "加減主席或老師",
+        "管理主席及老師名單"
+      ],
+      "duration": 18.8,
+      "bytes": 271467,
+      "video": "edit-chairs-editors.mp4",
+      "poster": "edit-chairs-editors.png"
+    },
+    {
+      "id": "set-stand-in-for-group",
+      "title": "委任代任組長",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "幫組長揀代理組長",
+        "為某組設 Stand-in（代理組長）",
+        "幫某組找代組長",
+        "委任代任組長"
+      ],
+      "duration": 17.8,
+      "bytes": 267858,
+      "video": "set-stand-in-for-group.mp4",
+      "poster": "set-stand-in-for-group.png"
+    },
+    {
+      "id": "connect-applications",
+      "title": "匯入老師申請",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "老師申請",
+        "CA Support 表格",
+        "Google Sheet",
+        "連接 Applications",
+        "連接申請表",
+        "匯入老師申請"
+      ],
+      "duration": 17.6,
+      "bytes": 261069,
+      "video": "connect-applications.mp4",
+      "poster": "connect-applications.png"
+    },
+    {
+      "id": "view-students",
+      "title": "查看活動安排",
+      "sec": [
+        "T"
+      ],
+      "search": [
+        "邊個學生負責",
+        "學生名單",
+        "看負責學生",
+        "看負責的學生",
+        "查看負責學生",
+        "查看當值學生",
+        "活動安排",
+        "流程",
+        "看 Tasks 和 Rundown",
+        "看工作和流程",
+        "查看工作及流程",
+        "查看活動工作及流程"
+      ],
+      "duration": 24.4,
+      "bytes": 362411,
+      "video": "view-students.mp4",
+      "poster": "view-students.png"
+    }
+  ]
+}

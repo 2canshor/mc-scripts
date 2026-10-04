@@ -293,6 +293,25 @@ textarea.fld{display:inline-block}
 .menu button svg.i{color:var(--secondary)}
 @media (hover:hover){.menu button:hover{background:var(--field)}}
 /* ---------- Sheets ---------- */
+/* 使用教學: the library's rows, the download ring, and the video layer (no edge, the library dimmed behind it) */
+.hh{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hh .nb{flex:none}
+.g-hv{grid-template-columns:30px minmax(0,1fr)}
+.g-hv .hp{width:30px;height:43px;border-radius:6px;object-fit:cover;background:var(--field)}
+.dlr{width:22px;height:22px;transform:rotate(-90deg)}
+.dlr circle{fill:none;stroke-width:2.2}
+.dlr .tr{stroke:var(--field)}.dlr .pr{stroke:var(--text);transition:stroke-dashoffset .2s}
+.dlr .st{fill:var(--text);stroke:none}
+.hvbg{position:fixed;inset:0;z-index:30;background:var(--dim);display:grid;place-items:center;overscroll-behavior:contain}
+.hv{position:relative;height:min(calc(100dvh - 160px),calc((100vw - 32px) * 1554 / 1080));aspect-ratio:1080/1554}
+.hv video{display:block;width:100%;height:100%;border-radius:24px;background:#000;object-fit:cover}
+.hvx{position:absolute;left:0;top:-56px}
+.hvc{position:absolute;left:12px;right:12px;bottom:12px;height:48px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 16px 0 6px;transition:opacity .3s}
+.hvc.hide{opacity:0;pointer-events:none}
+.hvp{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--text)}
+.hvp svg.i{width:20px;height:20px;fill:currentColor} /* stroke-ok: play and pause are filled shapes */
+.hvr{flex:1;min-width:0;accent-color:var(--text);height:24px}
+.hvt{min-width:3.2em;text-align:right;font-size:15px}
 .dimbg{position:fixed;inset:0;z-index:20;background:var(--dim);display:flex;align-items:flex-end;justify-content:center}
 .sheet{width:min(560px,100%);max-height:90vh;overflow:auto;overscroll-behavior:contain;touch-action:pan-y;background:var(--canvas);border-radius:24px 24px 0 0;padding:20px 24px calc(28px + env(safe-area-inset-bottom,0px))} /* the bar's 44 px buttons sit 4 px into its 52 px: 24 px from the top and the side alike */
 .sheet.tall{min-height:72vh}
@@ -419,6 +438,9 @@ textarea.fld{display:inline-block}
 <symbol id="i-photo" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17.5l5-4.5 4 3.5 3-2.5 4 3.5"/></symbol>
 <symbol id="i-award" viewBox="0 0 24 24"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></symbol>
 <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+<symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z"/></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
 <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></symbol>
 <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
@@ -628,7 +650,7 @@ function cardOf(n) {
     (past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${evRows(past)}</div></section>` : '');
 }
 // One row for an event in every list: date | name | ›. An event the signed-in chair leads carries the Event Lead's flag
-// beside the › (Carson, 26/10/04: a subtle mark for the events I lead), as Reminders shows a flag at the end of a row
+// beside the › (26/10/04), as Reminders shows a flag at the end of a row
 const mine = e => isLead() && !!e.lead && e.lead === V().name;
 const evRow = (e, act, list) => `<button class="row g-ev${list && e.date === TODAY ? ' current' : ''}" data-a="${act}:${e.id}">${list ? dot(e.id, true) : ''}<span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span><span class="tail">${mine(e) ? sym('flag', 'Event Lead', 'ic lf') : ''}${ic('chev-r', 'go')}</span></button>`;
 // A group's card: its symbol and name; its Group Lead; its members by class; the events it is on duty for, upcoming then past
@@ -702,6 +724,71 @@ function pWho() {
   return {fixed: true, body: `<div class="gate"><h1>Who Are You?</h1><p class="sub">${esc(a.id)}</p><div class="faces">${peopleOf(a).map(n => `<button class="face" data-a="be:${esc(n)}"><span class="av">${avatar(n)}</span><span>${esc(n)}</span></button>`).join('')}</div>
     <button class="nb low" data-a="signout">Sign Out</button></div>`};
 }
+// 使用教學 (26/10/04, project doc "Help Page Handoff 261004"): the 38 how-to videos exactly as published. The signed-in
+// account's own section comes first, then 所有人; a search looks through all of them, by title and by the words readers type.
+const HELP = %%HELP%%, HELP_SEC = {A: '所有人', M: '組員', L: '組長', E: '主席', T: '老師'};
+const helpSecs = () => { const a = ACCT(); return !a ? [] : a.type === 'lead' ? ['E'] : a.type === 'gl' ? ['L'] : a.type === 'group' ? ['M'] : ['T']; };
+function pHelp() {
+  const q = S.find.trim().toLowerCase(), hit = v => !q || [v.title, ...v.search].some(w => w.toLowerCase().includes(q)), seen = new Set();
+  const row = v => `<button class="row g-hv" data-a="hv:${v.id}"><img class="hp" src="/help/${v.poster}" alt="" loading="lazy"><span>${esc(v.title)}</span></button>`;
+  const secs = (q ? ['A', 'M', 'L', 'E', 'T'] : [...helpSecs(), 'A']).map(k => { const l = HELP.filter(v => v.sec.includes(k) && hit(v) && !seen.has(v.id)); l.forEach(v => seen.add(v.id));
+    return l.length ? `<section class="sec"><p class="sh">${HELP_SEC[k]}</p><div class="list">${l.map(row).join('')}</div></section>` : ''; }).join('');
+  setTimeout(helpCheck, 0);
+  return {title: '使用教學', search: 'help', l: backBtn(), body: `<h1 class="hh"><span>使用教學</span><button class="nb round glass" data-a="hdl" aria-label="${HDL.s === 'done' ? 'Downloaded' : HDL.s === 'run' ? 'Stop Download' : 'Download'}">${dlInner()}</button></h1>${secs || '<p class="empty sec">No results</p>'}`};
+}
+// Download for offline: every video and poster goes into the browser's cache (never handed out as files). The symbol shows
+// what the cache really holds each time the page opens, since iOS may clear it after a week without a visit.
+const HELP_CACHE = 'ec-help-v1', HELP_FILES = HELP.flatMap(v => ['/help/' + v.video, '/help/' + v.poster]);
+let HDL = {s: 'idle', n: 0, ctl: null};
+function dlInner() {
+  if (HDL.s === 'done') return ic('check');
+  if (HDL.s !== 'run') return ic('download');
+  const c = 2 * Math.PI * 9, f = HDL.n / HELP_FILES.length;
+  return `<svg class="dlr" viewBox="0 0 22 22" aria-hidden="true"><circle class="tr" cx="11" cy="11" r="9"/><circle class="pr" cx="11" cy="11" r="9" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - f)}"/><rect class="st" x="8" y="8" width="6" height="6" rx="1" transform="rotate(90 11 11)"/></svg>`;
+}
+const dlPaint = () => document.querySelectorAll('[data-a="hdl"]').forEach(b => { b.innerHTML = dlInner(); b.setAttribute('aria-label', HDL.s === 'done' ? 'Downloaded' : HDL.s === 'run' ? 'Stop Download' : 'Download'); });
+async function helpCheck() {
+  if (HDL.s === 'run' || !('caches' in window)) return;
+  try { const have = new Set((await (await caches.open(HELP_CACHE)).keys()).map(r => new URL(r.url).pathname)), s = HELP_FILES.every(f => have.has(f)) ? 'done' : 'idle';
+    if (HDL.s !== s) { HDL.s = s; dlPaint(); } } catch (err) { /* no cache in this browser */ }
+}
+async function helpDownload() {
+  if (HDL.s === 'run') { HDL.ctl.abort(); return; }
+  if (HDL.s === 'done' || !('caches' in window)) return;
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (err) { /* not offered */ }
+  HDL = {s: 'run', n: 0, ctl: new AbortController()}; dlPaint();
+  try { const c = await caches.open(HELP_CACHE), have = new Set((await c.keys()).map(r => new URL(r.url).pathname));
+    for (const f of HELP_FILES) { if (!have.has(f)) { const r = await fetch(f, {signal: HDL.ctl.signal}); if (!r.ok) throw new Error(f); await c.put(f, r); } HDL.n++; dlPaint(); }
+    HDL.s = 'done';
+  } catch (err) { HDL.s = 'idle'; if (err.name !== 'AbortError') toast('Not downloaded'); }
+  dlPaint();
+}
+// A video opens on a layer over the library: close outside its top-left corner, a glass capsule of play or pause, a
+// progress bar to drag and the time left, which hides 2.5 s into playback and comes back with a tap on the video.
+let HV = null;
+function helpOpen(id) {
+  const v = HELP.find(x => x.id === id); if (!v) return; helpClose();
+  const d = document.createElement('div'); d.className = 'hvbg';
+  d.innerHTML = `<div class="hv" role="dialog" aria-modal="true" aria-label="${esc(v.title)}"><button class="nb round glass hvx" aria-label="Close">${ic('x')}</button><video src="/help/${v.video}" poster="/help/${v.poster}" muted playsinline autoplay loop preload="none"></video><div class="hvc glass"><button class="hvp" aria-label="Pause">${ic('pause')}</button><input class="hvr" type="range" min="0" max="1000" value="0" step="1" aria-label="Progress"><span class="hvt t">0:00</span></div></div>`;
+  document.body.appendChild(d); document.documentElement.classList.add('locked');
+  const vid = d.querySelector('video'), cap = d.querySelector('.hvc'), pb = d.querySelector('.hvp'), bar = d.querySelector('.hvr'), tl = d.querySelector('.hvt');
+  let hideT = 0, drag = false;
+  const show = () => { cap.classList.remove('hide'); clearTimeout(hideT); if (!vid.paused && !drag) hideT = setTimeout(() => cap.classList.add('hide'), 2500); };
+  const mmss = x => { x = Math.max(0, Math.ceil(x || 0)); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`; };
+  const tick = () => { const D = vid.duration || 0; if (!drag && D) bar.value = Math.round(vid.currentTime / D * 1000); tl.textContent = '-' + mmss(D - vid.currentTime); };
+  const mark = () => { pb.innerHTML = ic(vid.paused ? 'play' : 'pause'); pb.setAttribute('aria-label', vid.paused ? 'Play' : 'Pause'); show(); };
+  vid.addEventListener('timeupdate', tick); vid.addEventListener('loadedmetadata', tick); vid.addEventListener('play', mark); vid.addEventListener('pause', mark);
+  vid.addEventListener('click', show);
+  pb.addEventListener('click', () => { if (vid.paused) vid.play().catch(() => {}); else vid.pause(); });
+  bar.addEventListener('input', () => { drag = true; clearTimeout(hideT); if (vid.duration) { vid.currentTime = bar.value / 1000 * vid.duration; tick(); } });
+  bar.addEventListener('change', () => { drag = false; show(); });
+  d.querySelector('.hvx').addEventListener('click', helpClose);
+  d.addEventListener('click', e => { if (e.target === d) helpClose(); });
+  d.addEventListener('touchmove', e => { if (!e.target.closest('.hvr')) e.preventDefault(); }, {passive: false});
+  HV = {d, stop: () => clearTimeout(hideT)}; show(); vid.play().catch(() => {});  // started from the tap, as well as by autoplay
+}
+function helpClose() { if (!HV) return; HV.stop(); HV.d.remove(); HV = null; if (!(S.sheet || S.menu || S.alert)) document.documentElement.classList.remove('locked'); }
+document.addEventListener('keydown', e => { if (HV && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); helpClose(); } }, true);
 function pEvents() {
   const q = S.find.trim().toLowerCase();
   // Upcoming: soonest first; Past: newest first. Events of one day always run by their Assembly time (26/10/03: reversing the
@@ -1007,10 +1094,11 @@ function sheet() {
   if (s.k === 'account') {
     const v = V(), others = peopleOf(ACCT()).filter(x => x !== v.name), pn = photoName();
     const face = pn ? `<button class="av avb" data-a="photo" aria-label="${PHOTOS[pn] ? 'Change Photo' : 'Add Photo'}">${avatar(v.name)}<span class="ov">${ic('photo')}</span></button>` : `<span class="av">${avatar(v.name)}</span>`;
+    const helpRow = `<button class="row g-sw" data-a="help" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('video', '')}<span>使用教學</span>${ic('chev-r', 'go')}</button>`;
     h = bar(close, 'Account', '') +
       `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === ACCT().id ? '' : ACCT().id) : v.standin ? `${v.group} Stand-in · Until ${hkAt(ACCT().until)}` : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
       (others.length ? `<section class="sec"><p class="sh">Switch Person</p><div class="list">${others.map(x => `<button class="row g-sw" data-a="switch:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
-      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Users &amp; Groups</span>${ic('chev-r', 'go')}</button><div${S.appsOpen ? ' class="opened" data-shut="apps"' : ''}><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}</div>` : ''}${v.type === 'gl' && !v.standin ? (x => `<button class="row g-sw" data-a="standin:${v.group}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) : 'None'}</span></button>`)(STANDINS.find(y => y.grp === v.group)) : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
+      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Users &amp; Groups</span>${ic('chev-r', 'go')}</button><div${S.appsOpen ? ' class="opened" data-shut="apps"' : ''}><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}</div>` : ''}${v.type === 'gl' && !v.standin ? (x => `<button class="row g-sw" data-a="standin:${v.group}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) : 'None'}</span></button>`)(STANDINS.find(y => y.grp === v.group)) : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button>${helpRow}</div></section>` : `<section class="sec"><div class="list">${helpRow}</div></section>`) +
       `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="signout"><span class="ic" style="color:inherit">${ic('logout')}</span><span>Sign Out</span></button></div></section>`;
   }
   // A stand-in for a Group Lead: pick a member; the account and its password show once, with Copy, to send to them
@@ -1053,6 +1141,7 @@ function route() {
   if (peopleOf(ACCT()).length && !S.who) return pWho();
   if (!p || p.p === 'events') return pEvents();
   if (p.p === 'members') return pMembers();
+  if (p.p === 'help') return pHelp();
   if (p.p === 'group') return pAccount(p.id);
   const ev = EV(); if (!ev) { S.stack = [{p: 'events'}]; return pEvents(); }
   if (p.p === 'event') return pEvent(ev);
@@ -1067,7 +1156,7 @@ function render() {
   app.innerHTML = `<main class="page${o.root ? ' root' : ''}${o.fixed ? ' fixed' : ''}${S.edit ? ' editing' : ''}">${o.body}</main>`;
   const keep = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find !== undefined;
   if (!keep) barEl.innerHTML = (o.l ? `<div class="ctl l">${o.l}</div>` : '') + (o.r ? `<div class="ctl r">${o.r}</div>` : '') + `<div class="edge"></div><div class="bt" aria-hidden="true">${S.edit ? '' : esc(o.title || '')}</div>` +
-    (o.fab ? `<button class="fab" data-a="${o.fab.act}" aria-label="${o.fab.label}">${ic('plus')}</button>` : '') + (o.fab && !o.search ? '<div class="edge b"></div>' : '') + (o.search ? `<div class="edge b"></div><label class="search glass${o.fab ? ' withfab' : ''}">${ic('search')}<input data-find placeholder="Search" value="${esc(S.find)}" aria-label="Search events" enterkeyhint="search"></label>` : '');
+    (o.fab ? `<button class="fab" data-a="${o.fab.act}" aria-label="${o.fab.label}">${ic('plus')}</button>` : '') + (o.fab && !o.search ? '<div class="edge b"></div>' : '') + (o.search ? `<div class="edge b"></div><label class="search glass${o.fab ? ' withfab' : ''}">${ic('search')}<input data-find placeholder="Search" value="${esc(S.find)}" aria-label="${o.search === 'help' ? 'Search videos' : 'Search events'}" enterkeyhint="search"></label>` : '');
   markGaps(); fitAll(app); fitPage(); if (Math.abs(scrollY - y0) > 1) scrollTo(0, y0); onScroll(); layer(); persistSoon();
   // one date column for every event row, as wide as the widest date
   const ds = [...app.querySelectorAll('.g-ev>.t')]; app.style.removeProperty('--dw'); if (ds.length) app.style.setProperty('--dw', Math.ceil(Math.max(...ds.map(d => d.getBoundingClientRect().width))) + 'px');
@@ -1145,7 +1234,7 @@ addEventListener('scroll', onScroll, {passive: true});
 // iOS Safari ignores user-scalable=no for pinching: stop the pinch gesture wherever it starts
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 const go = p => { if (p.p === 'event') { seeNow(p.ev); S.toSee.delete(p.ev); } else if (p.p === 'doc') { seeNow(`${p.ev}:d:${p.id}`); S.toSee.delete(`${p.ev}:d:${p.id}`); } seePage(); S.stack.push(p); S.edit = false; scrollTo(0, 0); render(); };
-const back = () => { seePage(); S.stack.pop(); S.edit = false; render(); };
+const back = () => { seePage(); if ((cur() || {}).p === 'help') S.find = ''; S.stack.pop(); S.edit = false; render(); };
 // Edit and Cancel: a snapshot of what the page can change
 const snapOf = () => JSON.stringify(cur().p === 'group' ? {ROSTER, PASSWORDS, CHAIRS, ADMINS} : EV());
 const restore = j => { const o = JSON.parse(j); if (cur().p === 'group') { ROSTER = o.ROSTER; PASSWORDS = o.PASSWORDS; CHAIRS = o.CHAIRS; ADMINS = o.ADMINS; } else { const ev = EV(); Object.keys(ev).forEach(k => delete ev[k]); Object.assign(ev, o); } };
@@ -1244,6 +1333,9 @@ document.addEventListener('click', async e => {
     case 'back': back(); break;
     case 'doc': go({p: 'doc', ev: ev.id, id: arg}); break;
     case 'members': S.sheet = null; go({p: 'members'}); break;
+    case 'help': S.sheet = null; S.find = ''; go({p: 'help'}); break;
+    case 'hv': helpOpen(arg); break;
+    case 'hdl': helpDownload(); break;
     case 'group': go({p: 'group', id: arg}); break;
     case 'edit': S.edit = true; S.need = false; S.snap = snapOf(); render(); break;
     // Done saves at once (not after the usual pause), so a teacher's new account comes back while the page is still open
@@ -1415,7 +1507,7 @@ document.addEventListener('input', e => {
   const t = e.target, d = t.dataset || {};
   if (TAGGED.test(d.b || '') || MENT) mentionCheck(t);
   if (/^say:[^:]+:[^:]+:text$/.test(d.b || '') && /\n/.test(t.value)) { sayParts(t); return; }
-  if (d.find !== undefined) { S.find = t.value; const o = route(); app.innerHTML = `<main class="page root">${o.body}</main>`; return; }
+  if (d.find !== undefined) { S.find = t.value; const o = route(); app.innerHTML = `<main class="page${o.root ? ' root' : ''}">${o.body}</main>`; return; }
   if (!d.b) return;
   if (t.tagName === 'TEXTAREA') fit(t);
   if (t.closest('.tline')) indent(t.closest('.tline'));
@@ -2071,6 +2163,7 @@ async function exportDoc(ev, id) {
 
 /* ---------- Start: the last account on this device, its copy of the events, then the server ---------- */
 // A device signed in to Teacher or Admin before they were renamed (26/10/02) carries on as Viewer or Editor
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 SYNC.token = store.get('token'); S.acct = ({Teacher: 'Viewer', Admin: 'Editor'})[store.get('acct')] || store.get('acct'); S.who = store.get('who'); S.seen = store.get('seen') || {}; XACCT = store.get('xacct');
 PHOTOS = store.get('photos') || {};
 if (SYNC.token && ACCT()) {

@@ -28,6 +28,10 @@ print('built', len(std), 'real names found:', bad)
 # The events page: build/events.src.html with the same Word generator and template, written to src/events.html.
 # Its data comes from the server, never from this repository.
 ev = open(os.path.join(here, 'events.src.html'), encoding='utf-8').read().replace('%%GEN%%', g).replace('%%TPL%%', tpl)
+# The help videos' list (使用教學), from the published manifest; the videos and posters are served as they are from public/help
+import json
+helps = [{k: v[k] for k in ('id', 'title', 'sec', 'search', 'video', 'poster')} for v in json.load(open(os.path.join(root, 'public', 'help', 'manifest.json'), encoding='utf-8'))['videos']]
+ev = ev.replace('%%HELP%%', json.dumps(helps, ensure_ascii=False))
 # A version taken from the page itself: the server reports it, and a page left open on an older one reloads itself
 import hashlib
 ver = hashlib.sha256(ev.encode('utf-8')).hexdigest()[:12]
