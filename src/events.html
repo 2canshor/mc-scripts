@@ -693,6 +693,7 @@ if (typeof module !== "undefined") module.exports = ScriptGen;
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
 <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
 <symbol id="i-check-fill" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="m7.5 12.5 3 3 6-6.5" stroke="#FFFFFF" stroke-width="2"/></symbol> <!-- stroke-ok: white mark inside a filled symbol -->
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></symbol>
 <symbol id="i-leave" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></symbol>
 <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
 <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
@@ -757,6 +758,7 @@ let STANDINS = [];
 const hkAt = ms => { const d = new Date(ms + 8 * 3600e3).toISOString(); return md(d.slice(2, 10).replace(/-/g, '/')) + ' ' + d.slice(11, 16); };
 // What a person needs to sign in, ready to paste into a message
 const signInText = (id, pw, more) => `Event Centre：${location.origin}\nAccount：${id}\nPassword：${pw}` + (more ? '\n' + more : '');
+const TEACHER_MORE = '登入後可查看 閣下任 Leading 或 Supporting Teacher 之活動。';
 const teacherCode = x => String(x || '').trim().toUpperCase().replace(/\s+/g, '');
 const taught = code => EVENTS.filter(e => [...(e.leading || []), ...(e.support || [])].some(x => teacherCode(x) === code));
 // One account per small group (members pick their name), one per Group Lead, one for the chairs, one for teachers
@@ -1368,13 +1370,13 @@ function pGuests(ev) {
 /* ---------- Users & Groups (Event Lead) ---------- */
 // A password reads as dots; the eye shows it (as the server last saw it: set here, or used to sign in), and hides it again
 let PWSHOW = null;  // fetched when an eye is first tapped; never kept on the device
-const pwView = (id, ed) => { if (ed) return `<span class="pw">${fld('pw:' + id, PASSWORDS[id] || '', 'New Password')}</span>`;
+const pwView = (id, ed, copy) => { if (ed) return `<span class="pw">${fld('pw:' + id, PASSWORDS[id] || '', 'New Password')}</span>`;
   const on = (S.pwOpen || new Set()).has(id), v = on && PWSHOW ? PWSHOW[id] : '';
-  return `<span class="pw"><span class="pv${on ? '' : ' mask'}">${on ? (v ? esc(v) : '—') : '••••••'}</span><button class="ib eye" data-a="pweye:${esc(id)}" aria-label="${on ? 'Hide' : 'Show'} Password">${ic(on ? 'eye-off' : 'eye')}</button></span>`; };
+  return `<span class="pw"><span class="pv${on ? '' : ' mask'}">${on ? (v ? esc(v) : '—') : '••••••'}</span><button class="ib eye" data-a="pweye:${esc(id)}" aria-label="${on ? 'Hide' : 'Show'} Password">${ic(on ? 'eye-off' : 'eye')}</button>${copy ? `<button class="ib eye" data-a="copypw:${esc(id)}" aria-label="Copy Account">${ic('copy')}</button>` : ''}</span>`; };
 // A group's stand-in: who, and until when; it opens the Stand-in sheet
 const standinRow = g => { const x = STANDINS.find(y => y.grp === g);
   return `<button class="row g-ic" data-a="standin:${g}">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) + ' · Until ' + hkAt(x.until) : 'None'}</span>${ic('chev-r', 'go')}</button>`; };
-const acctRow = (id, ed) => `<div class="row g-acct">${sym('key', 'Account')}<span>${esc(id)}</span>${pwView(id, ed)}</div>`;
+const acctRow = (id, ed, copy) => `<div class="row g-acct">${sym('key', 'Account')}<span>${esc(id)}</span>${pwView(id, ed, copy)}</div>`;
 function pMembers() {
   if (!S.xaccts) loadXaccts();
   const ts = (Array.isArray(S.xaccts) ? S.xaccts : []).filter(x => x.type === 'teacher').sort((a, b) => a.id.localeCompare(b.id));
@@ -1389,7 +1391,7 @@ function pMembers() {
 function pAccount(id) {
   const ed = S.edit, bar = editBar(true);
   if (id.startsWith('T:')) { const code = id.slice(2), evs = taught(code).sort(newest);
-    return {...bar, title: code, body: `<h1>${esc(code)}</h1><section class="sec list">${acctRow(code, ed)}</section>
+    return {...bar, title: code, body: `<h1>${esc(code)}</h1><section class="sec list">${acctRow(code, ed, true)}</section>
     <section class="sec"><p class="sh">Events</p>${evs.length ? `<div class="list">${evs.map(e => evRow(e, 'open')).join('')}</div>` : '<p class="empty">No events</p>'}</section>
     ${ed ? '' : `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="askdropacct:${esc(code)}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>Delete Account</span></button></div></section>`}`}; }
   if (id === 'Viewer') return {...bar, title: 'Viewer', body: `<h1>Viewer</h1><section class="sec list">${acctRow('Viewer', ed)}</section>`};
@@ -1799,6 +1801,12 @@ document.addEventListener('click', async e => {
     case 'switch': S.who = arg; store.set('who', arg); S.sheet = null; S.toSee = new Set(); render(); loadFeedback(); break;
     // Applications: the CA Support form's sheet. The row says whether it is read; tapping it shows the link to change it.
     case 'appsopen': S.appsOpen = !S.appsOpen; layer(); break;
+    // Copy on a teacher's account (Build Brief 261004 item 10): the same text as the new-account toast. The password is fetched
+    // inside the copy itself when not yet shown, so Safari still counts the copy as part of the tap.
+    case 'copypw': { const text = async () => { if (!PWSHOW) { const r = await api('passwords'); PWSHOW = r.ok ? await r.json() : {}; }
+        if (!PWSHOW[arg]) throw new Error('no password'); return signInText(arg, PWSHOW[arg], TEACHER_MORE); };
+      try { if (PWSHOW) await navigator.clipboard.writeText(await text()); else await navigator.clipboard.write([new ClipboardItem({'text/plain': text().then(t => new Blob([t], {type: 'text/plain'}))})]); toast('Copied'); }
+      catch (err) { toast('Could not copy'); } break; }
     case 'pweye': { S.pwOpen = S.pwOpen || new Set(); if (S.pwOpen.has(arg)) { S.pwOpen.delete(arg); render(); break; }
       S.pwOpen.add(arg); if (!PWSHOW) { try { const r = await api('passwords'); PWSHOW = r.ok ? await r.json() : {}; } catch (x) { toast('No connection'); S.pwOpen.delete(arg); break; } } render(); break; }
     case 'export': exportAttendance(); break;
@@ -1826,7 +1834,7 @@ document.addEventListener('click', async e => {
         S.xaccts = null; render(); }
       catch (err) { toast(SYNC.offline ? 'No connection' : 'Not changed'); } break; }
     case 'copyacct': { const text = arg === 'standin' ? signInText(S.made.id, S.made.password, `${S.made.person}：${S.made.grp} Stand-in，有效至 ${hkAt(S.made.until)}`)
-        : S.newAccts.map(x => signInText(x.id, x.password, '登入後可查看 閣下任 Leading 或 Supporting Teacher 之活動。')).join('\n\n');
+        : S.newAccts.map(x => signInText(x.id, x.password, TEACHER_MORE)).join('\n\n');
       try { await navigator.clipboard.writeText(text); toast('Copied'); } catch (err) { toast('Could not copy'); } break; }
     case 'askdropacct': S.alert = {t: `Delete ${arg}'s Account?`, m: `${arg} can no longer sign in. Their events stay. Saving an event that names ${arg} makes a new account with a new password.`, verb: 'Delete', act: 'dropacct:' + arg}; layer(); break;
     case 'dropacct': S.alert = null;
@@ -2071,7 +2079,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = 'bb8fb3881f21';
+const PAGE_VER = '77958ba1f12f';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
