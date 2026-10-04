@@ -408,14 +408,12 @@ textarea.fld{display:inline-block}
 .fbo>.row{width:100%;margin:0;padding:10px 12px;border-radius:10px}
 .fbo>.g-opt{grid-template-columns:minmax(0,1fr)}
 .fbo>.row.on,.fbo>.row.on:active{background:var(--primary);color:var(--on-primary)}
+.fbo>.row.on .av{color:var(--text)} /* a photo's initial keeps its own colour on the yellow fill */
 .fbo .tag{background:var(--canvas)}
 @media (hover:hover){.fbo>.row:not(.on):hover{background:color-mix(in srgb,var(--text) 6%,var(--field))}}
 .fbo>.row:not(.on):active{background:color-mix(in srgb,var(--text) 10%,var(--field))}
 .fbo .tag.on{background:var(--primary)}
 .fbp{margin:0 0 10px;color:var(--secondary);white-space:pre-line}
-.fbm{grid-template-columns:minmax(0,1fr) auto}
-.fbt{display:flex;gap:6px}
-.fbt .tag{min-height:32px;padding:0 12px}
 .tag.on{background:var(--primary);color:var(--on-primary)}
 .gate .done{width:100%;margin-top:28px}
 .fld.fbin{display:block;width:100%;max-width:none;box-sizing:border-box;margin:8px 0 0;padding:12px 16px;border-radius:12px;background:var(--field);font-size:17px}
@@ -784,7 +782,7 @@ const FB_WELL = FB_Q.fit[0], FB_DIFFER = FB_Q.diff[1], FB_PROBLEM = FB_Q.ok[1], 
 const fbOk = (q, a) => q.role === 'teacher' ? !!a.fit && (a.fit === FB_WELL || !!a.area) : !(a.grew || []).length ? false : q.role === 'member' ? !!a.ok && (a.ok !== FB_PROBLEM || !!a.why)
   : !!a.diff && (!q.promise || !!a.kept) && (a.diff !== FB_DIFFER || !!((a.reason || '').trim() && (a.avoid || '').trim()));
 function pFeedback() {
-  const q = FB.due[0]; if (!S.fb || S.fb.id !== q.id) S.fb = {id: q.id, a: {follow: [], praise: [], grew: []}, busy: false};
+  const q = FB.due[0]; if (!S.fb || S.fb.id !== q.id) S.fb = {id: q.id, a: {praise: [], grew: []}, busy: false};
   const a = S.fb.a, on = (k, v) => Array.isArray(a[k]) ? a[k].includes(v) : a[k] === v;
   // A chosen answer fills in Strong Yellow, the whole row (decided 26/10/04 18:43), with no tick at the far edge
   const opt = k => FB_Q[k].map(v => `<button class="row g-opt${on(k, v) ? ' on' : ''}" data-a="fb:${k}:${esc(v)}" aria-pressed="${on(k, v)}"><span>${esc(v)}</span></button>`).join('');
@@ -796,10 +794,10 @@ function pFeedback() {
   let body = '';
   if (q.role === 'teacher') body = ask('這次的安排能否配合老師的需要？', opt('fit')) + (a.fit && a.fit !== FB_WELL ? ask('懇請老師指出我們可以改善的地方', opt('area'), '', line('note', '其他意見')) : '');
   else if (q.role === 'member') body = ask('這次的 Task 完成得順利嗎？', opt('ok')) + (a.ok === FB_PROBLEM ? ask('主要遇到哪方面的困難？', opt('why'), '', line('note', '其他意見')) : '') + grew;
-  else { const tg = (k, n, w) => `<button class="tag${a[k].includes(n) ? ' on' : ''}" data-a="fb:${k}:${esc(n)}" aria-pressed="${a[k].includes(n)}">${w}</button>`;
-    body = (q.promise ? ask('上次訂下的改善方法，這次能夠實行嗎？', opt('kept'), `<p class="fbp">「${esc(q.promise)}」</p>`) : '') +
+  else body = (q.promise ? ask('上次訂下的改善方法，這次能夠實行嗎？', opt('kept'), `<p class="fbp">「${esc(q.promise)}」</p>`) : '') +
       ask('這次活動是否按計劃進行？', opt('diff'), '', a.diff === FB_DIFFER ? line('reason', '當時情況') + line('avoid', '下次的改善方法') : '') + grew +
-      (q.people.length ? ask('哪些組員值得讚賞，或需要更多支援？', q.people.map(n => `<div class="row fbm"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span><span class="fbt">${tg('praise', n, '讚賞')}${tg('follow', n, '支援')}</span></div>`).join('')) : ''); }
+      // Praise only (26/10/04 19:24): a second tag for support set members against each other; a member's own 遇到困難 says who needs help
+      (q.people.length ? ask('哪些組員這次的表現值得讚賞？', q.people.map(n => `<button class="row g-opt fbm${a.praise.includes(n) ? ' on' : ''}" data-a="fb:praise:${esc(n)}" aria-pressed="${a.praise.includes(n)}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span></button>`).join('')) : '');
   const done = q.role !== 'teacher' || (a.fit && a.fit !== FB_WELL);
   const sub = FB.preview ? `Preview · ${{teacher: 'Teacher', gl: 'Group Lead', member: 'Member'}[q.role]}` : FB.due.length > 1 ? `1 of ${FB.due.length}` : '';
   return {fixed: true, body: `<div class="gate fb"><h1>${evTitle(q)}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}${body}
@@ -809,7 +807,7 @@ function pFeedback() {
 const fbReady = () => { const d = app.querySelector('[data-a="fbdone"]'); if (d && FB.due[0] && S.fb) d.disabled = !fbOk(FB.due[0], S.fb.a) || S.fb.busy; };
 function fbTap(arg) {
   const [k, ...r] = arg.split(':'), v = r.join(':'), a = S.fb.a;
-  if (k === 'follow' || k === 'praise' || k === 'grew') a[k] = a[k].includes(v) ? a[k].filter(x => x !== v) : [...a[k], v]; else a[k] = v;
+  if (k === 'praise' || k === 'grew') a[k] = a[k].includes(v) ? a[k].filter(x => x !== v) : [...a[k], v]; else a[k] = v;
   if (k === 'grew' && a.grew.includes(v)) a.grew = a.grew.filter(x => (x === FB_NONE) === (v === FB_NONE));  // 沒有明顯提升 stands alone
   render(); if (k === 'fit' && v === FB_WELL) fbSend();
 }
@@ -862,7 +860,7 @@ function feedbackSec(ev) {
     if (r.role === 'teacher') return [[d.fit, d.area].filter(Boolean).join('・'), d.note];
     if (r.role === 'member') return [[d.ok, d.why].filter(Boolean).join('・'), d.note];
     return [d.promise ? `上次的改善方法「${d.promise}」${d.kept}` : '', d.diff === FB_DIFFER ? `出現變化：${d.reason}` : '按計劃進行', d.diff === FB_DIFFER ? `改善方法：${d.avoid}` : '',
-      d.praise && d.praise.length ? '讚賞：' + d.praise.join('、') : '', d.follow && d.follow.length ? '支援：' + d.follow.join('、') : '']; };
+      d.praise && d.praise.length ? '讚賞：' + d.praise.join('、') : '']; };
   const row = r => `<div class="row fbr"><span class="fbw">${mention(r.name)}${r.role === 'gl' ? '<span class="gl">Group Lead</span>' : ''}</span><span class="cap">${said(r).filter(Boolean).map(esc).join('\n')}</span>${tags(r.data)}</div>`;
   // Against the plan's 60%: the share of members and Group Leads who say they grew, green once it reaches 60%
   const asked = f.list.filter(r => r.role !== 'teacher' && r.data.grew && r.data.grew.length), pct = asked.length ? Math.round(asked.filter(r => r.data.grew[0] !== FB_NONE).length / asked.length * 100) : null;

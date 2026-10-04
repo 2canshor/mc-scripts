@@ -557,7 +557,7 @@ function cleanAnswer(me, a, promise, ctx) {
   const out = { diff, grew }, ppl = peopleIn(ctx, me.group), names = (l) => [...new Set((Array.isArray(l) ? l : []).filter((n) => ppl.includes(n)))];
   if (promise) Object.assign(out, { promise, kept });
   if (diff === DIFF[1]) { out.reason = line(a.reason); out.avoid = line(a.avoid); if (!out.reason || !out.avoid) return null; }
-  out.follow = names(a.follow); out.praise = names(a.praise);
+  out.praise = names(a.praise);
   return out;
 }
 
