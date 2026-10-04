@@ -409,6 +409,10 @@ textarea.fld{display:inline-block}
 .fbo>.g-opt{grid-template-columns:minmax(0,1fr)}
 .fbo>.row.on,.fbo>.row.on:active{background:var(--primary);color:var(--on-primary)}
 .fbo>.row.on .av{color:var(--text)} /* a photo's initial keeps its own colour on the yellow fill */
+/* Chosen answers next to each other join into one fill, as consecutive selected rows do in Finder and Mail:
+   only the outer corners stay round (26/10/04 20:33: three separate pills stacked edge to edge looked notched) */
+.fbo>.row.on+.row.on{border-top-left-radius:0;border-top-right-radius:0}
+.fbo>.row.on:has(+.row.on){border-bottom-left-radius:0;border-bottom-right-radius:0}
 .fbo .tag{background:var(--canvas)}
 @media (hover:hover){.fbo>.row:not(.on):hover{background:color-mix(in srgb,var(--text) 6%,var(--field))}}
 .fbo>.row:not(.on):active{background:color-mix(in srgb,var(--text) 10%,var(--field))}
