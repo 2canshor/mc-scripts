@@ -42,6 +42,8 @@ export function ensureEventTables(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS vault (id TEXT PRIMARY KEY, sealed TEXT NOT NULL)"),
     // Accounts added while the site runs (Carson, 26/10/02): a Group Lead's stand-in for 3 days, and one per teacher
     db.prepare("CREATE TABLE IF NOT EXISTS xaccounts (id TEXT PRIMARY KEY, kind TEXT NOT NULL, grp TEXT, code TEXT, person TEXT, until INTEGER, created INTEGER NOT NULL, by TEXT)"),
+    // Post-event questionnaire answers, kept apart from the event data: one per event and person (one per group for its Group Lead)
+    db.prepare("CREATE TABLE IF NOT EXISTS feedback (event TEXT NOT NULL, who TEXT NOT NULL, role TEXT NOT NULL, grp TEXT, name TEXT, date TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (event, who))"),
     // Admin and Teacher were renamed Editor and Viewer (Carson, 26/10/02): their password, sign-ins and wrong tries move with them
     ...[["Teacher", "Viewer"], ["Admin", "Editor"]].flatMap(([from, to]) => [
       db.prepare("UPDATE OR IGNORE accounts SET id = ? WHERE id = ?").bind(to, from),
@@ -477,6 +479,76 @@ export async function importApplications(env, force) {
 }
 
 // Pages from before 26/10/01 read events in the old shape; they get nothing new until they are reloaded.
+// 活動後問卷 (Build Brief 261004 item 2; Carson 26/10/04 11:45–11:46): it replaces the three Google Forms. From the day after
+// an event (Hong Kong time), its Leading and Supporting Teachers (their own accounts, or the Editor account under their name),
+// its on-duty Group Leads or Stand-ins, and its on-duty members not On Leave answer it when they next open the site.
+// Events before it went live are not asked about.
+const FB_FROM = "26/10/05";
+const FIT = ["合", "大致合", "不合"], AREAS = ["事前聯絡", "講稿內容", "司儀表現", "上台安排", "接待嘉賓", "時間控制", "同學態度"];
+const KEPT = ["做到", "未做到"], DIFF = ["沒有", "有"], OK = ["順利", "有問題"], WHY = ["不知道做甚麼", "找不到 Group Lead", "時間太緊", "人手不足", "物資", "其他"];
+const hkToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, "/");
+const feedbackOpen = (ev) => !!ev.date && ev.date >= FB_FROM && ev.date < hkToday();
+async function feedbackContext(env) { return { rosters: (await settingOf(env, "rosters")) || {}, admins: (await settingOf(env, "admins")) || [] }; }
+const peopleIn = (ctx, g) => (((ctx.rosters[g] || {}).people) || []).map((p) => p.name).filter(Boolean);
+// The person answering for this event, or null when they are not one of its people
+function feedbackRole(acct, ev, ctx) {
+  const codes = [...(ev.leading || []), ...(ev.support || [])].map(codeOf), onDuty = (g) => (ev.groups || []).some((x) => x.name === g);
+  if (acct.tv) return codes.includes(acct.code) ? { key: "t:" + acct.code, role: "teacher", name: acct.code } : null;
+  if (acct.type === "lead" && acct.admin) {
+    const c = codeOf(acct.who);
+    return acct.who && ctx.admins.includes(acct.who) && codes.includes(c) ? { key: "t:" + c, role: "teacher", name: acct.who } : null;
+  }
+  if (acct.type === "gl") return onDuty(acct.group) ? { key: "l:" + acct.group, role: "gl", group: acct.group, name: acct.person || ((ctx.rosters[acct.group] || {}).lead || {}).name || acct.id } : null;
+  if (acct.type === "group") {
+    const n = acct.who, away = !!(((ev.leave || {})[acct.group] || {})[n]);
+    return n && onDuty(acct.group) && !away && peopleIn(ctx, acct.group).includes(n) ? { key: "m:" + acct.group + ":" + n, role: "member", group: acct.group, name: n } : null;
+  }
+  return null;
+}
+// A group's last promise: 「下次怎樣避免」 from its Group Lead's latest answer for an earlier event
+async function promiseOf(env, group, date) {
+  const { results } = await env.DB.prepare("SELECT data FROM feedback WHERE role = 'gl' AND grp = ? AND date < ? ORDER BY date DESC, at DESC").bind(group, date).all();
+  for (const r of results) { try { const d = JSON.parse(r.data); if (d.diff === "有" && d.avoid) return d.avoid; if (d.diff) return ""; } catch { /* skip */ } }
+  return "";
+}
+async function feedbackDue(env, acct) {
+  if ((acct.type === "teacher" && !acct.tv) || (acct.type === "lead" && !acct.admin)) return [];
+  const ctx = await feedbackContext(env), today = hkToday();
+  const { results } = await env.DB.prepare("SELECT data FROM events WHERE deleted = 0").all();
+  const evs = results.map((r) => { try { return upgrade(JSON.parse(r.data)); } catch { return null; } }).filter((e) => e && e.date && e.date >= FB_FROM && e.date < today);
+  const out = [];
+  for (const ev of evs.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))) {
+    const me = feedbackRole(acct, ev, ctx); if (!me) continue;
+    if (await env.DB.prepare("SELECT 1 FROM feedback WHERE event = ? AND who = ?").bind(ev.id, me.key).first()) continue;
+    out.push({ id: ev.id, name: ev.name, date: ev.date, role: me.role, group: me.group || null, promise: me.role === "gl" ? await promiseOf(env, me.group, ev.date) : "",
+      people: me.role === "gl" ? peopleIn(ctx, me.group) : [] });
+  }
+  return out;
+}
+// Only the choices offered, and lines of reasonable length; null when an answer the questions need is missing
+function cleanAnswer(me, a, promise, ctx) {
+  const line = (s) => String(s || "").trim().slice(0, 300), one = (v, list) => (list.includes(v) ? v : null);
+  if (me.role === "teacher") {
+    const fit = one(a.fit, FIT); if (!fit) return null;
+    if (fit === "合") return { fit };
+    const area = one(a.area, AREAS); if (!area) return null;
+    return { fit, area, note: line(a.note) };
+  }
+  if (me.role === "member") {
+    const ok = one(a.ok, OK); if (!ok) return null;
+    if (ok === "順利") return { ok };
+    const why = one(a.why, WHY); if (!why) return null;
+    return { ok, why, note: line(a.note) };
+  }
+  const diff = one(a.diff, DIFF), kept = promise ? one(a.kept, KEPT) : null;
+  if (!diff || (promise && !kept)) return null;
+  const out = { diff }, ppl = peopleIn(ctx, me.group), names = (l) => [...new Set((Array.isArray(l) ? l : []).filter((n) => ppl.includes(n)))];
+  if (promise) Object.assign(out, { promise, kept });
+  if (diff === "有") { out.reason = line(a.reason); out.avoid = line(a.avoid); if (!out.reason || !out.avoid) return null; }
+  out.follow = names(a.follow); out.praise = names(a.praise);
+  return out;
+}
+
 const PAGE = "4";
 
 export async function handleEvents(request, env, url, path) {
@@ -524,6 +596,31 @@ export async function handleEvents(request, env, url, path) {
     if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
     const { results } = await env.DB.prepare("SELECT id, data, seq, updated FROM events WHERE deleted = 1 AND updated > ? ORDER BY updated DESC").bind(Date.now() - 30 * 864e5).all();
     return json(results.map((r) => { let d = {}; try { d = upgrade(JSON.parse(r.data)); } catch { /* unreadable */ } return { id: r.id, rev: r.seq, at: r.updated, name: d.name || "", date: d.date || "", data: JSON.stringify(d) }; }).filter((x) => x.name || x.date));
+  }
+
+  // Post-event questionnaire. GET: the events this person still has to answer, oldest first, or for the Event Lead and
+  // Editor with ?event=, that event's answers. POST: one answer, checked against who the person is.
+  if (path === "feedback" && request.method === "GET") {
+    const id = url.searchParams.get("event");
+    if (id) {
+      if (acct.type !== "lead") return json({ error: "forbidden" }, 403);
+      const { results } = await env.DB.prepare("SELECT who, role, grp, name, data, at FROM feedback WHERE event = ? ORDER BY at").bind(id).all();
+      return json({ answers: results.map((r) => ({ ...r, data: JSON.parse(r.data) })) });
+    }
+    return json({ due: await feedbackDue(env, acct) });
+  }
+  if (path === "feedback" && request.method === "POST") {
+    const body = await request.json().catch(() => ({}));
+    const row = await env.DB.prepare("SELECT data FROM events WHERE id = ? AND deleted = 0").bind(String(body.event || "")).first();
+    if (!row) return json({ error: "not found" }, 404);
+    const ev = upgrade(JSON.parse(row.data)), ctx = await feedbackContext(env), me = feedbackRole(acct, ev, ctx);
+    if (!me || !feedbackOpen(ev)) return json({ error: "forbidden" }, 403);
+    const promise = me.role === "gl" ? await promiseOf(env, me.group, ev.date) : "";
+    const data = cleanAnswer(me, body.data || {}, promise, ctx);
+    if (!data) return json({ error: "answer" }, 400);
+    const r = await env.DB.prepare("INSERT OR IGNORE INTO feedback (event, who, role, grp, name, date, data, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(ev.id, me.key, me.role, me.group || null, me.name, ev.date, JSON.stringify(data), Date.now()).run();
+    return json({ ok: true, saved: !!(r.meta && r.meta.changes), due: await feedbackDue(env, acct) });
   }
 
   // Save one event. "rev" is the version the writer started from (0 for a new event); if someone else saved
