@@ -881,16 +881,18 @@ function feedbackSec(ev) {
       (open ? `<div class="gbody">${l.map(row).join('')}</div></div>` : ''); };
   return `<section class="sec"><p class="sh">Feedback</p><div class="list">${meter}${teachers}${groups.map(grp).join('')}</div></section>`;
 }
-// Help (26/10/04, project doc "Help Page Handoff 261004"): the 38 how-to videos exactly as published. The signed-in account's
-// own section comes first, then Everyone; a search looks through all of them, by title and by the words readers type.
+// Help (26/10/04, project doc "Help Page Handoff 261004"): the how-to videos exactly as published. The signed-in account's
+// own section comes first, then those below it, then Everyone; a search looks only through those, by title and by readers' words.
 // Everything here is English but the videos' own titles (decided 26/10/04 16:35).
 const HELP = %%HELP%%, HELP_SEC = {A: 'Everyone', M: 'Members', L: 'Group Lead', E: 'Event Lead', T: 'Teachers'};
-const helpSecs = () => { const a = ACCT(); return !a ? [] : a.type === 'lead' ? ['E'] : a.type === 'gl' ? ['L'] : a.type === 'group' ? ['M'] : ['T']; };
+// Videos follow rights (26/10/05): an account sees every video of the accounts whose rights it holds, so a Group Lead
+// sees the members' videos and the Event Lead and Editors see every video; one title shows once, in the highest section.
+const helpSecs = () => { const a = ACCT(); return !a ? [] : a.type === 'lead' ? ['E', 'L', 'M', 'T'] : a.type === 'gl' ? ['L', 'M'] : a.type === 'group' ? ['M'] : ['T']; };
 function pHelp() {
   const q = S.find.trim().toLowerCase(), hit = v => !q || [v.title, ...v.search].some(w => w.toLowerCase().includes(q)), seen = new Set();
   // A row is the title alone, after the video symbol: the first frame was mostly a blank page and told nothing (review 26/10/04)
   const row = v => `<button class="row g-hv" data-a="hv:${v.id}">${sym('video', '')}<span>${esc(v.title)}</span></button>`;
-  const secs = (q ? ['A', 'M', 'L', 'E', 'T'] : [...helpSecs(), 'A']).map(k => { const l = HELP.filter(v => v.sec.includes(k) && hit(v) && !seen.has(v.id)); l.forEach(v => seen.add(v.id));
+  const secs = [...helpSecs(), 'A'].map(k => { const l = HELP.filter(v => v.sec.includes(k) && hit(v) && !seen.has(v.title)); l.forEach(v => seen.add(v.title));
     return l.length ? `<section class="sec"><p class="sh">${HELP_SEC[k]}</p><div class="list">${l.map(row).join('')}</div></section>` : ''; }).join('');
   setTimeout(helpCheck, 0);
   // Download sits with Back on the top row, as Export sits beside Edit on an event
