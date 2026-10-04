@@ -854,6 +854,12 @@ async function loadAnswers(id) {
   catch (e) { FBA[id] = {at: Date.now() - 50000, list: (FBA[id] || {}).list}; return; }
   if (cur() && cur().p === 'event' && cur().ev === id && !S.edit) render();
 }
+// An answer read back as the questionnaire asked it, one line per point (Feedback on the event page, and the export)
+const fbSaid = r => { const d = r.data;
+    if (r.role === 'teacher') return [[d.fit, Array.isArray(d.area) ? d.area.join('、') : d.area].filter(Boolean).join('・'), d.note];
+    if (r.role === 'member') return [[d.ok, d.why].filter(Boolean).join('・'), d.note];
+    return [d.promise ? `上次的改善方法「${d.promise}」${d.kept}` : '', d.diff === FB_ASPLAN ? d.diff : `${d.diff}：${d.reason}`, d.avoid ? `改善方法：${d.avoid}` : '',
+      d.praise && d.praise.length ? '讚賞：' + d.praise.join('、') : '']; };
 function feedbackSec(ev) {
   if (!isLead() || S.edit || !ev.date || ev.date < FB_FROM || ev.date >= TODAY) return '';
   const f = FBA[ev.id]; if (!f || (!f.busy && Date.now() - f.at > 60000)) loadAnswers(ev.id);
@@ -861,12 +867,7 @@ function feedbackSec(ev) {
   if (!f.list.length) return `<section class="sec"><p class="sh">Feedback</p><p class="empty">No answers yet</p></section>`;
   // The answers read as the questionnaire asked them, in Chinese; growth shows as tags (review 26/10/04)
   const tags = d => d.grew && d.grew.length ? `<span class="fbtags">${d.grew.map(g => `<span class="tag">${esc(g)}</span>`).join('')}</span>` : '';
-  const said = r => { const d = r.data;
-    if (r.role === 'teacher') return [[d.fit, Array.isArray(d.area) ? d.area.join('、') : d.area].filter(Boolean).join('・'), d.note];
-    if (r.role === 'member') return [[d.ok, d.why].filter(Boolean).join('・'), d.note];
-    return [d.promise ? `上次的改善方法「${d.promise}」${d.kept}` : '', d.diff === FB_ASPLAN ? d.diff : `${d.diff}：${d.reason}`, d.avoid ? `改善方法：${d.avoid}` : '',
-      d.praise && d.praise.length ? '讚賞：' + d.praise.join('、') : '']; };
-  const row = r => `<div class="row fbr"><span class="fbw">${mention(r.name)}${r.role === 'gl' ? '<span class="gl">Group Lead</span>' : ''}</span><span class="cap">${said(r).filter(Boolean).map(esc).join('\n')}</span>${tags(r.data)}</div>`;
+  const row = r => `<div class="row fbr"><span class="fbw">${mention(r.name)}${r.role === 'gl' ? '<span class="gl">Group Lead</span>' : ''}</span><span class="cap">${fbSaid(r).filter(Boolean).map(esc).join('\n')}</span>${tags(r.data)}</div>`;
   // Against the plan's 60%: the share of members and Group Leads who say they grew, green once it reaches 60%
   const asked = f.list.filter(r => r.role !== 'teacher' && r.data.grew && r.data.grew.length), pct = asked.length ? Math.round(asked.filter(r => r.data.grew[0] !== FB_NONE).length / asked.length * 100) : null;
   const meter = pct === null ? '' : `<div class="row fbg" role="img" aria-label="${pct}% say they grew; goal 60%"><span class="pct${pct >= 60 ? ' ok' : ''}">${pct}%</span><span class="meter"><i class="${pct >= 60 ? 'ok' : ''}" style="width:${pct}%"></i><b style="left:60%"></b></span></div>`;
@@ -1263,7 +1264,7 @@ function sheet() {
     h = bar(close, 'Account', '') +
       `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === ACCT().id ? '' : ACCT().id) : v.standin ? `${v.group} Stand-in · Until ${hkAt(ACCT().until)}` : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
       (others.length ? `<section class="sec"><p class="sh">Switch Person</p><div class="list">${others.map(x => `<button class="row g-sw" data-a="switch:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
-      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Users &amp; Groups</span>${ic('chev-r', 'go')}</button><div${S.appsOpen ? ' class="opened" data-shut="apps"' : ''}><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}</div>` : ''}${v.type === 'gl' && !v.standin ? (x => `<button class="row g-sw" data-a="standin:${v.group}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) : 'None'}</span></button>`)(STANDINS.find(y => y.grp === v.group)) : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button>${helpRow}</div></section>` : `<section class="sec"><div class="list">${helpRow}</div></section>`) +
+      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Users &amp; Groups</span>${ic('chev-r', 'go')}</button><div${S.appsOpen ? ' class="opened" data-shut="apps"' : ''}><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}</div>` : ''}${v.type === 'gl' && !v.standin ? (x => `<button class="row g-sw" data-a="standin:${v.group}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) : 'None'}</span></button>`)(STANDINS.find(y => y.grp === v.group)) : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>${v.type === 'lead' ? 'Export All' : 'Export Attendance'}</span></button>${helpRow}</div></section>` : `<section class="sec"><div class="list">${helpRow}</div></section>`) +
       `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="signout"><span class="ic" style="color:inherit">${ic('logout')}</span><span>Sign Out</span></button></div></section>`;
   }
   // A stand-in for a Group Lead: pick a member; the account and its password show once, with Copy, to send to them
@@ -1639,7 +1640,7 @@ document.addEventListener('click', async e => {
       catch (err) { toast('Could not copy'); } break; }
     case 'pweye': { S.pwOpen = S.pwOpen || new Set(); if (S.pwOpen.has(arg)) { S.pwOpen.delete(arg); render(); break; }
       S.pwOpen.add(arg); if (!PWSHOW) { try { const r = await api('passwords'); PWSHOW = r.ok ? await r.json() : {}; } catch (x) { toast('No connection'); S.pwOpen.delete(arg); break; } } render(); break; }
-    case 'export': exportAttendance(); break;
+    case 'export': isLead() ? exportAll() : exportAttendance(); break;
     case 'exportdoc': exportDoc(ev, cur().id); break;
     case 'exportev': exportEvent(ev); break;
     case 'askdoc': S.alert = {t: `Delete This ${arg === 'script' ? 'Script' : arg === 'guests' ? 'Guest List' : 'Participant List'}?`, m: 'It goes for everyone.', verb: 'Delete', act: 'deldocpage:' + arg}; layer(); break;
@@ -2243,7 +2244,38 @@ const ZH_KIND = {MC: '司儀', Backstage: '後台', Reception: '接待'};
 const zhGroup = g => ZH_KIND[kind(g)] + g.slice(-1) + '組';
 const STATUS_FILL = {Attended: 8, Off: 9, Absent: 10, Covering: 11, Excluded: 12};
 const colName = i => { let s = ''; for (i++; i; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
-async function exportAttendance() {
+// The CA Design System's spreadsheet styles (List of Members): shared by the attendance and feedback files
+function xlsxStyles() {
+  const font = (name, sz, b, rgb) => `<font>${b ? '<b/>' : ''}<sz val="${sz}"/><color rgb="FF${rgb}"/><name val="${name}"/></font>`;
+  const fill = rgb => `<fill><patternFill patternType="solid"><fgColor rgb="FF${rgb}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const thin = `<border><left style="thin"><color rgb="FFDAD8D0"/></left><right style="thin"><color rgb="FFDAD8D0"/></right><top style="thin"><color rgb="FFDAD8D0"/></top><bottom style="thin"><color rgb="FFDAD8D0"/></bottom><diagonal/></border>`;
+  const xf = (f, fl, b, al) => `<xf numFmtId="0" fontId="${f}" fillId="${fl}" borderId="${b}" applyFont="1" applyFill="1" applyBorder="1"${al ? ` applyAlignment="1">${al}</xf>` : '/>'}`;
+  const vc = '<alignment vertical="center"/>', hc = '<alignment vertical="center" wrapText="1"/>';
+  // fills: 2 ivory, 3 cloud, 4 sand (Group Lead), 5–9 the statuses
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4">${font('Anthropic Serif Text Medium', 11, false, '1A1A18')}${font('Anthropic Serif Text Medium', 11, true, '1A1A18')}${font('Anthropic Serif Display Medium', 22, false, '1A1A18')}${font('Noto Serif TC', 11, false, '1A1A18')}</fonts>
+<fills count="10"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${['FBFAF7', 'EDEBE3', 'EDE3C8', '64C77B', '91BAE4', 'F49D92', 'D2B34C', 'EDEBE3'].map(fill).join('')}</fills>
+<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border>${thin}<border><left/><right/><top/><bottom style="medium"><color rgb="FF1A1A18"/></bottom><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="21">${[xf(0, 2, 0), xf(2, 2, 0, vc), xf(1, 3, 2, hc), xf(1, 3, 2, '<alignment horizontal="left" vertical="center"/>'),
+    xf(0, 2, 1, vc), xf(3, 2, 1, vc), xf(0, 4, 1, vc), xf(3, 4, 1, vc),
+    xf(0, 5, 1), xf(0, 6, 1), xf(0, 7, 1), xf(0, 8, 1), xf(0, 9, 1), xf(0, 2, 1),
+    xf(0, 5, 0), xf(0, 6, 0), xf(0, 7, 0), xf(0, 8, 0), xf(0, 9, 0), xf(0, 2, 0, vc), xf(3, 2, 1, '<alignment vertical="top" wrapText="1"/>')].join('')}</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  return styles;
+}
+// One sheet as an .xlsx file
+async function xlsxBlob(name, sheet, styles, filter) {
+  const Z = await loadZip(), z = new Z();
+  z.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`);
+  z.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+  z.file('xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${name}" sheetId="1" r:id="rId1"/></sheets>${filter ? `<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">${filter}</definedName></definedNames>` : ''}</workbook>`);
+  z.file('xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
+  z.file('xl/styles.xml', styles); z.file('xl/worksheets/sheet1.xml', sheet);
+  const blob = await z.generateAsync({type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  return blob;
+}
+async function exportAttendance(into) {
   const v = V(), groups = v.type === 'lead' ? ALL_GROUPS : [v.group];
   const evs = EVENTS.filter(e => e.date && e.date <= TODAY && (v.type === 'lead' || e.groups.some(g => g.name === v.group || g.covers === v.group))).sort(soonest);
   // People: by group; members by class, then the Group Lead (as List of Members)
@@ -2264,32 +2296,13 @@ async function exportAttendance() {
     (evs.length ? `<col min="${first + 1}" max="${last + 1}" width="30.83" style="0" customWidth="1"/>` : '') + `<col min="${Math.max(last, first) + 2}" max="40" width="10.83" style="0" customWidth="1"/>`;
   const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView showGridLines="0" zoomScale="143" zoomScaleNormal="143" workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="19.5" customHeight="1"/><cols>${cols}</cols><sheetData>${rows.join('')}</sheetData>${people.length ? `<autoFilter ref="B3:${lastCol}3"/>` : ''}${evs.length > 1 ? `<mergeCells count="1"><mergeCell ref="${colName(first)}2:${colName(last)}2"/></mergeCells>` : ''}<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`;
-  const font = (name, sz, b, rgb) => `<font>${b ? '<b/>' : ''}<sz val="${sz}"/><color rgb="FF${rgb}"/><name val="${name}"/></font>`;
-  const fill = rgb => `<fill><patternFill patternType="solid"><fgColor rgb="FF${rgb}"/><bgColor indexed="64"/></patternFill></fill>`;
-  const thin = `<border><left style="thin"><color rgb="FFDAD8D0"/></left><right style="thin"><color rgb="FFDAD8D0"/></right><top style="thin"><color rgb="FFDAD8D0"/></top><bottom style="thin"><color rgb="FFDAD8D0"/></bottom><diagonal/></border>`;
-  const xf = (f, fl, b, al) => `<xf numFmtId="0" fontId="${f}" fillId="${fl}" borderId="${b}" applyFont="1" applyFill="1" applyBorder="1"${al ? ` applyAlignment="1">${al}</xf>` : '/>'}`;
-  const vc = '<alignment vertical="center"/>', hc = '<alignment vertical="center" wrapText="1"/>';
-  // fills: 2 ivory, 3 cloud, 4 sand (Group Lead), 5–9 the statuses
-  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4">${font('Anthropic Serif Text Medium', 11, false, '1A1A18')}${font('Anthropic Serif Text Medium', 11, true, '1A1A18')}${font('Anthropic Serif Display Medium', 22, false, '1A1A18')}${font('Noto Serif TC', 11, false, '1A1A18')}</fonts>
-<fills count="10"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${['FBFAF7', 'EDEBE3', 'EDE3C8', '64C77B', '91BAE4', 'F49D92', 'D2B34C', 'EDEBE3'].map(fill).join('')}</fills>
-<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border>${thin}<border><left/><right/><top/><bottom style="medium"><color rgb="FF1A1A18"/></bottom><diagonal/></border></borders>
-<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="20">${[xf(0, 2, 0), xf(2, 2, 0, vc), xf(1, 3, 2, hc), xf(1, 3, 2, '<alignment horizontal="left" vertical="center"/>'),
-    xf(0, 2, 1, vc), xf(3, 2, 1, vc), xf(0, 4, 1, vc), xf(3, 4, 1, vc),
-    xf(0, 5, 1), xf(0, 6, 1), xf(0, 7, 1), xf(0, 8, 1), xf(0, 9, 1), xf(0, 2, 1),
-    xf(0, 5, 0), xf(0, 6, 0), xf(0, 7, 0), xf(0, 8, 0), xf(0, 9, 0), xf(0, 2, 0, vc)].join('')}</cellXfs>
-<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const styles = xlsxStyles();
   try {
-    const Z = await loadZip(), z = new Z();
-    z.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`);
-    z.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
-    z.file('xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Members" sheetId="1" r:id="rId1"/></sheets>${people.length ? `<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Members!$B$3:$${lastCol}$3</definedName></definedNames>` : ''}</workbook>`);
-    z.file('xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
-    z.file('xl/styles.xml', styles); z.file('xl/worksheets/sheet1.xml', sheet);
-    const blob = await z.generateAsync({type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    saveFile(`${v.type === 'lead' ? '' : v.group + ' '}Attendance ${TODAY.replace(/\//g, '')}.xlsx`, blob);
-  } catch (e) { toast(SYNC.offline ? 'No connection. Not exported' : 'Not exported'); }
+    const blob = await xlsxBlob('Members', sheet, styles, people.length ? `Members!$B$3:$${lastCol}$3` : '');
+    const name = `${v.type === 'lead' ? '' : v.group + ' '}Attendance ${TODAY.replace(/\//g, '')}.xlsx`;
+    if (into) return {name, blob};
+    saveFile(name, blob);
+  } catch (e) { if (into) throw e; toast(SYNC.offline ? 'No connection. Not exported' : 'Not exported'); }
 }
 const MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const TEMPLATE_B64 = '%%TPL%%';
@@ -2345,11 +2358,20 @@ const DOC_EN = {rundown: 'Rundown', script: 'Script', awards: 'Participant List'
 // 「活動名稱 YYMMDD 類型」 as when downloaded alone. No attendance. Several Participant Lists are told apart by their first award.
 async function exportEvent(ev) {
   toast('Preparing the folder');
+  try {
+    const JSZip = await loadZip(), zip = new JSZip(), folder = eventFolderName(ev);
+    if (!await eventFolder(ev, zip.folder(folder))) { toast('Nothing to export yet'); return; }
+    saveFile(folder + '.zip', await zip.generateAsync({type: 'blob'})); toast('Saved ' + folder + '.zip');
+  } catch (e) { toast(SYNC.offline ? 'No connection. Try again when online' : 'The folder could not be made'); }
+}
+const eventFolderName = ev => `${ev.date.replace(/\//g, '')} ${ev.name.replace(/[\\/:*?"<>|]/g, '').trim() || 'Event'}`;
+// Puts the event's Word files into a folder; false when it has no document yet
+async function eventFolder(ev, dir) {
   const lists = Object.keys(ev.awards || {}), zh = /[㐀-鿿]/.test(ev.name), type = (zh ? DOC_ZH : DOC_EN).awards;
   const ids = [...(ev.rows.length ? ['rundown'] : []), ...(hasScript(ev) ? ['script'] : []), ...lists.map(id => 'aw:' + id), ...(ev.guests ? ['guests'] : [])];
-  if (!ids.length) { toast('Nothing to export yet'); return; }
-  try {
-    const JSZip = await loadZip(), zip = new JSZip(), folder = `${ev.date.replace(/\//g, '')} ${ev.name.replace(/[\\/:*?"<>|]/g, '').trim() || 'Event'}`, dir = zip.folder(folder), used = new Set();
+  if (!ids.length) return false;
+  const used = new Set();
+  {
     for (const id of ids) {
       const f = await wordFile(ev, id); let name = f.name;
       if (id.startsWith('aw:') && lists.length > 1) { const first = ((ev.awards[id.slice(3)].awards || [])[0] || {}).award || '', q = first.replace(/[\\/:*?"<>|]/g, '').trim() || String(lists.indexOf(id.slice(3)) + 1);
@@ -2357,8 +2379,42 @@ async function exportEvent(ev) {
       for (let i = 2; used.has(name); i++) name = name.replace(/( \d+)?\.docx$/, ` ${i}.docx`);
       used.add(name); dir.file(name, await f.arrayBuffer());
     }
-    saveFile(folder + '.zip', await zip.generateAsync({type: 'blob'})); toast('Saved ' + folder + '.zip');
-  } catch (e) { toast(SYNC.offline ? 'No connection. Try again when online' : 'The folder could not be made'); }
+  }
+  return true;
+}
+// Everything at once, as Google Takeout (26/10/04 20:48): one folder 「Event Centre YYMMDD」 holding the year's attendance,
+// the questionnaire answers, and one folder per event with its Word files. Event Lead and Editors only.
+// The answers stay in their own file at the top, so the event folders can go to Past Events in Teams without them.
+async function exportAll() {
+  const today = TODAY.replace(/\//g, ''), top = 'Event Centre ' + today, evs = EVENTS.filter(e => e.date).slice().sort(soonest);
+  try {
+    toast('Preparing attendance');
+    const JSZip = await loadZip(), zip = new JSZip(), dir = zip.folder(top);
+    const att = await exportAttendance(true); dir.file(att.name, att.blob);
+    toast('Preparing questionnaire answers');
+    const asked = evs.filter(e => e.date >= FB_FROM && e.date < TODAY), answers = [];
+    for (const e of asked) { const r = await api('feedback?event=' + encodeURIComponent(e.id)); if (!r.ok) throw new Error('answers'); (await r.json()).answers.forEach(a => answers.push({ev: e, ...a})); }
+    if (answers.length) dir.file(`Feedback ${today}.xlsx`, await feedbackFile(answers));
+    let n = 0, missed = 0;
+    for (const e of evs) { toast(`Preparing ${++n} of ${evs.length} events`); try { await eventFolder(e, dir.folder(eventFolderName(e))) || dir.remove(eventFolderName(e)); } catch (x) { missed++; dir.remove(eventFolderName(e)); } }
+    saveFile(top + '.zip', await zip.generateAsync({type: 'blob'}));
+    toast(missed ? `Saved ${top}.zip. ${missed} ${missed > 1 ? 'events' : 'event'} could not be added` : `Saved ${top}.zip`);
+  } catch (e) { toast(SYNC.offline ? 'No connection. Not exported' : 'Not exported'); }
+}
+// The questionnaire answers as one sheet, in the List of Members' style: an event's teachers, then each group's Group Lead and members
+async function feedbackFile(list) {
+  const who = {teacher: '老師', gl: '組長', member: '組員'}, order = {teacher: 0, gl: 1, member: 2};
+  list.sort((a, b) => soonest(a.ev, b.ev) || (a.grp || '').localeCompare(b.grp || '') || order[a.role] - order[b.role] || a.at - b.at);
+  const cell = (c, r, st, val) => val === undefined || val === '' ? `<c r="${colName(c)}${r}" s="${st}"/>` : `<c r="${colName(c)}${r}" s="${st}" t="inlineStr"><is><t xml:space="preserve">${xesc(val)}</t></is></c>`;
+  const rows = [`<row r="1" ht="42" customHeight="1">${cell(1, 1, 1, 'Feedback')}</row>`,
+    `<row r="2" ht="39.75" customHeight="1">${['Date', 'Event', 'Group', 'Name', 'Role', 'Answer', 'Grew in'].map((h, k) => cell(k + 1, 2, 2, h)).join('')}</row>`];
+  list.forEach((a, k) => { const r = 3 + k, lines = fbSaid(a).filter(Boolean);
+    rows.push(`<row r="${r}">${[cell(1, r, 4, dmy(a.ev.date)), cell(2, r, 20, a.ev.name), cell(3, r, 20, a.grp ? zhGroup(a.grp) : ''), cell(4, r, 20, a.name), cell(5, r, 20, who[a.role]),
+      cell(6, r, 20, lines.join('\n')), cell(7, r, 20, (a.data.grew || []).join('、'))].join('')}</row>`); });
+  const cols = [10.83, 24, 10.83, 13, 8, 48, 20].map((w, k) => `<col min="${k + 1}" max="${k + 1}" width="${w}" customWidth="1"/>`).join('');
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView showGridLines="0" zoomScale="143" zoomScaleNormal="143" workbookViewId="0"><pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="19.5"/><cols>${cols}</cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A2:G${2 + list.length}"/><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`;
+  return xlsxBlob('Feedback', sheet, xlsxStyles(), `Feedback!$A$2:$G$${2 + list.length}`);
 }
 async function wordFile(ev, id) {
   const JSZip = await loadZip(), type = id.startsWith('aw:') ? 'awards' : id, zh = /[㐀-鿿]/.test(ev.name), docName = (zh ? DOC_ZH : DOC_EN)[type];
