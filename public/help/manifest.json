@@ -1,5 +1,5 @@
 {
-  "source": "Event Centre help videos, 38 groups",
+  "source": "Event Centre help videos, 39 groups",
   "videos": [
     {
       "id": "assembly-time",
@@ -16,7 +16,7 @@
         "查看集合時間和地點"
       ],
       "duration": 11.1,
-      "bytes": 117603,
+      "bytes": 120731,
       "video": "assembly-time.mp4",
       "poster": "assembly-time.png"
     },
@@ -35,8 +35,8 @@
         "聯絡負責主席",
         "聯絡活動負責主席"
       ],
-      "duration": 11.8,
-      "bytes": 209902,
+      "duration": 11.7,
+      "bytes": 211564,
       "video": "find-event-lead.mp4",
       "poster": "find-event-lead.png"
     },
@@ -55,7 +55,7 @@
         "聯絡組長"
       ],
       "duration": 14.4,
-      "bytes": 180709,
+      "bytes": 178834,
       "video": "find-group-lead.mp4",
       "poster": "find-group-lead.png"
     },
@@ -72,8 +72,8 @@
         "邊份講稿",
         "下載講稿 Word 檔"
       ],
-      "duration": 12.2,
-      "bytes": 170259,
+      "duration": 12.3,
+      "bytes": 167108,
       "video": "download-script.mp4",
       "poster": "download-script.png"
     },
@@ -89,8 +89,8 @@
         "搜尋活動",
         "找一場活動"
       ],
-      "duration": 10.9,
-      "bytes": 108909,
+      "duration": 11,
+      "bytes": 104619,
       "video": "search-events.mp4",
       "poster": "search-events.png"
     },
@@ -109,7 +109,7 @@
         "更換頭像"
       ],
       "duration": 11.4,
-      "bytes": 119047,
+      "bytes": 114065,
       "video": "change-photo.mp4",
       "poster": "change-photo.png"
     },
@@ -126,7 +126,7 @@
         "登出帳戶"
       ],
       "duration": 9.7,
-      "bytes": 111020,
+      "bytes": 113598,
       "video": "sign-out.mp4",
       "poster": "sign-out.png"
     },
@@ -170,8 +170,8 @@
         "登入老師帳戶",
         "代任組長登入"
       ],
-      "duration": 26.2,
-      "bytes": 254662,
+      "duration": 26.1,
+      "bytes": 255291,
       "video": "sign-in.mp4",
       "poster": "sign-in.png"
     },
@@ -197,7 +197,7 @@
         "查看活動當日工作"
       ],
       "duration": 19,
-      "bytes": 183001,
+      "bytes": 182169,
       "video": "my-tasks.mp4",
       "poster": "my-tasks.png"
     },
@@ -234,7 +234,7 @@
         "在講稿加入得獎名單"
       ],
       "duration": 52.6,
-      "bytes": 588683,
+      "bytes": 583244,
       "video": "new-script.mp4",
       "poster": "new-script.png"
     },
@@ -252,8 +252,8 @@
         "開得獎名單，加入得獎者",
         "建立得獎名單"
       ],
-      "duration": 27.9,
-      "bytes": 310972,
+      "duration": 27.8,
+      "bytes": 307826,
       "video": "new-participant-list.mp4",
       "poster": "new-participant-list.png"
     },
@@ -271,8 +271,8 @@
         "得獎者到了，打剔",
         "記錄得獎者出席"
       ],
-      "duration": 14.8,
-      "bytes": 165160,
+      "duration": 14.7,
+      "bytes": 159477,
       "video": "roll-call-participants.mp4",
       "poster": "roll-call-participants.png"
     },
@@ -289,8 +289,8 @@
         "開嘉賓名單，加入嘉賓",
         "建立嘉賓名單"
       ],
-      "duration": 25.2,
-      "bytes": 263457,
+      "duration": 25.1,
+      "bytes": 262494,
       "video": "new-guest-list.mp4",
       "poster": "new-guest-list.png"
     },
@@ -308,7 +308,7 @@
         "記錄嘉賓出席"
       ],
       "duration": 11.5,
-      "bytes": 143789,
+      "bytes": 142434,
       "video": "roll-call-guests.mp4",
       "poster": "roll-call-guests.png"
     },
@@ -325,8 +325,8 @@
         "看我組要做的工作",
         "查看本組工作"
       ],
-      "duration": 13.6,
-      "bytes": 192348,
+      "duration": 13.5,
+      "bytes": 192101,
       "video": "group-tasks.mp4",
       "poster": "group-tasks.png"
     },
@@ -364,7 +364,7 @@
         "指派工作負責人"
       ],
       "duration": 36,
-      "bytes": 577900,
+      "bytes": 576900,
       "video": "add-member-to-task.mp4",
       "poster": "add-member-to-task.png"
     },
@@ -388,8 +388,8 @@
         "剔錯了，取消",
         "更正出席紀錄"
       ],
-      "duration": 22.2,
-      "bytes": 389243,
+      "duration": 22.1,
+      "bytes": 396674,
       "video": "tick-task.mp4",
       "poster": "tick-task.png"
     },
@@ -411,8 +411,8 @@
         "取消 On Leave",
         "取消請假紀錄"
       ],
-      "duration": 15.4,
-      "bytes": 275896,
+      "duration": 15.3,
+      "bytes": 280440,
       "video": "mark-on-leave.mp4",
       "poster": "mark-on-leave.png"
     },
@@ -435,7 +435,7 @@
         "結束代任安排"
       ],
       "duration": 35.8,
-      "bytes": 411393,
+      "bytes": 415287,
       "video": "stand-in.mp4",
       "poster": "stand-in.png"
     },
@@ -443,8 +443,7 @@
       "id": "export-attendance",
       "title": "下載出席紀錄",
       "sec": [
-        "L",
-        "E"
+        "L"
       ],
       "search": [
         "出席紀錄",
@@ -452,17 +451,32 @@
         "Excel",
         "Export Attendance（本組出席紀錄）",
         "下載我組的出席紀錄",
-        "下載本組出席紀錄",
-        "全年出席",
-        "List of Members",
-        "Export Attendance（全部出席紀錄）",
-        "下載全部出席紀錄",
-        "下載全年出席紀錄"
+        "下載本組出席紀錄"
       ],
       "duration": 12,
-      "bytes": 128023,
+      "bytes": 124797,
       "video": "export-attendance.mp4",
       "poster": "export-attendance.png"
+    },
+    {
+      "id": "export-all",
+      "title": "下載全部資料",
+      "sec": [
+        "E"
+      ],
+      "search": [
+        "全年出席",
+        "List of Members",
+        "下載全年出席紀錄",
+        "Export All",
+        "Takeout",
+        "問卷答案",
+        "下載全部資料"
+      ],
+      "duration": 14.2,
+      "bytes": 197589,
+      "video": "export-all.mp4",
+      "poster": "export-all.png"
     },
     {
       "id": "new-event",
@@ -478,7 +492,7 @@
         "開一場新活動"
       ],
       "duration": 25.3,
-      "bytes": 287345,
+      "bytes": 297037,
       "video": "new-event.mp4",
       "poster": "new-event.png"
     },
@@ -503,8 +517,8 @@
         "指定負責老師",
         "指定活動負責老師"
       ],
-      "duration": 26.6,
-      "bytes": 414425,
+      "duration": 26.4,
+      "bytes": 404951,
       "video": "edit-event.mp4",
       "poster": "edit-event.png"
     },
@@ -524,8 +538,8 @@
         "刪老師帳戶",
         "刪除老師帳戶"
       ],
-      "duration": 37.5,
-      "bytes": 627732,
+      "duration": 37.4,
+      "bytes": 579641,
       "video": "copy-teacher-account.mp4",
       "poster": "copy-teacher-account.png"
     },
@@ -553,8 +567,8 @@
         "取消一組的當值",
         "取消小組當值"
       ],
-      "duration": 34.5,
-      "bytes": 813277,
+      "duration": 47.7,
+      "bytes": 1143019,
       "video": "add-duty-group.mp4",
       "poster": "add-duty-group.png"
     },
@@ -580,8 +594,8 @@
         "刪除 Task",
         "刪除工作"
       ],
-      "duration": 35.9,
-      "bytes": 665800,
+      "duration": 38,
+      "bytes": 681170,
       "video": "add-task-before.mp4",
       "poster": "add-task-before.png"
     },
@@ -601,8 +615,8 @@
         "轉交工作",
         "改派小組工作"
       ],
-      "duration": 17,
-      "bytes": 493953,
+      "duration": 19.1,
+      "bytes": 361810,
       "video": "move-task.mp4",
       "poster": "move-task.png"
     },
@@ -622,7 +636,7 @@
         "在備註標示相關同學"
       ],
       "duration": 15.7,
-      "bytes": 302951,
+      "bytes": 292204,
       "video": "tag-in-remark.mp4",
       "poster": "tag-in-remark.png"
     },
@@ -645,8 +659,8 @@
         "搬動或刪除流程其中一行",
         "調整活動流程"
       ],
-      "duration": 42.4,
-      "bytes": 497654,
+      "duration": 42.3,
+      "bytes": 488208,
       "video": "write-rundown.mp4",
       "poster": "write-rundown.png"
     },
@@ -670,8 +684,8 @@
         "刪除文件",
         "刪除活動文件"
       ],
-      "duration": 22.6,
-      "bytes": 434118,
+      "duration": 22.5,
+      "bytes": 338840,
       "video": "add-document.mp4",
       "poster": "add-document.png"
     },
@@ -690,7 +704,7 @@
         "放棄未儲存修改"
       ],
       "duration": 15.9,
-      "bytes": 318689,
+      "bytes": 327438,
       "video": "discard-changes.mp4",
       "poster": "discard-changes.png"
     },
@@ -711,7 +725,7 @@
         "還原活動舊版本"
       ],
       "duration": 18.4,
-      "bytes": 351428,
+      "bytes": 392355,
       "video": "restore-version.mp4",
       "poster": "restore-version.png"
     },
@@ -733,7 +747,7 @@
         "復原已刪活動"
       ],
       "duration": 25,
-      "bytes": 400228,
+      "bytes": 386454,
       "video": "delete-event.mp4",
       "poster": "delete-event.png"
     },
@@ -754,8 +768,8 @@
         "改 Group Lead（組長）",
         "更換組長"
       ],
-      "duration": 31.1,
-      "bytes": 408788,
+      "duration": 31,
+      "bytes": 412674,
       "video": "edit-roster.mp4",
       "poster": "edit-roster.png"
     },
@@ -777,8 +791,8 @@
         "查看密碼",
         "查看帳戶密碼"
       ],
-      "duration": 23.1,
-      "bytes": 270561,
+      "duration": 23,
+      "bytes": 270228,
       "video": "change-password.mp4",
       "poster": "change-password.png"
     },
@@ -796,7 +810,7 @@
         "管理主席及老師名單"
       ],
       "duration": 18.8,
-      "bytes": 271467,
+      "bytes": 264449,
       "video": "edit-chairs-editors.mp4",
       "poster": "edit-chairs-editors.png"
     },
@@ -813,7 +827,7 @@
         "委任代任組長"
       ],
       "duration": 17.8,
-      "bytes": 267858,
+      "bytes": 271777,
       "video": "set-stand-in-for-group.mp4",
       "poster": "set-stand-in-for-group.png"
     },
@@ -832,7 +846,7 @@
         "匯入老師申請"
       ],
       "duration": 17.6,
-      "bytes": 261069,
+      "bytes": 276545,
       "video": "connect-applications.mp4",
       "poster": "connect-applications.png"
     },
@@ -857,7 +871,7 @@
         "查看活動工作及流程"
       ],
       "duration": 24.4,
-      "bytes": 362411,
+      "bytes": 360975,
       "video": "view-students.mp4",
       "poster": "view-students.png"
     }

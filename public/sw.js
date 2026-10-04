@@ -1,9 +1,9 @@
 // Event Centre's offline help (使用教學): the page itself is fetched from the network first and kept for when there is no
 // connection; the help videos and posters, once downloaded from the help page, are served from their cache, a part of a
 // video at a time as Safari asks for it.
-const SHELL = 'ec-shell-v1', HELP = 'ec-help-v1';
+const SHELL = 'ec-shell-v1', HELP = 'ec-help-v2';
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('ec-help-') && k !== HELP).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
   const r = e.request, u = new URL(r.url);
   if (r.method !== 'GET' || u.origin !== location.origin) return;

@@ -427,7 +427,9 @@ textarea.fld{display:inline-block}
 .fbw .gl{font-size:15px;color:var(--secondary)}
 .g-kv .pk{white-space:nowrap}
 .rmkl.empty{display:none}
-.g-tme:focus-within .rmkl.empty{display:block}
+/* The task last tapped keeps its empty Remark box until another task is tapped, not only while its field has the cursor:
+   hiding it when the cursor leaves moved Add Task up under a finger already on its way (26/10/04, found re-recording videos) */
+.g-tme.cur .rmkl.empty{display:block}
 .noline,.noline .pk,.noline .ph{color:var(--danger)}
 .fbtags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .fbg{grid-template-columns:auto minmax(0,1fr);column-gap:16px}
@@ -895,7 +897,10 @@ function pHelp() {
 }
 // Download for offline: every video and poster goes into the browser's cache (never handed out as files). The symbol shows
 // what the cache really holds each time the page opens, since iOS may clear it after a week without a visit.
-const HELP_CACHE = 'ec-help-v1', HELP_FILES = HELP.flatMap(v => ['/help/' + v.video, '/help/' + v.poster]);
+// The videos were re-recorded on 26/10/04 (§76): a new cache name, so a library downloaded before shows Download again, and each
+// file is fetched with its size in the address, so the browser's own copy of an older video is never used
+const HELP_CACHE = 'ec-help-v2', HELP_FILES = HELP.flatMap(v => ['/help/' + v.video, '/help/' + v.poster]);
+const helpUrl = f => { const v = HELP.find(x => '/help/' + x.video === f || '/help/' + x.poster === f); return v ? `${f}?v=${v.bytes}` : f; };
 let HDL = {s: 'idle', n: 0, ctl: null};
 function dlInner() {
   if (HDL.s === 'done') return ic('check');
@@ -906,7 +911,8 @@ function dlInner() {
 const dlPaint = () => document.querySelectorAll('[data-a="hdl"]').forEach(b => { b.innerHTML = dlInner(); b.setAttribute('aria-label', HDL.s === 'done' ? 'Downloaded' : HDL.s === 'run' ? 'Stop Download' : 'Download'); });
 async function helpCheck() {
   if (HDL.s === 'run' || !('caches' in window)) return;
-  try { const have = new Set((await (await caches.open(HELP_CACHE)).keys()).map(r => new URL(r.url).pathname)), s = HELP_FILES.every(f => have.has(f)) ? 'done' : 'idle';
+  try { (await caches.keys()).filter(k => k.startsWith('ec-help-') && k !== HELP_CACHE).forEach(k => caches.delete(k));
+    const have = new Set((await (await caches.open(HELP_CACHE)).keys()).map(r => new URL(r.url).pathname)), s = HELP_FILES.every(f => have.has(f)) ? 'done' : 'idle';
     if (HDL.s !== s) { HDL.s = s; dlPaint(); } } catch (err) { /* no cache in this browser */ }
 }
 async function helpDownload() {
@@ -915,7 +921,7 @@ async function helpDownload() {
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (err) { /* not offered */ }
   HDL = {s: 'run', n: 0, ctl: new AbortController()}; dlPaint();
   try { const c = await caches.open(HELP_CACHE), have = new Set((await c.keys()).map(r => new URL(r.url).pathname));
-    for (const f of HELP_FILES) { if (!have.has(f)) { const r = await fetch(f, {signal: HDL.ctl.signal}); if (!r.ok) throw new Error(f); await c.put(f, r); } HDL.n++; dlPaint(); }
+    for (const f of HELP_FILES) { if (!have.has(f)) { const r = await fetch(helpUrl(f), {signal: HDL.ctl.signal}); if (!r.ok) throw new Error(f); await c.put(f, r); } HDL.n++; dlPaint(); }
     HDL.s = 'done';
   } catch (err) { HDL.s = 'idle'; if (err.name !== 'AbortError') toast('Not downloaded'); }
   dlPaint();
@@ -926,7 +932,7 @@ let HV = null;
 function helpOpen(id) {
   const v = HELP.find(x => x.id === id); if (!v) return; helpClose();
   const d = document.createElement('div'); d.className = 'hvbg';
-  d.innerHTML = `<div class="hv" role="dialog" aria-modal="true" aria-label="${esc(v.title)}"><button class="nb round glass hvx" aria-label="Close">${ic('x')}</button><video src="/help/${v.video}" poster="/help/${v.poster}" muted playsinline autoplay loop preload="none"></video><div class="hvc glass"><button class="hvp" aria-label="Pause">${ic('pause')}</button><input class="hvr" type="range" min="0" max="1000" value="0" step="1" aria-label="Progress"><span class="hvt t">0:00</span></div></div>`;
+  d.innerHTML = `<div class="hv" role="dialog" aria-modal="true" aria-label="${esc(v.title)}"><button class="nb round glass hvx" aria-label="Close">${ic('x')}</button><video src="/help/${v.video}?v=${v.bytes}" poster="/help/${v.poster}?v=${v.bytes}" muted playsinline autoplay loop preload="none"></video><div class="hvc glass"><button class="hvp" aria-label="Pause">${ic('pause')}</button><input class="hvr" type="range" min="0" max="1000" value="0" step="1" aria-label="Progress"><span class="hvt t">0:00</span></div></div>`;
   document.body.appendChild(d); document.documentElement.classList.add('locked');
   const vid = d.querySelector('video'), pb = d.querySelector('.hvp'), bar = d.querySelector('.hvr'), tl = d.querySelector('.hvt');
   let drag = false;
@@ -1036,7 +1042,7 @@ function dutyGroups(ev, ed) {
   const keys = groupKeys(ev, ed);
   if (ed) {
     const lineOpts = t => (rowOf(ev, t.row) ? '' : '<option value="" disabled selected hidden>Line</option>') + ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
-    const row = t => `<div class="row g-tme" data-drag="task" data-id="${t.id}" data-in><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
+    const row = t => `<div class="row g-tme${S.curTask === t.id ? ' cur' : ''}" data-drag="task" data-id="${t.id}" data-in><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
       <span>${t.row ? `<span class="fl lpk${rowOf(ev, t.row) ? '' : ' noline'}">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl${(t.remark || '').trim() ? '' : ' empty'}">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
     // One group is edited at a time (26/10/04): each group is a disclosure, as in reading, and only the open one shows its tasks
     // and its own Add Task. The rows stay one flat list, so a task dragged onto a closed group's row moves into that group.
@@ -1945,6 +1951,8 @@ function refresh() {
   if (DRAG || S.menu || S.alert || (a && (app.contains(a) || lay.contains(a)) && a.matches('input,textarea,select') && a.type !== 'checkbox')) { SYNC.pending = true; return; }
   render();
 }
+document.addEventListener('focusin', e => { const r = e.target.closest && e.target.closest('.g-tme[data-id]'); if (!r || S.curTask === r.dataset.id) return;
+  S.curTask = r.dataset.id; document.querySelectorAll('.g-tme.cur').forEach(x => x.classList.remove('cur')); r.classList.add('cur'); });
 document.addEventListener('focusout', () => { if (SYNC.pending) setTimeout(() => { if (SYNC.pending) { SYNC.pending = false; refresh(); } }, 200); });
 
 // Merging: whoever changed a piece keeps their change; if both changed the same piece, this device's wins
