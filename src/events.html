@@ -404,10 +404,13 @@ textarea.fld{display:inline-block}
 .gate.fb{justify-content:flex-start;padding-top:max(56px,env(safe-area-inset-top,0px))}
 .fq{font-size:17px;font-weight:600;margin:0 0 10px}
 .fbq+.fbq{margin-top:36px}
-.fbo{background:var(--field);border-radius:14px;padding:4px 0;overflow:hidden}
-.fbo>.row{width:100%;margin:0;padding:10px 16px;border-radius:0}
-.fbo>.row svg.i{color:var(--fill)}
+.fbo{background:var(--field);border-radius:14px;padding:4px;overflow:hidden}
+.fbo>.row{width:100%;margin:0;padding:10px 12px;border-radius:10px}
+.fbo>.g-opt{grid-template-columns:minmax(0,1fr)}
+.fbo>.row.on,.fbo>.row.on:active{background:var(--primary);color:var(--on-primary)}
 .fbo .tag{background:var(--canvas)}
+@media (hover:hover){.fbo>.row:not(.on):hover{background:color-mix(in srgb,var(--text) 6%,var(--field))}}
+.fbo>.row:not(.on):active{background:color-mix(in srgb,var(--text) 10%,var(--field))}
 .fbo .tag.on{background:var(--primary)}
 .fbp{margin:0 0 10px;color:var(--secondary);white-space:pre-line}
 .fbm{grid-template-columns:minmax(0,1fr) auto}
@@ -415,7 +418,7 @@ textarea.fld{display:inline-block}
 .fbt .tag{min-height:32px;padding:0 12px}
 .tag.on{background:var(--primary);color:var(--on-primary)}
 .gate .done{width:100%;margin-top:28px}
-.fld.fbin{display:block;width:100%;max-width:none;box-sizing:border-box;margin:8px 0 0;padding:12px 14px;border-radius:12px;background:var(--field);font-size:17px}
+.fld.fbin{display:block;width:100%;max-width:none;box-sizing:border-box;margin:8px 0 0;padding:12px 16px;border-radius:12px;background:var(--field);font-size:17px}
 .fld.fbin:focus{background:var(--current)}
 .fbr{grid-template-columns:minmax(0,1fr);row-gap:2px}
 .fbw{display:flex;align-items:center;gap:6px;min-width:0}
@@ -1023,29 +1026,33 @@ function pWho() {
 const FB_FROM = '26/10/05';
 let FB = {due: [], key: '', day: ''};
 const fbKey = () => S.acct + '|' + (S.who || '');
-const FB_Q = {fit: ['合', '大致合', '不合'], area: ['事前聯絡', '講稿內容', '司儀表現', '上台安排', '接待嘉賓', '時間控制', '同學態度'],
-  kept: ['做到', '未做到'], diff: ['沒有', '有'], ok: ['順利', '有問題'], why: ['不知道做甚麼', '找不到 Group Lead', '時間太緊', '人手不足', '物資', '其他'],
+// The wording is 書面語 with two-syllable verbs, in the collocations Hong Kong writes (decided 26/10/04 18:41): 符合需要, 兌現承諾,
+// 遇到問題, 聯絡 Group Lead. The logic reads positions, not words: the first choice is all well, the second of diff and ok asks for more.
+const FB_Q = {fit: ['符合', '大致符合', '不符合'], area: ['事前聯絡', '講稿內容', '司儀表現', '上台安排', '接待嘉賓', '時間控制', '同學態度'],
+  kept: ['已兌現', '未兌現'], diff: ['一致', '不一致'], ok: ['順利完成', '遇到問題'], why: ['不清楚工作內容', '無法聯絡 Group Lead', '時間緊迫', '人手不足', '物資問題', '其他'],
   // The 2026–27 plan's success criterion: 60% of members on duty say their 自信心、解難能力 and 溝通協作能力 grew. Several may be chosen.
-  grew: ['自信心', '解難能力', '溝通協作能力', '沒有明顯進步']};
-const fbOk = (q, a) => q.role === 'teacher' ? !!a.fit && (a.fit === '合' || !!a.area) : !(a.grew || []).length ? false : q.role === 'member' ? !!a.ok && (a.ok === '順利' || !!a.why)
-  : !!a.diff && (!q.promise || !!a.kept) && (a.diff === '沒有' || !!((a.reason || '').trim() && (a.avoid || '').trim()));
+  grew: ['自信心', '解難能力', '溝通協作能力', '沒有明顯提升']};
+const FB_WELL = FB_Q.fit[0], FB_DIFFER = FB_Q.diff[1], FB_PROBLEM = FB_Q.ok[1], FB_NONE = FB_Q.grew[3];
+const fbOk = (q, a) => q.role === 'teacher' ? !!a.fit && (a.fit === FB_WELL || !!a.area) : !(a.grew || []).length ? false : q.role === 'member' ? !!a.ok && (a.ok !== FB_PROBLEM || !!a.why)
+  : !!a.diff && (!q.promise || !!a.kept) && (a.diff !== FB_DIFFER || !!((a.reason || '').trim() && (a.avoid || '').trim()));
 function pFeedback() {
   const q = FB.due[0]; if (!S.fb || S.fb.id !== q.id) S.fb = {id: q.id, a: {follow: [], praise: [], grew: []}, busy: false};
   const a = S.fb.a, on = (k, v) => Array.isArray(a[k]) ? a[k].includes(v) : a[k] === v;
-  const opt = k => FB_Q[k].map(v => `<button class="row g-opt" data-a="fb:${k}:${esc(v)}"${Array.isArray(a[k]) ? ` aria-pressed="${on(k, v)}"` : ''}><span>${esc(v)}</span><span>${on(k, v) ? ic('check') : ''}</span></button>`).join('');
+  // A chosen answer fills in Strong Yellow, the whole row (decided 26/10/04 18:43), with no tick at the far edge
+  const opt = k => FB_Q[k].map(v => `<button class="row g-opt${on(k, v) ? ' on' : ''}" data-a="fb:${k}:${esc(v)}" aria-pressed="${on(k, v)}"><span>${esc(v)}</span></button>`).join('');
   // A question is a heading; its answers sit together in one filled group, as iOS lists its choices, so the two never read alike.
   // Fields to type in follow the group, each in its own fill. Placeholders name the field, with no example (§52).
   const ask = (h, body, pre = '', after = '') => `<section class="sec fbq"><h2 class="fq">${h}</h2>${pre}<div class="list fbo">${body}</div>${after}</section>`;
-  const grew = ask('今次活動令你哪方面有進步？', opt('grew'));
+  const grew = ask('經過這次活動，你在哪方面有所提升？', opt('grew'));
   const line = (k, ph) => `<textarea class="fld fbin" rows="1" data-b="fb:${k}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(a[k] || '')}</textarea>`;
   let body = '';
-  if (q.role === 'teacher') body = ask('今次 CA 的安排合你需要嗎？', opt('fit')) + (a.fit && a.fit !== '合' ? ask('哪方面要改善？', opt('area'), '', line('note', '補充')) : '');
-  else if (q.role === 'member') body = ask('你的 Task 順利嗎？', opt('ok')) + (a.ok === '有問題' ? ask('甚麼問題？', opt('why'), '', line('note', '補充')) : '') + grew;
+  if (q.role === 'teacher') body = ask('這次 CA 的安排符合你的需要嗎？', opt('fit')) + (a.fit && a.fit !== FB_WELL ? ask('哪方面需要改善？', opt('area'), '', line('note', '補充')) : '');
+  else if (q.role === 'member') body = ask('你的 Task 是否順利完成？', opt('ok')) + (a.ok === FB_PROBLEM ? ask('遇到甚麼問題？', opt('why'), '', line('note', '補充')) : '') + grew;
   else { const tg = (k, n, w) => `<button class="tag${a[k].includes(n) ? ' on' : ''}" data-a="fb:${k}:${esc(n)}" aria-pressed="${a[k].includes(n)}">${w}</button>`;
-    body = (q.promise ? ask('上次承諾做到了嗎？', opt('kept'), `<p class="fbp">「${esc(q.promise)}」</p>`) : '') +
-      ask('有沒有跟計劃不同？', opt('diff'), '', a.diff === '有' ? line('reason', '原因') + line('avoid', '下次怎樣避免') : '') + grew +
+    body = (q.promise ? ask('上次的承諾兌現了嗎？', opt('kept'), `<p class="fbp">「${esc(q.promise)}」</p>`) : '') +
+      ask('實際情況與計劃一致嗎？', opt('diff'), '', a.diff === FB_DIFFER ? line('reason', '原因') + line('avoid', '下次如何避免') : '') + grew +
       (q.people.length ? ask('誰需要跟進或讚賞？', q.people.map(n => `<div class="row fbm"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span><span class="fbt">${tg('follow', n, '跟進')}${tg('praise', n, '讚賞')}</span></div>`).join('')) : ''); }
-  const done = q.role !== 'teacher' || (a.fit && a.fit !== '合');
+  const done = q.role !== 'teacher' || (a.fit && a.fit !== FB_WELL);
   const sub = FB.preview ? `Preview · ${{teacher: 'Teacher', gl: 'Group Lead', member: 'Member'}[q.role]}` : FB.due.length > 1 ? `1 of ${FB.due.length}` : '';
   return {fixed: true, body: `<div class="gate fb"><h1>${evTitle(q)}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}${body}
     ${done ? `<button class="nb pri done" data-a="fbdone"${fbOk(q, a) && !S.fb.busy ? '' : ' disabled'}>Done</button>` : ''}
@@ -1055,8 +1062,8 @@ const fbReady = () => { const d = app.querySelector('[data-a="fbdone"]'); if (d 
 function fbTap(arg) {
   const [k, ...r] = arg.split(':'), v = r.join(':'), a = S.fb.a;
   if (k === 'follow' || k === 'praise' || k === 'grew') a[k] = a[k].includes(v) ? a[k].filter(x => x !== v) : [...a[k], v]; else a[k] = v;
-  if (k === 'grew' && a.grew.includes(v)) a.grew = a.grew.filter(x => (x === '沒有明顯進步') === (v === '沒有明顯進步'));  // 沒有明顯進步 stands alone
-  render(); if (k === 'fit' && v === '合') fbSend();
+  if (k === 'grew' && a.grew.includes(v)) a.grew = a.grew.filter(x => (x === FB_NONE) === (v === FB_NONE));  // 沒有明顯提升 stands alone
+  render(); if (k === 'fit' && v === FB_WELL) fbSend();
 }
 // Preview (asked 26/10/04, to inspect it before any event has ended): with #preview=questionnaire, the Event Lead and Editors
 // see the teacher's, a Group Lead's and a member's questionnaire on the latest past event, one after another; nothing is sent.
@@ -1106,11 +1113,11 @@ function feedbackSec(ev) {
   const said = r => { const d = r.data;
     if (r.role === 'teacher') return [[d.fit, d.area].filter(Boolean).join('・'), d.note];
     if (r.role === 'member') return [[d.ok, d.why].filter(Boolean).join('・'), d.note];
-    return [d.promise ? `上次承諾「${d.promise}」${d.kept}` : '', d.diff === '有' ? `跟計劃不同：${d.reason}` : '跟計劃進行', d.diff === '有' ? `下次：${d.avoid}` : '',
+    return [d.promise ? `上次承諾「${d.promise}」${d.kept}` : '', d.diff === FB_DIFFER ? `與計劃不一致：${d.reason}` : '與計劃一致', d.diff === FB_DIFFER ? `下次做法：${d.avoid}` : '',
       d.follow && d.follow.length ? '跟進：' + d.follow.join('、') : '', d.praise && d.praise.length ? '讚賞：' + d.praise.join('、') : '']; };
   const row = r => `<div class="row fbr"><span class="fbw">${mention(r.name)}${r.role === 'gl' ? '<span class="gl">Group Lead</span>' : ''}</span><span class="cap">${said(r).filter(Boolean).map(esc).join('\n')}</span>${tags(r.data)}</div>`;
   // Against the plan's 60%: the share of members and Group Leads who say they grew, green once it reaches 60%
-  const asked = f.list.filter(r => r.role !== 'teacher' && r.data.grew && r.data.grew.length), pct = asked.length ? Math.round(asked.filter(r => r.data.grew[0] !== '沒有明顯進步').length / asked.length * 100) : null;
+  const asked = f.list.filter(r => r.role !== 'teacher' && r.data.grew && r.data.grew.length), pct = asked.length ? Math.round(asked.filter(r => r.data.grew[0] !== FB_NONE).length / asked.length * 100) : null;
   const meter = pct === null ? '' : `<div class="row fbg" role="img" aria-label="${pct}% say they grew; goal 60%"><span class="pct${pct >= 60 ? ' ok' : ''}">${pct}%</span><span class="meter"><i class="${pct >= 60 ? 'ok' : ''}" style="width:${pct}%"></i><b style="left:60%"></b></span></div>`;
   // Teachers first, then one group at a time, as Duty Groups open: its Group Lead, then its members
   const teachers = f.list.filter(r => r.role === 'teacher').map(row).join(''), groups = [...new Set(f.list.filter(r => r.grp).map(r => r.grp))].sort();
@@ -2156,7 +2163,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '749cc4759900';
+const PAGE_VER = '91a665ce2cda';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};

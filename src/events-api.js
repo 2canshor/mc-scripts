@@ -490,10 +490,11 @@ export async function importApplications(env, force) {
 // its on-duty Group Leads or Stand-ins, and its on-duty members not On Leave answer it when they next open the site.
 // Events before it went live are not asked about.
 const FB_FROM = "26/10/05";
-const FIT = ["合", "大致合", "不合"], AREAS = ["事前聯絡", "講稿內容", "司儀表現", "上台安排", "接待嘉賓", "時間控制", "同學態度"];
+// The questionnaire's wording (two-syllable verbs, Hong Kong collocations; 26/10/04 18:41). The logic reads positions, not words.
+const FIT = ["符合", "大致符合", "不符合"], AREAS = ["事前聯絡", "講稿內容", "司儀表現", "上台安排", "接待嘉賓", "時間控制", "同學態度"];
 // 自信心、解難能力、溝通協作能力: the 2026–27 plan's success criterion (60% of members on duty say they grew)
-const GREW = ["自信心", "解難能力", "溝通協作能力"], NO_GROWTH = "沒有明顯進步";
-const KEPT = ["做到", "未做到"], DIFF = ["沒有", "有"], OK = ["順利", "有問題"], WHY = ["不知道做甚麼", "找不到 Group Lead", "時間太緊", "人手不足", "物資", "其他"];
+const GREW = ["自信心", "解難能力", "溝通協作能力"], NO_GROWTH = "沒有明顯提升";
+const KEPT = ["已兌現", "未兌現"], DIFF = ["一致", "不一致"], OK = ["順利完成", "遇到問題"], WHY = ["不清楚工作內容", "無法聯絡 Group Lead", "時間緊迫", "人手不足", "物資問題", "其他"];
 const hkToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, "/");
 const feedbackOpen = (ev) => !!ev.date && ev.date >= FB_FROM && ev.date < hkToday();
 async function feedbackContext(env) { return { rosters: (await settingOf(env, "rosters")) || {}, admins: (await settingOf(env, "admins")) || [] }; }
@@ -513,10 +514,10 @@ function feedbackRole(acct, ev, ctx) {
   }
   return null;
 }
-// A group's last promise: 「下次怎樣避免」 from its Group Lead's latest answer for an earlier event
+// A group's last promise: 「下次如何避免」 from its Group Lead's latest answer for an earlier event
 async function promiseOf(env, group, date) {
   const { results } = await env.DB.prepare("SELECT data FROM feedback WHERE role = 'gl' AND grp = ? AND date < ? ORDER BY date DESC, at DESC").bind(group, date).all();
-  for (const r of results) { try { const d = JSON.parse(r.data); if (d.diff === "有" && d.avoid) return d.avoid; if (d.diff) return ""; } catch { /* skip */ } }
+  for (const r of results) { try { const d = JSON.parse(r.data); if (d.diff === DIFF[1] && d.avoid) return d.avoid; if (d.diff) return ""; } catch { /* skip */ } }
   return "";
 }
 async function feedbackDue(env, acct) {
@@ -538,7 +539,7 @@ function cleanAnswer(me, a, promise, ctx) {
   const line = (s) => String(s || "").trim().slice(0, 300), one = (v, list) => (list.includes(v) ? v : null);
   if (me.role === "teacher") {
     const fit = one(a.fit, FIT); if (!fit) return null;
-    if (fit === "合") return { fit };
+    if (fit === FIT[0]) return { fit };
     const area = one(a.area, AREAS); if (!area) return null;
     return { fit, area, note: line(a.note) };
   }
@@ -546,7 +547,7 @@ function cleanAnswer(me, a, promise, ctx) {
   if (!grew.length) return null;
   if (me.role === "member") {
     const ok = one(a.ok, OK); if (!ok) return null;
-    if (ok === "順利") return { ok, grew };
+    if (ok === OK[0]) return { ok, grew };
     const why = one(a.why, WHY); if (!why) return null;
     return { ok, why, note: line(a.note), grew };
   }
@@ -554,7 +555,7 @@ function cleanAnswer(me, a, promise, ctx) {
   if (!diff || (promise && !kept)) return null;
   const out = { diff, grew }, ppl = peopleIn(ctx, me.group), names = (l) => [...new Set((Array.isArray(l) ? l : []).filter((n) => ppl.includes(n)))];
   if (promise) Object.assign(out, { promise, kept });
-  if (diff === "有") { out.reason = line(a.reason); out.avoid = line(a.avoid); if (!out.reason || !out.avoid) return null; }
+  if (diff === DIFF[1]) { out.reason = line(a.reason); out.avoid = line(a.avoid); if (!out.reason || !out.avoid) return null; }
   out.follow = names(a.follow); out.praise = names(a.praise);
   return out;
 }
