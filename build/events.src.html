@@ -293,7 +293,7 @@ textarea.fld{display:inline-block}
 .menu button svg.i{color:var(--secondary)}
 @media (hover:hover){.menu button:hover{background:var(--field)}}
 /* ---------- Sheets ---------- */
-/* 使用教學: the library's rows, the download ring, and the video layer (no edge, the library dimmed behind it) */
+/* Help: the library's rows, the download ring, and the video layer (no edge, the library dimmed behind it) */
 .hh{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .hh .nb{flex:none}
 .g-hv{grid-template-columns:30px minmax(0,1fr)}
@@ -767,9 +767,10 @@ function pFeedback() {
       ask('有沒有跟計劃不同？', opt('diff') + (a.diff === '有' ? line('reason', '原因，例：物資遲了十分鐘送到') + line('avoid', '下次怎樣避免，例：提早一天點算物資') : '')) + grew +
       (q.people.length ? ask('誰需要跟進或讚賞？', q.people.map(n => `<div class="row fbm"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span><span class="fbt">${tg('follow', n, '跟進')}${tg('praise', n, '讚賞')}</span></div>`).join('')) : ''); }
   const done = q.role !== 'teacher' || (a.fit && a.fit !== '合');
-  return {fixed: true, body: `<div class="gate fb"><h1>${evTitle(q)}</h1>${FB.due.length > 1 ? `<p class="sub">1 of ${FB.due.length}</p>` : ''}${body}
+  const sub = FB.preview ? `Preview · ${{teacher: 'Teacher', gl: 'Group Lead', member: 'Member'}[q.role]}` : FB.due.length > 1 ? `1 of ${FB.due.length}` : '';
+  return {fixed: true, body: `<div class="gate fb"><h1>${evTitle(q)}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}${body}
     ${done ? `<button class="nb pri done" data-a="fbdone"${fbOk(q, a) && !S.fb.busy ? '' : ' disabled'}>Done</button>` : ''}
-    ${S.who ? `<button class="nb low" data-a="fbnotme">Not ${esc(S.who)}?</button>` : '<button class="nb low" data-a="signout">Sign Out</button>'}</div>`};
+    ${FB.preview ? '<button class="nb low" data-a="fbend">End Preview</button>' : S.who ? `<button class="nb low" data-a="fbnotme">Not ${esc(S.who)}?</button>` : '<button class="nb low" data-a="signout">Sign Out</button>'}</div>`};
 }
 const fbReady = () => { const d = app.querySelector('[data-a="fbdone"]'); if (d && FB.due[0] && S.fb) d.disabled = !fbOk(FB.due[0], S.fb.a) || S.fb.busy; };
 function fbTap(arg) {
@@ -778,16 +779,30 @@ function fbTap(arg) {
   if (k === 'grew' && a.grew.includes(v)) a.grew = a.grew.filter(x => (x === '沒有明顯進步') === (v === '沒有明顯進步'));  // 沒有明顯進步 stands alone
   render(); if (k === 'fit' && v === '合') fbSend();
 }
+// Preview (asked 26/10/04, to inspect it before any event has ended): with #preview=questionnaire, the Event Lead and Editors
+// see the teacher's, a Group Lead's and a member's questionnaire on the latest past event, one after another; nothing is sent.
+function fbPreview() {
+  if (location.hash !== '#preview=questionnaire' || !SYNC.loaded || !isLead()) return;
+  const ev = EVENTS.filter(e => e.date && e.date < TODAY && e.groups.length).sort((a, b) => b.date.localeCompare(a.date))[0]; if (!ev) { toast('No past event to preview'); return; }
+  const g = ev.groups[0].name, base = {name: ev.name, date: ev.date};
+  FB = {due: [{...base, id: ev.id + ':t', role: 'teacher'}, {...base, id: ev.id + ':l', role: 'gl', group: g, promise: '提早一天點算物資', people: roster(g).people.map(p => p[1]).filter(Boolean)},
+    {...base, id: ev.id + ':m', role: 'member', group: g}], key: fbKey(), day: TODAY, preview: true};
+  S.fb = null; render();
+}
+const fbEnd = () => { FB = {due: [], key: '', day: ''}; S.fb = null; history.replaceState(null, '', location.pathname); render(); loadFeedback(); };
+addEventListener('hashchange', fbPreview);
 async function loadFeedback() {
+  if (FB.preview) return;
   if (!SYNC.token || !ACCT() || (peopleOf(ACCT()).length && !S.who)) return;
   const k = fbKey();
-  try { const r = await api('feedback'), b = await r.json(); if (!r.ok || k !== fbKey()) return;
+  try { const r = await api('feedback'), b = await r.json(); if (!r.ok || k !== fbKey() || FB.preview) return;
     const was = FB.key === k && FB.due.length ? FB.due[0].id : '';
     FB = {due: b.due || [], key: k, day: TODAY}; if (((FB.due[0] || {}).id || '') !== was) render();
   } catch (e) { /* asked again on the next check */ }
 }
 async function fbSend() {
   const q = FB.due[0]; if (!q || !S.fb || S.fb.busy) return;
+  if (FB.preview) { FB.due = FB.due.slice(1); S.fb = null; if (!FB.due.length) fbEnd(); else { render(); scrollTo(0, 0); } return; }
   S.fb.busy = true; fbReady();
   try { const r = await api('feedback', {method: 'POST', body: JSON.stringify({event: q.id, data: S.fb.a})}), b = await r.json();
     if (!r.ok) { S.fb.busy = false; FB.day = ''; loadFeedback(); toast('Could not send. Try again'); render(); return; }
@@ -808,21 +823,23 @@ function feedbackSec(ev) {
   if (!f || !f.list) return '';
   // Teachers first, then each group: its Group Lead, then its members
   const order = {teacher: 0, gl: 1, member: 2}, l = [...f.list].sort((x, y) => (x.role === 'teacher' ? 0 : 1) - (y.role === 'teacher' ? 0 : 1) || String(x.grp || '').localeCompare(String(y.grp || '')) || order[x.role] - order[y.role] || x.at - y.at);
-  const grewOf = d => d.grew && d.grew.length ? (d.grew[0] === '沒有明顯進步' ? d.grew[0] : '進步：' + d.grew.join('、')) : '';
+  // Labels around the answers are interface text, so English; the answers stay as chosen (decided 26/10/04 16:35–16:37)
+  const grewOf = d => d.grew && d.grew.length ? (d.grew[0] === '沒有明顯進步' ? d.grew[0] : 'Grew in: ' + d.grew.join('、')) : '';
   const said = r => { const d = r.data;
     if (r.role === 'teacher') return [[d.fit, d.area].filter(Boolean).join('，'), d.note];
     if (r.role === 'member') return [[d.ok, d.why].filter(Boolean).join('，'), d.note, grewOf(d)];
-    return [grewOf(d), d.promise ? `上次承諾「${d.promise}」：${d.kept}` : '', d.diff === '有' ? `跟計劃不同：${d.reason}` : '沒有跟計劃不同', d.diff === '有' ? `下次：${d.avoid}` : '',
-      d.follow && d.follow.length ? '跟進：' + d.follow.join('、') : '', d.praise && d.praise.length ? '讚賞：' + d.praise.join('、') : '']; };
+    return [grewOf(d), d.promise ? `Last promise: ${d.promise}（${d.kept}）` : '', d.diff === '有' ? `Differed from the plan: ${d.reason}` : 'Went as planned', d.diff === '有' ? `Next time: ${d.avoid}` : '',
+      d.follow && d.follow.length ? 'Follow up: ' + d.follow.join('、') : '', d.praise && d.praise.length ? 'Praise: ' + d.praise.join('、') : '']; };
   const row = r => `<div class="row fbr"><span class="fbw">${r.grp ? gicon(r.grp) : ''}${mention(r.name)}${r.role === 'gl' ? '<span class="gl">Group Lead</span>' : ''}</span><span class="cap">${said(r).filter(Boolean).map(esc).join('\n')}</span></div>`;
   // Against the plan's 60%: of the members and Group Leads who answered, how many say they grew
   const asked = l.filter(r => r.role !== 'teacher' && r.data.grew && r.data.grew.length), grown = asked.filter(r => r.data.grew[0] !== '沒有明顯進步').length;
-  const sum = asked.length ? `<p class="cap fbs">${grown}／${asked.length} 位成員表示有進步（${Math.round(grown / asked.length * 100)}%）</p>` : '';
+  const sum = asked.length ? `<p class="cap fbs">${grown} of ${asked.length} members say they grew (${Math.round(grown / asked.length * 100)}%)</p>` : '';
   return `<section class="sec"><p class="sh">Feedback</p>${sum}${l.length ? `<div class="list">${l.map(row).join('')}</div>` : '<p class="empty">No answers yet</p>'}</section>`;
 }
-// 使用教學 (26/10/04, project doc "Help Page Handoff 261004"): the 38 how-to videos exactly as published. The signed-in
-// account's own section comes first, then 所有人; a search looks through all of them, by title and by the words readers type.
-const HELP = %%HELP%%, HELP_SEC = {A: '所有人', M: '組員', L: '組長', E: '主席', T: '老師'};
+// Help (26/10/04, project doc "Help Page Handoff 261004"): the 38 how-to videos exactly as published. The signed-in account's
+// own section comes first, then Everyone; a search looks through all of them, by title and by the words readers type.
+// Everything here is English but the videos' own titles (decided 26/10/04 16:35).
+const HELP = %%HELP%%, HELP_SEC = {A: 'Everyone', M: 'Members', L: 'Group Leads', E: 'Chairs', T: 'Teachers'};
 const helpSecs = () => { const a = ACCT(); return !a ? [] : a.type === 'lead' ? ['E'] : a.type === 'gl' ? ['L'] : a.type === 'group' ? ['M'] : ['T']; };
 function pHelp() {
   const q = S.find.trim().toLowerCase(), hit = v => !q || [v.title, ...v.search].some(w => w.toLowerCase().includes(q)), seen = new Set();
@@ -830,7 +847,7 @@ function pHelp() {
   const secs = (q ? ['A', 'M', 'L', 'E', 'T'] : [...helpSecs(), 'A']).map(k => { const l = HELP.filter(v => v.sec.includes(k) && hit(v) && !seen.has(v.id)); l.forEach(v => seen.add(v.id));
     return l.length ? `<section class="sec"><p class="sh">${HELP_SEC[k]}</p><div class="list">${l.map(row).join('')}</div></section>` : ''; }).join('');
   setTimeout(helpCheck, 0);
-  return {title: '使用教學', search: 'help', l: backBtn(), body: `<h1 class="hh"><span>使用教學</span><button class="nb round glass" data-a="hdl" aria-label="${HDL.s === 'done' ? 'Downloaded' : HDL.s === 'run' ? 'Stop Download' : 'Download'}">${dlInner()}</button></h1>${secs || '<p class="empty sec">No results</p>'}`};
+  return {title: 'Help', search: 'help', l: backBtn(), body: `<h1 class="hh"><span>Help</span><button class="nb round glass" data-a="hdl" aria-label="${HDL.s === 'done' ? 'Downloaded' : HDL.s === 'run' ? 'Stop Download' : 'Download'}">${dlInner()}</button></h1>${secs || '<p class="empty sec">No results</p>'}`};
 }
 // Download for offline: every video and poster goes into the browser's cache (never handed out as files). The symbol shows
 // what the cache really holds each time the page opens, since iOS may clear it after a week without a visit.
@@ -1197,7 +1214,7 @@ function sheet() {
   if (s.k === 'account') {
     const v = V(), others = peopleOf(ACCT()).filter(x => x !== v.name), pn = photoName();
     const face = pn ? `<button class="av avb" data-a="photo" aria-label="${PHOTOS[pn] ? 'Change Photo' : 'Add Photo'}">${avatar(v.name)}<span class="ov">${ic('photo')}</span></button>` : `<span class="av">${avatar(v.name)}</span>`;
-    const helpRow = `<button class="row g-sw" data-a="help" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('video', '')}<span>使用教學</span>${ic('chev-r', 'go')}</button>`;
+    const helpRow = `<button class="row g-sw" data-a="help" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('video', '')}<span>Help</span>${ic('chev-r', 'go')}</button>`;
     h = bar(close, 'Account', '') +
       `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === ACCT().id ? '' : ACCT().id) : v.standin ? `${v.group} Stand-in · Until ${hkAt(ACCT().until)}` : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
       (others.length ? `<section class="sec"><p class="sh">Switch Person</p><div class="list">${others.map(x => `<button class="row g-sw" data-a="switch:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
@@ -1469,6 +1486,7 @@ document.addEventListener('click', async e => {
     case 'be': S.toSee = new Set(); S.who = arg; store.set('who', arg); S.stack = [{p: 'events'}]; render(); loadFeedback(); break;
     case 'fb': fbTap(arg); break;
     case 'fbdone': fbSend(); break;
+    case 'fbend': fbEnd(); break;
     case 'fbnotme': S.who = null; store.del('who'); S.fb = null; render(); break;
     case 'open': go({p: 'event', ev: arg}); break;
     case 'back': back(); break;
@@ -1979,7 +1997,7 @@ async function loadAll() {
     SYNC.offline = false; SYNC.loaded = true; cacheSave();
     if (S.who && !peopleOf(ACCT()).includes(S.who)) { S.who = null; store.del('who'); }
     if (!S.stack.length) S.stack = [{p: 'events'}];
-    refresh(); loadFeedback();
+    refresh(); loadFeedback(); fbPreview();
   } catch (e) {
     if (String(e.message) === 'signin') return;
     // Only a failed request means no connection; anything else keeps the loading symbol and tries again (26/10/03)
