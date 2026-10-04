@@ -192,8 +192,8 @@ button.tk:active{background:var(--current)}
 .aws{display:grid;grid-template-columns:3.4em minmax(0,1fr);line-height:1.75}
 .aws .c{font-variant-numeric:tabular-nums;color:var(--secondary)}
 .awn{display:block}
-.srow.sub{margin:0}
-.srow.sub+.srow:not(.sub){margin-top:14px}
+.srow.lrow{margin:0}
+.srow.lrow+.srow:not(.lrow){margin-top:14px}
 .awn{font-size:15px;color:var(--secondary)}
 .end{text-align:center;font-style:italic;color:var(--secondary);margin:36px 0 0}
 .lh{margin:28px 0 10px;font-size:15px;color:var(--secondary)}
@@ -256,7 +256,8 @@ textarea.fld{display:inline-block}
 /* Delete and move, at the end of a row in Edit; the handle is always there, as in Apple's lists */
 .rg{display:flex;align-items:center;justify-self:end;margin-right:-4px}
 .rg>.ib{margin:-4px 0}
-.rg>.grip{width:28px}
+.rg>.grip,.rg>.nogrip{width:28px}
+.rg>.nogrip{flex:none}
 /* The insert line: gold, full width, with a ＋ fixed at the leading edge (mouse only) */
 /* With a mouse the insert line replaces Add Line and Add Task (kept by touch, and for an empty Rundown) */
 .ins{position:absolute;left:-20px;right:-20px;height:0;z-index:4;pointer-events:none}
@@ -1111,6 +1112,33 @@ function syncAtt(ev, g, n) {
   if (!ts.length) return;
   if (times.every(Boolean)) at[n] = times.sort().pop(); else delete at[n];
 }
+// A person taken off Users & Groups leaves the tasks of every event not yet started, so the task shows no one; a renamed
+// person keeps their tasks under the new name. Events already started keep their names (26/10/04).
+const notStarted = ev => ev.date > TODAY || (ev.date === TODAY && (!ev.asmTime || NOW() < ev.asmTime));
+// A rename: the same class and number under a new name, or, with no class, the same place in a list of the same length
+const renamed = (a, b) => { const m = {}, an = a.map(x => x[1]), bn = b.map(x => x[1]), gone = a.filter(x => !bn.includes(x[1])), fresh = b.filter(x => !an.includes(x[1]));
+  gone.forEach(o => { const n = o[0] && fresh.filter(x => x[0] === o[0]); if (n && n.length === 1) m[o[1]] = n[0][1]; });
+  if (a.length === b.length) a.forEach((o, i) => { if (!(o[1] in m) && gone.includes(o) && fresh.includes(b[i]) && !Object.values(m).includes(b[i][1])) m[o[1]] = b[i][1]; });
+  return m; };
+function pruneGone(prev) {
+  if (!isLead() || !SYNC.rosterBase) return false;
+  const listOf = r => r ? [r.lead, ...r.people].filter(x => x.name).map(x => [x.cls, x.name]) : [], now = rosterOut(ROSTER), ren = {};
+  if (prev) Object.keys(now).forEach(g => { ren[g] = renamed(listOf(prev.roster[g]), listOf(now[g])); });
+  const chairRen = prev ? renamed((prev.chairs || []).filter(Boolean).map(n => ['', n]), CHAIRS.filter(Boolean).map(n => ['', n])) : {}, everyone = new Set([...Object.keys(ROSTER).flatMap(members), ...CHAIRS]);
+  let any = false;
+  EVENTS.filter(ev => notStarted(ev) && ev.id !== editingId()).forEach(ev => ev.tasks.forEach(t => {
+    const g = t.to[0], ok = g === 'All' ? everyone : members(g).length ? new Set([...members(g), ...CHAIRS]) : null;
+    if (!ok || !t.names.length) return;
+    const to = n => (ren[g] || {})[n] || chairRen[n] || n, before = t.names, names = [...new Set(before.map(to))].filter(n => ok.has(n));
+    if (J(names) === J(before)) return;
+    const at = g === 'All' ? null : ev.att[g];
+    if (at) before.forEach(n => { const k = tickKey(n, t.id); if (k in at) { if (to(n) !== n && names.includes(to(n))) at[tickKey(to(n), t.id)] = at[k]; delete at[k]; } });
+    t.names = names; any = true;
+    if (at) new Set([...before, ...names]).forEach(n => { if (memberTasks(ev, g, n).length) syncAtt(ev, g, n); else delete at[n]; });
+    log(ev, `${t.text}: ${names.join('、') || 'no one'}`);
+  }));
+  return any;
+}
 function memberList(ev, g, ed) {
   const lead = roster(g).lead[1], at = ev.att[g] || {}, all = sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All')));
   const when = t => t.row ? esc([(rowOf(ev, t.row) || {}).time, (rowOf(ev, t.row) || {}).title].filter(Boolean).join(' ')) : md(t.date || '');
@@ -1162,8 +1190,8 @@ function pScript(ev) {
       const mute = i => ed && !isHere(ev, s, i);  // in Edit a name not yet ticked is grey; reading shows names plainly
       const line = ([i, a, b]) => s.type === 'award' ? `<span class="aws${mute(i) ? ' muted' : ''}"><span class="c">${esc(a)}</span><span>${esc(b)}</span></span>` : `<span class="${mute(i) ? 'muted' : ''}">${esc(a)}<span class="muted">　${esc(b)}</span></span>`;
       if (!ed) return `<div class="srow">${dot(`${ev.id}:s:${s.id}`)}<span></span><div><span class="awn">${head[0]} ${esc(head[1])}</span>${rows.map(x => `<div>${line(x)}</div>`).join('')}</div></div>`;
-      return `<div class="sblk" data-drag="say" data-id="${s.id}"><div class="srow e sub" tabindex="-1"><span></span><span class="awn">${head[0]} ${esc(head[1])}</span><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Remove')}${grip('Move paragraph')}</span></div>` +
-        rows.map(x => `<div class="srow e sub" tabindex="-1"><span></span>${line(x)}<span class="rg">${rmB(`unrow:${r.id}:${s.id}:${x[0]}`, 'Take off this paragraph')}</span></div>`).join('') + '</div>'; }
+      return `<div class="sblk" data-drag="say" data-id="${s.id}"><div class="srow e lrow" tabindex="-1"><span></span><span class="awn">${head[0]} ${esc(head[1])}</span><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Remove')}${grip('Move paragraph')}</span></div>` +
+        rows.map(x => `<div class="srow e lrow" tabindex="-1"><span></span>${line(x)}<span class="rg">${rmB(`unrow:${r.id}:${s.id}:${x[0]}`, 'Take off this paragraph')}<span class="nogrip"></span></span></div>`).join('') + '</div>'; }
     if (!ed) return `<div class="srow${s.type === 'cue' ? ' cue' : ''}">${dot(`${ev.id}:s:${s.id}`)}<span class="sp">${s.type === 'line' ? esc(spOf(ev, s)) : ''}</span><div class="body">${esc(s.text)}</div></div>`;
     const sp = s.type !== 'line' ? '' : mcs.length > 1 ? pick(`say:${r.id}:${s.id}:sp`, s.sp ? `<span class="sp">${esc(s.sp)}</span>` : '', `<option value="" disabled ${s.sp ? '' : 'selected'}></option>` + mcs.map(m => `<option${m[1] === s.sp ? ' selected' : ''}>${esc(m[1])}</option>`).join(''), 'MC') : `<span class="sp">${esc(s.sp || (mcs[0] || [])[1] || '')}</span>`;
     return `<div class="srow e${s.type === 'cue' ? ' cue' : ''}" data-drag="say" data-id="${s.id}"><span>${sp}</span><textarea class="fld fo" rows="1" data-b="say:${r.id}:${s.id}:text" placeholder="${s.type === 'cue' ? 'Stage Direction' : 'MC Line'}" aria-label="Paragraph">${esc(s.text)}</textarea><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Delete paragraph')}${grip('Move paragraph')}</span></div>`; };
@@ -2056,7 +2084,7 @@ async function loadAll() {
     // An event this device knew that the server no longer has at all: keep only if it has unsent changes
     const onServer = new Set(b.rows.map(x => x.id));
     EVENTS = EVENTS.filter(ev => onServer.has(ev.id) || SYNC.base[ev.id] === undefined);
-    SYNC.offline = false; SYNC.loaded = true; cacheSave();
+    SYNC.offline = false; SYNC.loaded = true; if (pruneGone()) persistSoon(100); cacheSave();
     if (S.who && !peopleOf(ACCT()).includes(S.who)) { S.who = null; store.del('who'); }
     if (!S.stack.length) S.stack = [{p: 'events'}];
     refresh(); loadFeedback(); fbPreview();
@@ -2078,7 +2106,8 @@ async function pull(full) {
     if (b.ver && b.ver !== PAGE_VER && !S.edit && !S.sheet && !S.menu && !S.alert && !SYNC.busy.size && !EVENTS.some(e => J(e) !== SYNC.base[e.id])) { location.reload(); return; }
     if (full) takeLists(b);
     const photos = await syncPhotos(b.photos).catch(() => false), accts = takeAccounts(b);
-    if (apply(b.rows) || photos || accts || full) refresh();
+    const got = apply(b.rows), gone = full && pruneGone(); if (gone) persistSoon(100);
+    if (got || photos || accts || full || gone) refresh();
     if (full || FB.day !== TODAY) loadFeedback();
   } catch (e) { SYNC.offline = true; }
 }
@@ -2092,7 +2121,8 @@ addEventListener('online', () => { if (SYNC.token && !SYNC.loaded) { clearTimeou
 function persistSoon(ms = 600) { clearTimeout(SYNC.timer); SYNC.timer = setTimeout(persist, ms); }
 function persist() {
   if (!SYNC.token || !SYNC.loaded) return;
-  const editing = editingId();
+  const editing = editingId(), listsDirty = J(rosterOut(ROSTER)) !== SYNC.rosterBase || J(CHAIRS) !== SYNC.chairBase;
+  if (listsDirty && !(cur() && cur().p === 'group' && S.edit) && pruneGone({roster: JSON.parse(SYNC.rosterBase || '{}'), chairs: JSON.parse(SYNC.chairBase || '[]')})) refresh();
   Object.keys(SYNC.base).forEach(id => { if (!EVENTS.some(e => e.id === id) && !SYNC.busy.has(id)) push(id, null); });
   EVENTS.forEach(ev => {
     if (ev.id === editing) return;
