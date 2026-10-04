@@ -1655,6 +1655,27 @@ function setVal(b, val, el) {
 // A group taken off duty takes its tasks with it; a task shared with another group stays with that group
 const dropTasks = (ev, g) => { ev.tasks = ev.tasks.filter(t => !(t.to.length === 1 && t.to[0] === g)).map(t => t.to.includes(g) ? {...t, to: t.to.filter(x => x !== g)} : t); };
 const dayBefore = ev => { const d = new Date(iso(ev.date) + 'T12:00'); d.setDate(d.getDate() - 1); return d.toISOString().slice(2, 10).replace(/-/g, '/'); };
+// 預設 Task (Build Brief 261004 items 3 and 4): the first duty group of a main group comes with that main group's usual Tasks,
+// their Remarks word for word from the Event Lead SOP. Work before the day goes under Before the Event; work on the day goes on
+// the first Rundown line, for the Event Lead to move.
+const R_MC = '按 Script 主持，只讀出 Script 上的名字。';
+const DEFAULT_TASKS = {
+  MC: [['主持 1', R_MC], ['主持 2', R_MC],
+    ['撰稿', '只在 Event Centre 的 Script 撰寫，不可貼上整份 Word 稿。先在 MC 一行填上兩位主持的班別及姓名。名字要等後台完成得獎名單、接待完成嘉賓名單後才加入。（影片：撰寫講稿）', [3, 2]],
+    ['讀音', '得獎名單完成後，在難讀的名字前加一段 Stage Direction，例：讀音：歐陽曉（hiu2）。（影片：撰寫講稿）', [3, 2]],
+    ['台側提示', '活動當日在台側打開 Script，提示主持下一段。'], ['後備司儀', '與主持一同綵排；主持缺席時接替。']],
+  Backstage: [['整理得獎名單', '按老師的名單輸入 Participant List，完成後在活動群組告訴司儀 Group Lead。（影片：建立得獎名單）', [4, 3]],
+    ['點名', '活動當日在 Participant List 為到場的人點名。司儀只會讀出已點名的人。（影片：記錄得獎者出席）'], ['道具', '按老師要求準備台上物品。', [1, 1]],
+    ['還原舞台', '每個環節完結後還原舞台。'], ['拍照位置', '頒獎時帶得獎者站到拍照位置。'], ['IG 片段', '拍攝活動片段。'],
+    ['開設參與者群組', '由後台 Group Lead 負責，做法見 Group Lead SOP；參與者集合時間是頒獎那一行 Rundown 時間前十分鐘。', [1, 1]]],
+  Reception: [['整理嘉賓名單', '按老師的名單輸入 Guest List，完成後在活動群組告訴司儀 Group Lead。（影片：建立嘉賓名單）', [4, 3]],
+    ['簽到', '活動當日在 Guest List 為到場的嘉賓點名。（影片：記錄嘉賓出席）'], ['帶位', '帶嘉賓到座位。'], ['交接', '把頒獎嘉賓帶到後台，交給後台。'], ['送客', '活動完結後送嘉賓離開。']]
+};
+function addDefaults(ev, g) {
+  const list = DEFAULT_TASKS[kind(g)]; if (!list || !ev.date) return;
+  if (list.some(x => !x[2]) && !ev.rows.length) ev.rows.push({id: uid(), time: ev.asmTime, title: '', place: ev.venue, say: []});
+  list.forEach(([text, remark, d]) => { const t = {id: uid(), text, to: [g], names: [], remark}; if (d) t.date = dayBefore(ev); else t.row = ev.rows[0].id; ev.tasks.push(t); });
+}
 function replaceGroup(ev, from, g) {
   const gr = ev.groups.find(x => x.name === from), days = Math.round((new Date(iso(ev.date)) - new Date(iso(TODAY))) / 864e5);
   gr.name = g; if (days >= 0 && days <= 7) gr.covers = from;
@@ -1718,7 +1739,7 @@ document.addEventListener('click', async e => {
     case 'addtask': { const g = r[0] === 'date' ? r[1] : r[2], t = {id: uid(), text: '', to: g !== undefined ? toOfKey(g) : ev.groups.length === 1 ? [ev.groups[0].name] : [], names: [], remark: ''};
       if (r[0] === 'date') t.date = dayBefore(ev); else t.row = r[1];
       ev.tasks.push(t); render(); focus(`[data-b="task:${t.id}:text"]`); break; }
-    case 'addgroup': ev.groups.push({name: arg, since: TODAY}); render(); break;
+    case 'addgroup': { const first = !ev.groups.some(x => kind(x.name) === kind(arg)); ev.groups.push({name: arg, since: TODAY}); if (first) addDefaults(ev, arg); render(); break; }
     case 'askgroup': { const n = ev.tasks.filter(t => !t.role && t.to.length === 1 && t.to[0] === arg).length; if (!n) { ev.groups = ev.groups.filter(x => x.name !== arg); dropTasks(ev, arg); render(); break; }
       S.alert = {t: `Remove ${arg}?`, m: `Its ${n} ${n > 1 ? 'tasks go' : 'task goes'} with it.`, verb: 'Remove', act: 'gremove:' + arg}; layer(); break; }
     case 'askrestore': S.alert = {t: 'Restore This Version?', m: `The event goes back to how it was before “${ev.log[+arg].what}”. Later changes go too; History keeps them, so you can restore again.`, verb: 'Restore', act: 'restore:' + arg}; layer(); break;
@@ -2036,7 +2057,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '2e5e63f11011';
+const PAGE_VER = '4f55a8a1ce07';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
