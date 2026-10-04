@@ -490,11 +490,12 @@ export async function importApplications(env, force) {
 // its on-duty Group Leads or Stand-ins, and its on-duty members not On Leave answer it when they next open the site.
 // Events before it went live are not asked about.
 const FB_FROM = "26/10/05";
-// The questionnaire's wording (two-syllable verbs, Hong Kong collocations; 26/10/04 18:41). The logic reads positions, not words.
-const FIT = ["符合", "大致符合", "不符合"], AREAS = ["事前聯絡", "講稿內容", "司儀表現", "上台安排", "接待嘉賓", "時間控制", "同學態度"];
+// The questionnaire's wording (two-syllable verbs, Hong Kong collocations, raising the person answering; 26/10/04 18:41–18:56).
+// The logic reads positions, not words.
+const FIT = ["完全配合", "大致配合", "有待改善"], AREAS = ["事前聯絡", "講稿內容", "司儀表現", "上台安排", "接待嘉賓", "時間控制", "同學態度"];
 // 自信心、解難能力、溝通協作能力: the 2026–27 plan's success criterion (60% of members on duty say they grew)
 const GREW = ["自信心", "解難能力", "溝通協作能力"], NO_GROWTH = "沒有明顯提升";
-const KEPT = ["已兌現", "未兌現"], DIFF = ["一致", "不一致"], OK = ["順利完成", "遇到問題"], WHY = ["不清楚工作內容", "無法聯絡 Group Lead", "時間緊迫", "人手不足", "物資問題", "其他"];
+const KEPT = ["順利實行", "未能實行"], DIFF = ["按計劃進行", "出現變化"], OK = ["十分順利", "遇到困難"], WHY = ["不清楚工作內容", "無法聯絡 Group Lead", "時間緊迫", "人手不足", "物資問題", "其他"];
 const hkToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, "/");
 const feedbackOpen = (ev) => !!ev.date && ev.date >= FB_FROM && ev.date < hkToday();
 async function feedbackContext(env) { return { rosters: (await settingOf(env, "rosters")) || {}, admins: (await settingOf(env, "admins")) || [] }; }
@@ -514,7 +515,7 @@ function feedbackRole(acct, ev, ctx) {
   }
   return null;
 }
-// A group's last promise: 「下次如何避免」 from its Group Lead's latest answer for an earlier event
+// A group's last promise: 「下次的改善方法」 from its Group Lead's latest answer for an earlier event
 async function promiseOf(env, group, date) {
   const { results } = await env.DB.prepare("SELECT data FROM feedback WHERE role = 'gl' AND grp = ? AND date < ? ORDER BY date DESC, at DESC").bind(group, date).all();
   for (const r of results) { try { const d = JSON.parse(r.data); if (d.diff === DIFF[1] && d.avoid) return d.avoid; if (d.diff) return ""; } catch { /* skip */ } }
