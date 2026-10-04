@@ -612,10 +612,11 @@ const spOf = (ev, s) => s.sp || (named(ev).length === 1 ? named(ev)[0][1] : '');
 const hasSource = (ev, s) => s.type === 'award' ? !!(ev.awards || {})[s.list] : s.type === 'guests' ? !!ev.guests : true;
 const awardOf = (ev, s) => { const l = (ev.awards || {})[s.list]; return (l && l.awards.find(x => x.id === s.award)) || {award: '', rows: []}; };
 const allRows = (ev, s) => s.type === 'award' ? awardOf(ev, s).rows : (ev.guests || []).map(g => [g.name, g.role]);
-// Roll call: Backstage ticks the Participant List and Reception the Guest List; the Script reads only those ticked
+// Roll call: Backstage ticks the Participant List and Reception the Guest List; on the event's day the Script reads only those
+// ticked. Before the day it shows every name (Build Brief 261004 item 5), so the draft sent to the teacher has them.
 const rollKey = (ev, s, i) => s.type === 'award' ? `${s.award}:${(allRows(ev, s)[i] || [])[1] || ''}` : ((ev.guests || [])[i] || {}).id;
 const isHere = (ev, s, i) => !!(((ev.roll || {})[s.type === 'award' ? 'aw' : 'gu'] || {})[rollKey(ev, s, i)]);
-const hereRows = (ev, s) => paraRows(ev, s).filter(x => isHere(ev, s, x[0]));
+const hereRows = (ev, s) => paraRows(ev, s).filter(x => ev.date > TODAY || isHere(ev, s, x[0]));
 const tick = (on, act, can, label) => can ? `<button class="ck${on ? ' on' : ''}" data-a="${act}" aria-pressed="${on}" aria-label="${esc(label)} is here">${ic(on ? 'check-fill' : 'circle')}</button>` : `<span class="ck${on ? ' on' : ''}" role="img" aria-label="${on ? 'Here' : 'Not here yet'}">${ic(on ? 'check-fill' : 'circle')}</span>`;
 const paraRows = (ev, s) => { const all = allRows(ev, s); return (s.rows || all.map((x, i) => i)).filter(i => all[i] && all[i][s.type === 'award' ? 1 : 0]).map(i => [i, ...all[i]]); };
 const sameList = (s, x) => x.type === s.type && (s.type === 'guests' || (x.list === s.list && x.award === s.award));
@@ -1073,7 +1074,8 @@ function pScript(ev) {
   const ed = S.edit, mcs = named(ev);
   const para = (r, s) => {
     if (s.type === 'award' || s.type === 'guests') { const rows = ed ? paraRows(ev, s) : hereRows(ev, s), head = s.type === 'award' ? [sym('users', 'Participant List', 'isym'), awardOf(ev, s).award] : [sym('guests', 'Guest List', 'isym'), 'Guest List'];
-      const line = ([i, a, b]) => s.type === 'award' ? `<span class="aws${isHere(ev, s, i) ? '' : ' muted'}"><span class="c">${esc(a)}</span><span>${esc(b)}</span></span>` : `<span class="${isHere(ev, s, i) ? '' : 'muted'}">${esc(a)}<span class="muted">　${esc(b)}</span></span>`;
+      const mute = i => ed && !isHere(ev, s, i);  // in Edit a name not yet ticked is grey; reading shows names plainly
+      const line = ([i, a, b]) => s.type === 'award' ? `<span class="aws${mute(i) ? ' muted' : ''}"><span class="c">${esc(a)}</span><span>${esc(b)}</span></span>` : `<span class="${mute(i) ? 'muted' : ''}">${esc(a)}<span class="muted">　${esc(b)}</span></span>`;
       if (!ed) return `<div class="srow">${dot(`${ev.id}:s:${s.id}`)}<span></span><div><span class="awn">${head[0]} ${esc(head[1])}</span>${rows.map(x => `<div>${line(x)}</div>`).join('')}</div></div>`;
       return `<div class="sblk" data-drag="say" data-id="${s.id}"><div class="srow e sub" tabindex="-1"><span></span><span class="awn">${head[0]} ${esc(head[1])}</span><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Remove')}${grip('Move paragraph')}</span></div>` +
         rows.map(x => `<div class="srow e sub" tabindex="-1"><span></span>${line(x)}<span class="rg">${rmB(`unrow:${r.id}:${s.id}:${x[0]}`, 'Take off this paragraph')}</span></div>`).join('') + '</div>'; }
