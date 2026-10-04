@@ -143,7 +143,7 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .list[data-range]{position:relative;isolation:isolate}
 .list[data-range]:not(.moving-list)>p.sub.emp{display:none}
 /* Inside a callout a pressed row is inset 8 px from the callout's edges, its corners concentric with the callout's (16 - 8) */
-.opened .gbody .row,.opened>.row:not(:first-child),.list[data-range]>[data-in].row:not(.gx){width:calc(100% + 24px);margin-left:-12px;margin-right:-12px;padding-left:12px;padding-right:12px;border-radius:8px}
+.opened .gbody .row,.opened>.row:not(:first-child),.list[data-range]>[data-in].row:not(.gx){--rx:12px;width:calc(100% + 24px);margin-left:-12px;margin-right:-12px;padding-left:12px;padding-right:12px;border-radius:8px}
 .list[data-range]>svg.sqbg{position:absolute;z-index:-1;pointer-events:none;overflow:visible}
 .list[data-range]:not(.sq)>[data-in]{background:var(--current)}
 .opened>svg.sqbg path,.list[data-range]>svg.sqbg path{fill:var(--current)}
@@ -155,8 +155,8 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .ssec{margin-top:2px}
 .list.gl>.gh+.sub,.list.gl>.sub:first-child{margin-top:2px}
 .list.gl>.row+.gh,.list.gl>.sub+.gh{margin-top:18px}
-.udot{position:absolute;left:4px;top:calc(var(--rp,9px) + .75em - 4px);width:8px;height:8px;border-radius:50%;background:var(--primary)}
-.tk{position:relative}
+.udot{position:absolute;left:calc(var(--rx,20px) - 16px);top:calc(var(--rp,9px) + .75em - 4px);width:8px;height:8px;border-radius:50%;background:var(--primary)}
+.tk,.ln{position:relative}  /* a Rundown line holds its own dot (26/10/04: the dot had floated to the page's corner) */
 .tk>.udot{left:-14px;top:calc(5px + .75em - 4px)}
 .ln>.udot{top:calc(10px + .75em - 4px)}
 .srow,.award h2,.lh{position:relative}
