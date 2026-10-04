@@ -491,6 +491,8 @@ export async function importApplications(env, force) {
 // Events before it went live are not asked about.
 const FB_FROM = "26/10/05";
 const FIT = ["合", "大致合", "不合"], AREAS = ["事前聯絡", "講稿內容", "司儀表現", "上台安排", "接待嘉賓", "時間控制", "同學態度"];
+// 自信心、解難能力、溝通協作能力: the 2026–27 plan's success criterion (60% of members on duty say they grew)
+const GREW = ["自信心", "解難能力", "溝通協作能力"], NO_GROWTH = "沒有明顯進步";
 const KEPT = ["做到", "未做到"], DIFF = ["沒有", "有"], OK = ["順利", "有問題"], WHY = ["不知道做甚麼", "找不到 Group Lead", "時間太緊", "人手不足", "物資", "其他"];
 const hkToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, "/");
 const feedbackOpen = (ev) => !!ev.date && ev.date >= FB_FROM && ev.date < hkToday();
@@ -540,15 +542,17 @@ function cleanAnswer(me, a, promise, ctx) {
     const area = one(a.area, AREAS); if (!area) return null;
     return { fit, area, note: line(a.note) };
   }
+  const picked = Array.isArray(a.grew) ? a.grew : [], grew = picked.includes(NO_GROWTH) ? [NO_GROWTH] : GREW.filter((g) => picked.includes(g));
+  if (!grew.length) return null;
   if (me.role === "member") {
     const ok = one(a.ok, OK); if (!ok) return null;
-    if (ok === "順利") return { ok };
+    if (ok === "順利") return { ok, grew };
     const why = one(a.why, WHY); if (!why) return null;
-    return { ok, why, note: line(a.note) };
+    return { ok, why, note: line(a.note), grew };
   }
   const diff = one(a.diff, DIFF), kept = promise ? one(a.kept, KEPT) : null;
   if (!diff || (promise && !kept)) return null;
-  const out = { diff }, ppl = peopleIn(ctx, me.group), names = (l) => [...new Set((Array.isArray(l) ? l : []).filter((n) => ppl.includes(n)))];
+  const out = { diff, grew }, ppl = peopleIn(ctx, me.group), names = (l) => [...new Set((Array.isArray(l) ? l : []).filter((n) => ppl.includes(n)))];
   if (promise) Object.assign(out, { promise, kept });
   if (diff === "有") { out.reason = line(a.reason); out.avoid = line(a.avoid); if (!out.reason || !out.avoid) return null; }
   out.follow = names(a.follow); out.praise = names(a.praise);
