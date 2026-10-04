@@ -29,7 +29,8 @@
   --glass:rgba(44,44,41,.66);--glass-hi:rgba(58,58,54,.97);--glass-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 28px rgba(0,0,0,.45);--dim:rgba(0,0,0,.5)}
 *{box-sizing:border-box}
 html,body{background:var(--canvas)}
-html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}  /* no pinch or double-tap zoom */
+html{-webkit-text-size-adjust:100%}
+*{touch-action:manipulation}  /* no double-tap zoom anywhere (pinching is stopped in the script); pan-x pan-y on the page left taps without a click on iOS */
 body{margin:0;color:var(--text);font-family:var(--serif);font-size:17px;line-height:1.5;padding-inline:36px;-webkit-text-size-adjust:100%}
 button,input,select,textarea{font:inherit;color:inherit}
 button{border:0;background:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left}
@@ -1055,7 +1056,8 @@ function onScroll() {
   b.classList.toggle('titled', !!h && scrollY > 8 && h.getBoundingClientRect().bottom < 60);
 }
 addEventListener('scroll', onScroll, {passive: true});
-document.addEventListener('gesturestart', e => e.preventDefault());  // iOS Safari ignores user-scalable=no for pinching
+// iOS Safari ignores user-scalable=no for pinching: stop the pinch gesture wherever it starts
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
 const go = p => { if (p.p === 'event') { seeNow(p.ev); S.toSee.delete(p.ev); } else if (p.p === 'doc') { seeNow(`${p.ev}:d:${p.id}`); S.toSee.delete(`${p.ev}:d:${p.id}`); } seePage(); S.stack.push(p); S.edit = false; scrollTo(0, 0); render(); };
 const back = () => { seePage(); S.stack.pop(); S.edit = false; render(); };
 // Edit and Cancel: a snapshot of what the page can change
