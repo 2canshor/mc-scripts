@@ -1273,6 +1273,9 @@ function toggleOpen(key) {
   if (!was) S.open[key] = true;
 }
 const tickKey = (n, tid) => n + '\t' + tid;
+// A list goes into the Script only once it is done (Build Brief 261004 item 6, decided 26/10/04 10:53: 撰稿 waits for the list):
+// every Task named for making it has each of its people ticked. An event with no such Task works as before.
+const listDone = (ev, w) => { const ts = ev.tasks.filter(t => t.text.includes(w)); return ts.every(t => t.names.length && t.names.every(n => !!((ev.att || {})[t.to[0]] || {})[tickKey(n, t.id)])); };
 const memberTasks = (ev, g, n) => sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && t.names.includes(n)));
 // The member's attendance follows their ticks: complete when every task is ticked, with the time of the last tick
 function syncAtt(ev, g, n) {
@@ -1462,8 +1465,8 @@ function sheet() {
 function menuItems(k, arg) {
   const ev = EV();
   if (k === 'adddoc') return [canDoc(ev, 'script') && !hasScript(ev) && !(ev.mcs || []).length ? ['newscript', 'doc', 'Script'] : null, canDoc(ev, 'awards') && !Object.keys(ev.awards || {}).length ? ['newawards', 'users', 'Participant List'] : null, canDoc(ev, 'guests') && !ev.guests ? ['newguests', 'guests', 'Guest List'] : null].filter(Boolean);
-  if (k === 'addsay') { const lists = Object.entries(ev.awards || {}).flatMap(([lid, l]) => l.awards.filter(a => a.award && unread(ev, {type: 'award', list: lid, award: a.id}).length).map(a => [`addsay:${arg}:award:${lid}:${a.id}`, 'users', a.award]));
-    const guests = ev.guests && unread(ev, {type: 'guests'}).length ? [[`addsay:${arg}:guests`, 'guests', 'Guest List']] : [];
+  if (k === 'addsay') { const lists = !listDone(ev, '整理得獎名單') ? [] : Object.entries(ev.awards || {}).flatMap(([lid, l]) => l.awards.filter(a => a.award && unread(ev, {type: 'award', list: lid, award: a.id}).length).map(a => [`addsay:${arg}:award:${lid}:${a.id}`, 'users', a.award]));
+    const guests = ev.guests && listDone(ev, '整理嘉賓名單') && unread(ev, {type: 'guests'}).length ? [[`addsay:${arg}:guests`, 'guests', 'Guest List']] : [];
     return [[`addsay:${arg}:line`, 'line', 'MC Line'], [`addsay:${arg}:cue`, 'cue', 'Stage Direction'], ...lists, ...guests]; }
   if (k === 'addmt') { const [g, n] = arg.split(':');
     return sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && !t.names.includes(n))).map(t => [`pickn:${t.id}:${n}`, t.row ? 'list' : 'calendar', [t.text, t.row ? (rowOf(ev, t.row) || {}).time : md(t.date || '')].filter(Boolean).join('　')]); }
@@ -2068,7 +2071,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '3b6148e1a2be';
+const PAGE_VER = 'bb8fb3881f21';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};

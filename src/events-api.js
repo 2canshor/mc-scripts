@@ -346,6 +346,13 @@ function visible(acct, ev) {
   if (!ev || acct.type === "lead") return ev;
   const g = leadsGroup(acct, ev), out = { ...ev, att: {}, leave: {} };
   if (g) { out.att[g] = (ev.att || {})[g] || {}; out.leave[g] = (ev.leave || {})[g] || {}; }
+  // The ticks on the Tasks that make the Participant List and Guest List, so whoever writes the Script sees when a list is
+  // done and can add it (Build Brief 261004 item 6). A write keeps the stored ticks of other groups (withHidden).
+  for (const t of ev.tasks || []) {
+    const tg = (t.to || [])[0]; if (!tg || tg === g || !/整理(得獎|嘉賓)名單/.test(t.text || "")) continue;
+    const from = (ev.att || {})[tg] || {}, to = (out.att[tg] = out.att[tg] || {});
+    for (const n of t.names || []) { const k = n + "\t" + t.id; if (from[k]) to[k] = from[k]; }
+  }
   return out;
 }
 // A write keeps what the writer could not see.
