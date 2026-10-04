@@ -46,9 +46,24 @@ function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 }
 
+// Help videos (使用教學): Safari on iPhone and iPad plays a video only when it can ask for one part at a time (206), which
+// the static files alone did not answer, so the Worker serves them, whole or in parts, byte for byte as published
+async function helpFile(request, env, url) {
+  const res = await env.ASSETS.fetch(new Request(url.origin + url.pathname));
+  if (!res.ok) return res;
+  const base = { "content-type": res.headers.get("content-type") || "application/octet-stream", "accept-ranges": "bytes", "cache-control": "public, max-age=86400" };
+  const head = request.method === "HEAD", range = request.headers.get("range"), buf = await res.arrayBuffer(), size = buf.byteLength;
+  const m = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+  if (!m || (!m[1] && !m[2])) return new Response(head ? null : buf, { headers: { ...base, "content-length": String(size) } });
+  let start = m[1] ? +m[1] : Math.max(0, size - +m[2]), end = m[1] && m[2] ? Math.min(+m[2], size - 1) : size - 1;
+  if (start > end) return new Response(null, { status: 416, headers: { ...base, "content-range": `bytes */${size}` } });
+  return new Response(head ? null : buf.slice(start, end + 1), { status: 206, headers: { ...base, "content-range": `bytes ${start}-${end}/${size}`, "content-length": String(end - start + 1) } });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/help/") && env.ASSETS) return helpFile(request, env, url);
     if (!url.pathname.startsWith("/api/")) {
       const html = { "/": EVENTS_PAGE, "/scripts": PAGE }[url.pathname];
       if (!html) return Response.redirect(url.origin + "/", 302);
