@@ -110,7 +110,9 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .g-p.top>.ic{margin-top:4px}
 .g-tm{grid-template-columns:var(--tc) minmax(0,1fr) auto;align-items:start}  /* time or date | what | › */
 .g-tme{grid-template-columns:var(--tc) minmax(0,1fr) auto;align-items:start} /* time or date | what | − and handle (Edit) */
-.g-ev{grid-template-columns:var(--dw,max-content) minmax(0,1fr) 18px}       /* date | event | › */
+.g-ev{grid-template-columns:var(--dw,max-content) minmax(0,1fr) auto}      /* date | event | (flag) › */
+.g-ev>.tail{display:flex;align-items:center;gap:10px}
+.g-ev .lf svg.i{width:16px;height:16px}
 .g-kv{grid-template-columns:4.2em minmax(0,1fr) 24px}       /* class | name | − */
 .g-opt{grid-template-columns:minmax(0,1fr) 22px}
 /* The Rundown line a task is on, named above the task; in Edit, when and which group are chosen there */
@@ -302,6 +304,7 @@ textarea.fld{display:inline-block}
 .g-p .pn{gap:7px}
 .g-p .pn .av{width:24px;height:24px;font-size:13px} /* beside a fact's 20 px symbol, a photo needs the larger circle to read as the same size */
 .pn:hover>span:last-child{text-decoration:underline;text-underline-offset:3px}
+.gtap:not(.gs):hover{text-decoration:underline;text-underline-offset:3px}
 .opt-n{display:inline-flex;align-items:center;gap:10px}
 .opt-n .av{width:28px;height:28px;font-size:13px}
 .me-row{display:grid;grid-template-columns:60px minmax(0,1fr);column-gap:14px;align-items:center;margin:4px 0 6px}
@@ -309,6 +312,11 @@ textarea.fld{display:inline-block}
 .g-sw{grid-template-columns:32px minmax(0,1fr)}
 .g-sw .av{width:32px;height:32px;font-size:15px}
 .g-sw .ic{width:32px}
+.g-mb{grid-template-columns:32px minmax(0,1fr) auto}         /* photo | name | class */
+.gtap{cursor:pointer}
+.gs{display:grid;place-items:center}
+.gav{color:var(--secondary)}
+.me-row .gav svg.i{width:30px;height:30px}
 /* Sign in, Loading and Who Are You? fit one screen: no page padding, so they never scroll */
 .page.fixed{padding:0}
 .gate{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;max-width:480px;margin:0 auto;padding-block:40px}
@@ -484,6 +492,10 @@ const gcls = g => own(g) ? ' g' + g.slice(-1) : '';
 const gsym = g => sym(SYM[kind(g)], g, 'ic' + gcls(g));
 const sym = (n, label, c = 'ic') => `<span class="${c}"${label ? ` role="img" aria-label="${esc(label)}"` : ''}>${ic(n)}</span>`;
 const gname = g => g === 'All' ? 'Everyone' : esc(g).replace(/ Group /, ' Group&nbsp;');
+// A group's symbol and its name open the group's card (26/10/04), as a person's photo and name open theirs; the rest of the
+// row keeps its own job (a duty group still opens to its tasks)
+const isGroup = g => ALL_GROUPS.includes(g);
+const gtap = (g, html, c = '') => isGroup(g) ? `<span class="gtap${c}" data-a="gcard:${esc(g)}" role="button" tabindex="0">${html}</span>` : html;
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 const iso = d => '20' + d.replace(/\//g, '-');
 const fromIso = s => s ? s.slice(2).replace(/-/g, '/') : '';
@@ -526,7 +538,7 @@ const order = (ev, t) => !t.row ? '0' + (t.date || '') : '1' + String(ev.rows.fi
 const sorted = (ev, list) => list.map((t, i) => [t, i]).sort((a, b) => order(ev, a[0]).localeCompare(order(ev, b[0])) || a[1] - b[1]).map(x => x[0]);
 // The tasks a duty group sees: its own and Everyone's, in the event's own order
 const groupTasks = (ev, g) => ev.tasks.filter(t => !t.role && (t.to.includes(g) || t.to.includes('All')));
-const owner = t => t.to.includes('All') ? sym('all', 'Everyone', 'ic gAll') : t.to.length ? gsym(t.to[0]) : `<span class="ic">${nobody()}</span>`;
+const owner = t => t.to.includes('All') ? sym('all', 'Everyone', 'ic gAll') : t.to.length ? gtap(t.to[0], gsym(t.to[0]), ' gs') : `<span class="ic">${nobody()}</span>`;
 const names = t => { if (t.to.includes('All') && !t.names.length) return ''; const v = V();
   return `<span class="who">${t.names.length ? t.names.map(n => mention(n, n === v.name)).join('') : nobody(t.to[0])}</span>`; };
 const remark = t => t.remark ? `<span class="cap">${rich(t.remark)}</span>` : '';
@@ -590,11 +602,26 @@ function personOf(n) {
 // The card: photo, name, position; then Reports To and the person's events (upcoming first, then past)
 function cardOf(n) {
   const w = personOf(n), up = w.evs.filter(e => e.date >= TODAY).sort(soonest), past = w.evs.filter(e => e.date < TODAY).sort(newest);
-  const evRows = l => l.map(e => `<button class="row g-ev" data-a="cardopen:${e.id}"><span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('');
+  const evRows = l => l.map(e => evRow(e, 'cardopen')).join('');
   return `<div class="me-row"><span class="av">${avatar(n)}</span><span><strong>${esc(n)}</strong><span class="cap">${esc([w.pos, w.g, w.cls].filter(Boolean).join(' · '))}</span></span></div>` +
     (w.up.length ? `<section class="sec"><p class="sh">Reports To</p><div class="list">${w.up.map(x => `<button class="row g-sw" data-a="card:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
     (up.length ? `<section class="sec"><p class="sh">Upcoming</p><div class="list">${evRows(up)}</div></section>` : '') +
     (past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${evRows(past)}</div></section>` : '');
+}
+// One row for an event in every list: date | name | ›. An event the signed-in chair leads carries the Event Lead's flag
+// beside the › (Carson, 26/10/04: a subtle mark for the events I lead), as Reminders shows a flag at the end of a row
+const mine = e => isLead() && !!e.lead && e.lead === V().name;
+const evRow = (e, act, list) => `<button class="row g-ev${list && e.date === TODAY ? ' current' : ''}" data-a="${act}:${e.id}">${list ? dot(e.id, true) : ''}<span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span><span class="tail">${mine(e) ? sym('flag', 'Event Lead', 'ic lf') : ''}${ic('chev-r', 'go')}</span></button>`;
+// A group's card: its symbol and name; its Group Lead; its members by class; the events it is on duty for, upcoming then past
+function gcardOf(g) {
+  const r = roster(g), evs = EVENTS.filter(e => e.groups.some(x => x.name === g)), up = evs.filter(e => e.date >= TODAY).sort(soonest), past = evs.filter(e => e.date < TODAY).sort(newest);
+  const pr = (n, cls) => `<button class="row g-sw g-mb" data-a="card:${esc(n)}"><span class="av">${avatar(n)}</span><span>${esc(n)}</span><span class="t">${esc(cls)}</span></button>`;
+  const people = r.people.filter(p => p[1]).slice().sort((a, b) => a[0].localeCompare(b[0]));
+  return `<div class="me-row"><span class="av gav${gcls(g)}">${ic(SYM[kind(g)])}</span><span><strong>${gname(g)}</strong></span></div>` +
+    (r.lead[1] ? `<section class="sec"><p class="sh">Group Lead</p><div class="list">${pr(r.lead[1], r.lead[0])}</div></section>` : '') +
+    (people.length ? `<section class="sec"><p class="sh">Members</p><div class="list">${people.map(p => pr(p[1], p[0])).join('')}</div></section>` : '') +
+    (up.length ? `<section class="sec"><p class="sh">Upcoming</p><div class="list">${up.map(e => evRow(e, 'cardopen')).join('')}</div></section>` : '') +
+    (past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${past.map(e => evRow(e, 'cardopen')).join('')}</div></section>` : '');
 }
 const backBtn = () => `<button class="nb round glass" data-a="back" aria-label="Back">${ic('back')}</button>`;
 const shareBtn = `<button class="nb round glass" data-a="exportdoc" aria-label="Export">${ic('download')}</button>`;
@@ -662,7 +689,7 @@ function pEvents() {
   // list for Upcoming had put a day's later event first)
   const list = EVENTS.filter(seen).filter(e => !q || (e.name + ' ' + dmy(e.date)).toLowerCase().includes(q));
   const up = list.filter(e => e.date >= TODAY).sort(soonest), past = list.filter(e => e.date < TODAY).sort(newest);
-  const rows = l => l.map(e => `<button class="row g-ev${e.date === TODAY ? ' current' : ''}" data-a="open:${e.id}">${dot(e.id, true)}<span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('');
+  const rows = l => l.map(e => evRow(e, 'open', true)).join('');
   return {root: true, title: 'Events', search: true,
     fab: isLead() ? {act: 'sheet:new', label: 'New Event'} : null, r: `<button class="nb round glass av" data-a="sheet:account" aria-label="Account">${avatar(V().name)}</button>`,
     body: `<h1>Events</h1>
@@ -714,7 +741,7 @@ const taskSec = (ev, head, tasks, render) => { const rows = taskRows(ev, tasks, 
 // A group written out keeps its coloured symbol in front (Everyone its own symbol in grey)
 const gtag = g => g === 'All' ? `<span class="nw"><span class="isym gAll">${ic('all')}</span> Everyone</span>` : `<span class="nw"><span class="isym${gcls(g)}">${ic(SYM[kind(g)])}</span> ${gname(g)}</span>`;
 // Under a task in reading, the group is its symbol alone (26/10/02), then the names; Everyone keeps its word, having no names after it
-const gicon = g => `<span class="isym${gcls(g)}" role="img" aria-label="${esc(g)}" title="${esc(g)}">${ic(SYM[kind(g)])}</span>`;
+const gicon = g => gtap(g, `<span class="isym${gcls(g)}" role="img" aria-label="${esc(g)}" title="${esc(g)}">${ic(SYM[kind(g)])}</span>`);
 const whoLine = t => t.to.includes('All') ? `<span class="who">${gtag('All')}${t.names.map(n => mention(n, n === V().name)).join('')}</span>` : `<span class="who">${t.to.length ? gicon(t.to[0]) + ' ' : ''}${t.names.length ? t.names.map(n => mention(n, n === V().name)).join('') : nobody(t.to[0])}</span>`;
 // Every task of the event, for the Teacher (the Event Lead sees them in their duty groups)
 function allTasks(ev) {
@@ -758,7 +785,7 @@ function dutyGroups(ev, ed) {
   const rows = keys.map(k => { const gr = ev.groups.find(x => x.name === k), l = tasksOfKey(ev, k), open = !!S.open[`${ev.id}:g:${k}`];
     const n = k === 'All' ? 0 : l.filter(t => !t.names.length).length, cov = gr && gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
     const changed = l.some(t => isNew(`${ev.id}:t:${t.id}`)) && !open ? '<span class="udot" role="img" aria-label="Updated"></span>' : '';
-    return `<button class="row g-ic gx${open ? ' open' : ''}" data-a="gx:${ev.id}:g:${esc(k)}" aria-expanded="${open}">${changed}${keySym(k)}<span>${keyName(k)}${cov}</span><span>${n && (k === UNASSIGNED || fills(k)) ? badge(n) : ''}</span>${ic('chev-d', 'go dis')}</button>` +
+    return `<button class="row g-ic gx${open ? ' open' : ''}" data-a="gx:${ev.id}:g:${esc(k)}" aria-expanded="${open}">${changed}${gtap(k, keySym(k), ' gs')}<span>${gtap(k, keyName(k))}${cov}</span><span>${n && (k === UNASSIGNED || fills(k)) ? badge(n) : ''}</span>${ic('chev-d', 'go dis')}</button>` +
       (open ? `<div class="gbody">${bothSecs(ev, l, read).replace(/<section class="sec"><p class="sh">/g, '<section class="ssec"><p class="sub">')}</div>` : ''); }).join('');
   return `<section class="sec"><p class="sh">Duty Groups</p><div class="list">${rows}</div></section>`;
 }
@@ -779,7 +806,7 @@ function yourPart(ev, ed) {
   // Teacher: who is responsible
   const who = ev.groups.map(gr => { const g = gr.name, ns = [...new Set(ev.tasks.filter(t => t.to.includes(g)).flatMap(t => t.names))];
     const lines = ns.map(n => mention(n));
-    return `<div class="row g-p top">${gsym(g)}<span>${gname(g)}${lines.length ? `<span class="cap">${lines.join('')}</span>` : ''}</span></div>`; }).join('');
+    return `<div class="row g-p top">${gtap(g, gsym(g), ' gs')}<span>${gtap(g, gname(g))}${lines.length ? `<span class="cap">${lines.join('')}</span>` : ''}</span></div>`; }).join('');
   return `<section class="sec"><p class="sh">Students</p><div class="list">${who}</div>${who ? '' : '<p class="empty">Not arranged yet</p>'}</section>` + (isDay(ev) ? daySec(ev) : allTasks(ev));
 }
 // A group's members (26/10/03). Attendance is ticked task by task, never per member: tapping a member's row (not the photo
@@ -906,7 +933,7 @@ function pAccount(id) {
   const ed = S.edit, bar = editBar(true);
   if (id.startsWith('T:')) { const code = id.slice(2), evs = taught(code).sort(newest);
     return {...bar, title: code, body: `<h1>${esc(code)}</h1><section class="sec list">${acctRow(code, ed)}</section>
-    <section class="sec"><p class="sh">Events</p>${evs.length ? `<div class="list">${evs.map(e => `<button class="row g-ev" data-a="open:${e.id}"><span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span>${ic('chev-r', 'go')}</button>`).join('')}</div>` : '<p class="empty">No events</p>'}</section>
+    <section class="sec"><p class="sh">Events</p>${evs.length ? `<div class="list">${evs.map(e => evRow(e, 'open')).join('')}</div>` : '<p class="empty">No events</p>'}</section>
     ${ed ? '' : `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="askdropacct:${esc(code)}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>Delete Account</span></button></div></section>`}`}; }
   if (id === 'Viewer') return {...bar, title: 'Viewer', body: `<h1>Viewer</h1><section class="sec list">${acctRow('Viewer', ed)}</section>`};
   if (id === 'Editor') return {...bar, title: 'Editor', body: `<h1>Editor</h1><section class="sec list">${acctRow('Editor', ed)}</section>
@@ -969,6 +996,7 @@ function sheet() {
       <button class="nb pri" style="width:100%;margin-top:16px" data-a="standinon:${g}:${esc(S.pick || '')}"${S.pick ? '' : ' disabled'}>Next</button>`;
   }
   if (s.k === 'card') h = bar(close, '', '') + cardOf(s.n);
+  if (s.k === 'gcard') h = bar(close, '', '') + gcardOf(s.g);
   // Recently Deleted: events deleted in the last 30 days; Restore brings one back as it was
   if (s.k === 'history') h = bar(close, 'History', '') + `<div class="list">${ev.log.map((e, i) => { const txt = `<span>${esc(e.what)}<span class="cap">${esc(dmy(e.at.slice(0, 8)) + e.at.slice(8))}　${mention(e.who)}</span></span>`;
     return e.snap && isLead() ? `<button class="row" data-a="askrestore:${i}" style="grid-template-columns:minmax(0,1fr) auto">${txt}<span class="muted">Restore</span></button>` : `<div class="row">${txt}</div>`; }).join('') || '<p class="empty">No changes yet</p>'}</div>`; // tell-ok: history time and person
@@ -1252,6 +1280,7 @@ document.addEventListener('click', async e => {
       S.alert = null; S.edit = false; S.stack.pop(); render(); toast('Deleted'); break;
     case 'gremove': ev.groups = ev.groups.filter(x => x.name !== arg); dropTasks(ev, arg); S.alert = null; render(); break;
     case 'signout': signOut(); break;
+    case 'gcard': S.sheet = {k: 'gcard', g: arg, prev: S.sheet || null}; layer(); if (lay.querySelector('.sheet')) lay.querySelector('.sheet').scrollTop = 0; break;
     case 'card': S.sheet = {k: 'card', n: arg, prev: S.sheet || null}; layer(); if (lay.querySelector('.sheet')) lay.querySelector('.sheet').scrollTop = 0; break;
     case 'sback': S.sheet = S.sheet.prev; layer(); break;
     case 'gx': toggleOpen(arg); render(); break;
