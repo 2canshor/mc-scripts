@@ -1349,23 +1349,23 @@ function sqPath(w, h, r) {
 function drawSq(el) { const s = el.querySelector(':scope>svg.sqbg'); if (!s) return;
   if (el.dataset.range !== undefined) { const ins = [...el.querySelectorAll(':scope>[data-in]')]; if (!ins.length) return;
     const top = ins[0].offsetTop, bot = Math.max(...ins.map(x => x.offsetTop + x.offsetHeight)) + 8, w = el.clientWidth + 40, h = bot - top;
-    Object.assign(s.style, {top: top + 'px', height: h + 'px', left: '-20px', width: w + 'px', inset: 'auto'}); s.setAttribute('viewBox', `0 0 ${w} ${h}`); s.firstChild.setAttribute('d', sqPath(w, h, SQ_R)); return; }
+    Object.assign(s.style, {inset: 'auto', top: top + 'px', height: h + 'px', left: '-20px', width: w + 'px'}); s.setAttribute('viewBox', `0 0 ${w} ${h}`); s.firstChild.setAttribute('d', sqPath(w, h, SQ_R)); return; }
   const w = el.offsetWidth, h = el.offsetHeight; if (!w || !h) return;
   s.setAttribute('viewBox', `0 0 ${w} ${h}`); s.firstChild.setAttribute('d', sqPath(w, h, SQ_R)); }
 function squircles() { if (!sqRO) return;
   document.querySelectorAll('.opened:not(.sq),.list[data-range]:not(.sq)').forEach(el => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     s.setAttribute('class', 'sqbg'); s.setAttribute('aria-hidden', 'true'); s.setAttribute('preserveAspectRatio', 'none');
     s.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'path')); el.appendChild(s); el.classList.add('sq'); drawSq(el); sqRO.observe(el); }); }
-// A tap anywhere outside an open callout closes it, and the tap still does its own job (capture, no preventDefault). A callout
-// on the page ignores taps on sheets and menus above it; one inside a sheet closes on any other tap in that sheet.
+// Tapping another row folds an open group, member or list, and the tap still does its own job. An open part of the page
+// stays open while a sheet or menu above it is used; an open part inside a sheet folds on any other tap in that sheet.
 function shut(k) { if (k === 'del') S.delOpen = false; else if (k === 'apps') S.appsOpen = false; else delete S.open[k.slice(2)]; }
-document.addEventListener('click', e => {
-  const t = e.target, inside = o => o.dataset.range !== undefined ? [...o.querySelectorAll(':scope>[data-in]')].some(x => x.contains(t)) : o.contains(t);
-  const hit = [...document.querySelectorAll('.opened[data-shut],.list[data-range]')].filter(o => !inside(o) && (lay.contains(o) || !lay.contains(t)));
-  if (!hit.length) return; const keys = hit.map(o => o.dataset.shut || o.dataset.range), f = t.closest && t.closest('[data-b]'), fb = f && f.dataset.b;
-  // a field tapped outside keeps the cursor after the redraw
-  setTimeout(() => { keys.forEach(shut); render(); if (fb) { const n = app.querySelector(`[data-b="${CSS.escape(fb)}"]`); if (n) n.focus(); } }, 0);
-}, true);
+function foldOthers(t) { let n = 0;
+  const inside = o => o.dataset.range !== undefined ? [...o.querySelectorAll(':scope>[data-in]')].some(x => x.contains(t)) : o.contains(t);
+  document.querySelectorAll('.opened[data-shut],.list[data-range]').forEach(o => { if (!inside(o) && (lay.contains(o) || !lay.contains(t))) { shut(o.dataset.shut || o.dataset.range); n++; } });
+  return n > 0; }
+// After folding, a field that was tapped keeps its cursor
+function refold(t) { const f = t.closest && t.closest('input[data-b],textarea[data-b],select[data-b]'), fb = f && f.dataset.b; render();
+  if (fb) { const n = app.querySelector(`[data-b="${CSS.escape(fb)}"]`); if (n) n.focus(); } }
 // MC Scripts' fit: a field is as wide as its text (or its placeholder); it wraps, and grows in height, only at the edge
 const measure = document.createElement('canvas').getContext('2d');
 function fit(t) {
@@ -1488,8 +1488,8 @@ function replaceGroup(ev, from, g) {
 
 /* ---------- Actions ---------- */
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-a]'); if (!b) return;
-  if (b.dataset.a === 'bg' && e.target !== b) return;
+  const folded = foldOthers(e.target), b = e.target.closest('[data-a]'); if (!b) { if (folded) refold(e.target); return; }
+  if (b.dataset.a === 'bg' && e.target !== b) { if (folded) refold(e.target); return; }
   const [a, ...r] = b.dataset.a.split(':'), arg = r.join(':'), ev = cur() && cur().ev ? EV() : null;
   if (b.closest('.menu')) S.menu = null;
   switch (a) {
@@ -1617,6 +1617,7 @@ document.addEventListener('click', async e => {
       try { const r2 = await api('account', {method: 'DELETE', body: JSON.stringify({id: arg})}); if (!r2.ok) throw new Error(); S.xaccts = null; S.stack.pop(); render(); toast('Account deleted'); }
       catch (err) { layer(); toast('Not deleted'); } break;
   }
+  if (folded) refold(e.target);
 });
 // Adding a document ends the event's Edit and opens the new document in Edit
 const openNew = id => { const ev = EV(); S.edit = false; go({p: 'doc', ev: ev.id, id}); S.edit = true; S.snap = snapOf(); render(); };
@@ -1854,7 +1855,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '2aa28540ab17';
+const PAGE_VER = 'd6c14b869a21';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
