@@ -2,7 +2,7 @@
 <html lang="zh-Hant-HK">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Event Centre">
 <meta name="robots" content="noindex">
@@ -29,6 +29,7 @@
   --glass:rgba(44,44,41,.66);--glass-hi:rgba(58,58,54,.97);--glass-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 28px rgba(0,0,0,.45);--dim:rgba(0,0,0,.5)}
 *{box-sizing:border-box}
 html,body{background:var(--canvas)}
+html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}  /* no pinch or double-tap zoom */
 body{margin:0;color:var(--text);font-family:var(--serif);font-size:17px;line-height:1.5;padding-inline:36px;-webkit-text-size-adjust:100%}
 button,input,select,textarea{font:inherit;color:inherit}
 button{border:0;background:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left}
@@ -222,6 +223,7 @@ textarea.fld{display:inline-block}
 .tch{display:flex;flex-direction:column;gap:6px}
 .fld.muted{color:var(--secondary)}
 .pk .ph{color:var(--caption)}
+.fld.need,.pk.need{background:color-mix(in srgb,var(--danger) 18%,transparent)}.fld.need::placeholder,.pk.need .ph,.pk.need svg.i,.row.add.need,.row.add.need>svg.i{color:var(--danger)}  /* what Done is waiting for */
 .pk{position:relative;display:inline-flex;align-items:center;gap:6px;border-radius:8px;line-height:1.5;max-width:calc(100% - .9em)}
 .pk svg.i{width:14px;height:14px;color:var(--caption)}
 .pk select{position:absolute;inset:0;opacity:0;width:100%;font-size:16px;cursor:pointer}
@@ -263,7 +265,7 @@ textarea.fld{display:inline-block}
 .mbg{position:fixed;inset:0;z-index:39}
 .menu{position:fixed;z-index:40;min-width:220px;max-width:calc(100vw - 48px);padding:6px;border-radius:18px;display:flex;flex-direction:column;background:var(--glass-hi);overflow-y:auto;overscroll-behavior:contain}
 /* While a sheet, a menu or an alert is open, only it scrolls: the page behind stays where it is */
-html.locked,html.locked body{overflow:hidden}
+@media (pointer:fine){html.locked,html.locked body{overflow:hidden}}
 .mbg,.dimbg,.alert{touch-action:none}
 .menu button{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;font-size:16px}
 .menu button svg.i{color:var(--secondary)}
@@ -790,6 +792,8 @@ function rich(s) {
   return ns.length ? html.replace(new RegExp('@(' + ns.join('|') + ')', 'g'), (m, n) => mention(n.replace(/&amp;/g, '&'), V() && n === V().name)) : html;
 }
 const named = ev => (ev.mcs || []).filter(m => m[1]);
+// A line's MC: the one chosen, or the only MC when there is one (a line written before the MC was named has none of its own)
+const spOf = (ev, s) => s.sp || (named(ev).length === 1 ? named(ev)[0][1] : '');
 // Awardee and guest paragraphs: the rows they read, by index into the list; rows not yet read elsewhere go into a new one
 const hasSource = (ev, s) => s.type === 'award' ? !!(ev.awards || {})[s.list] : s.type === 'guests' ? !!ev.guests : true;
 const awardOf = (ev, s) => { const l = (ev.awards || {})[s.list]; return (l && l.awards.find(x => x.id === s.award)) || {award: '', rows: []}; };
@@ -1101,7 +1105,7 @@ function pScript(ev) {
       if (!ed) return `<div class="srow">${dot(`${ev.id}:s:${s.id}`)}<span></span><div><span class="awn">${head[0]} ${esc(head[1])}</span>${rows.map(x => `<div>${line(x)}</div>`).join('')}</div></div>`;
       return `<div class="sblk" data-drag="say" data-id="${s.id}"><div class="srow e sub" tabindex="-1"><span></span><span class="awn">${head[0]} ${esc(head[1])}</span><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Remove')}${grip('Move paragraph')}</span></div>` +
         rows.map(x => `<div class="srow e sub" tabindex="-1"><span></span>${line(x)}<span class="rg">${rmB(`unrow:${r.id}:${s.id}:${x[0]}`, 'Take off this paragraph')}</span></div>`).join('') + '</div>'; }
-    if (!ed) return `<div class="srow${s.type === 'cue' ? ' cue' : ''}">${dot(`${ev.id}:s:${s.id}`)}<span class="sp">${s.type === 'line' ? esc(s.sp) : ''}</span><div class="body">${esc(s.text)}</div></div>`;
+    if (!ed) return `<div class="srow${s.type === 'cue' ? ' cue' : ''}">${dot(`${ev.id}:s:${s.id}`)}<span class="sp">${s.type === 'line' ? esc(spOf(ev, s)) : ''}</span><div class="body">${esc(s.text)}</div></div>`;
     const sp = s.type !== 'line' ? '' : mcs.length > 1 ? pick(`say:${r.id}:${s.id}:sp`, s.sp ? `<span class="sp">${esc(s.sp)}</span>` : '', `<option value="" disabled ${s.sp ? '' : 'selected'}></option>` + mcs.map(m => `<option${m[1] === s.sp ? ' selected' : ''}>${esc(m[1])}</option>`).join(''), 'MC') : `<span class="sp">${esc(s.sp || (mcs[0] || [])[1] || '')}</span>`;
     return `<div class="srow e${s.type === 'cue' ? ' cue' : ''}" data-drag="say" data-id="${s.id}"><span>${sp}</span><textarea class="fld fo" rows="1" data-b="say:${r.id}:${s.id}:text" placeholder="${s.type === 'cue' ? 'Stage Direction' : 'MC Line'}" aria-label="Paragraph">${esc(s.text)}</textarea><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Delete paragraph')}${grip('Move paragraph')}</span></div>`; };
   // Edit (26/10/04): one list of every line and its paragraphs, so each paragraph moves by its handle anywhere, to another
@@ -1256,12 +1260,13 @@ function route() {
   return pAwards(ev, p.id.slice(3));
 }
 function render() {
+  const y0 = scrollY;  // a redraw keeps the reader where they were (go() scrolls to the top before it)
   S.toSee = new Set(); const o = route();
   app.innerHTML = `<main class="page${o.root ? ' root' : ''}${o.fixed ? ' fixed' : ''}${S.edit ? ' editing' : ''}">${o.body}</main>`;
   const keep = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find !== undefined;
   if (!keep) barEl.innerHTML = (o.l ? `<div class="ctl l">${o.l}</div>` : '') + (o.r ? `<div class="ctl r">${o.r}</div>` : '') + `<div class="edge"></div><div class="bt" aria-hidden="true">${S.edit ? '' : esc(o.title || '')}</div>` +
     (o.fab ? `<button class="fab" data-a="${o.fab.act}" aria-label="${o.fab.label}">${ic('plus')}</button>` : '') + (o.fab && !o.search ? '<div class="edge b"></div>' : '') + (o.search ? `<div class="edge b"></div><label class="search glass${o.fab ? ' withfab' : ''}">${ic('search')}<input data-find placeholder="Search" value="${esc(S.find)}" aria-label="Search events" enterkeyhint="search"></label>` : '');
-  fitAll(app); fitPage(); onScroll(); layer(); persistSoon();
+  markGaps(); fitAll(app); fitPage(); if (Math.abs(scrollY - y0) > 1) scrollTo(0, y0); onScroll(); layer(); persistSoon();
   // one date column for every event row, as wide as the widest date
   const ds = [...app.querySelectorAll('.g-ev>.t')]; app.style.removeProperty('--dw'); if (ds.length) app.style.setProperty('--dw', Math.ceil(Math.max(...ds.map(d => d.getBoundingClientRect().width))) + 'px');
 }
@@ -1271,8 +1276,8 @@ function layer() {
     m = `<div class="mbg" data-a="closemenu"></div><div class="menu glass" role="menu" style="left:${S.menu.x}px;${S.menu.up ? `bottom:${S.menu.y}px` : `top:${S.menu.y}px`};max-height:${S.menu.h}px">${items.map(([a, i, l]) => `<button role="menuitem" data-a="${a}">${ic(...i.split(':'))}<span>${esc(l)}</span></button>`).join('')}</div>`; }
   const al = S.alert ? `<div class="alert" role="alertdialog" aria-modal="true"><div><h2>${esc(S.alert.t)}</h2><p>${esc(S.alert.m)}</p><div class="b"><button data-a="keep">${esc(S.alert.no || 'Cancel')}</button><button class="d" data-a="${S.alert.act}">${esc(S.alert.verb)}</button></div></div></div>` : '';
   lay.innerHTML = sheet() + m + al + (S.toast ? `<div class="toast glass${S.toastAct ? ' act' : ''}" role="status"><span class="msg">${esc(S.toast)}</span>${S.toastAct ? `<button class="tb" data-a="${esc(S.toastAct[0])}">${esc(S.toastAct[1])}</button>` : ''}</div>` : '');
-  document.documentElement.classList.toggle('locked', !!(S.sheet || S.menu || S.alert));
-  fitAll(lay);
+  const y0 = scrollY; document.documentElement.classList.toggle('locked', !!(S.sheet || S.menu || S.alert));
+  fitAll(lay); if (Math.abs(scrollY - y0) > 1) scrollTo(0, y0);
 }
 // MC Scripts' fit: a field is as wide as its text (or its placeholder); it wraps, and grows in height, only at the edge
 const measure = document.createElement('canvas').getContext('2d');
@@ -1304,11 +1309,46 @@ function onScroll() {
   b.classList.toggle('titled', !!h && scrollY > 8 && h.getBoundingClientRect().bottom < 60);
 }
 addEventListener('scroll', onScroll, {passive: true});
+document.addEventListener('gesturestart', e => e.preventDefault());  // iOS Safari ignores user-scalable=no for pinching
 const go = p => { if (p.p === 'event') { seeNow(p.ev); S.toSee.delete(p.ev); } else if (p.p === 'doc') { seeNow(`${p.ev}:d:${p.id}`); S.toSee.delete(`${p.ev}:d:${p.id}`); } seePage(); S.stack.push(p); S.edit = false; scrollTo(0, 0); render(); };
 const back = () => { seePage(); S.stack.pop(); S.edit = false; render(); };
 // Edit and Cancel: a snapshot of what the page can change
 const snapOf = () => JSON.stringify(cur().p === 'group' ? {ROSTER, PASSWORDS, CHAIRS, ADMINS} : EV());
 const restore = j => { const o = JSON.parse(j); if (cur().p === 'group') { ROSTER = o.ROSTER; PASSWORDS = o.PASSWORDS; CHAIRS = o.CHAIRS; ADMINS = o.ADMINS; } else { const ev = EV(); Object.keys(ev).forEach(k => delete ev[k]); Object.assign(ev, o); } };
+// Done waits until the page is complete (26/10/04): each gap is marked in red, the first is brought into view and named
+function gaps(ev) {
+  const g = [], c = cur() || {}, add = (sel, msg) => g.push([sel, msg]), blank = v => !String(v || '').trim();
+  if (!ev) return g;
+  if (c.p === 'event') { if (blank(ev.name)) add('[data-b="ev:name"]', 'Name the event'); if (!ev.date) add('[data-b="ev:date"]', 'Choose the date'); }
+  if (c.p !== 'doc') return g;
+  if (c.id === 'script') {
+    const says = ev.rows.flatMap(r => r.say.filter(x => hasSource(ev, x)).map(x => [r, x])), names = named(ev).map(m => m[1]);
+    (ev.mcs || []).forEach((m, i) => { if (!blank(m[0]) && blank(m[1])) add(`[data-b="mc:${i}:1"]`, 'Every MC needs a name'); if (!blank(m[1]) && blank(m[0])) add(`[data-b="mc:${i}:0"]`, 'Every MC needs a class'); });
+    if (!names.length) add('[data-b="mc:0:1"]', 'Name the MCs');
+    if (!says.some(([, x]) => x.type === 'award' || x.type === 'guests' || !blank(x.text))) add('.sadd .row.add', 'The Script is empty');
+    says.forEach(([r, x]) => { if ((x.type === 'line' || x.type === 'cue') && blank(x.text)) add(`[data-b="say:${r.id}:${x.id}:text"]`, 'Fill in or delete the empty paragraph');
+      if (x.type === 'line' && names.length > 1 && !names.includes(x.sp)) add(`[data-b="say:${r.id}:${x.id}:sp"]`, 'Choose the MC of every line'); });
+  } else if (c.id === 'rundown') {
+    ev.rows.forEach(r => { if (blank(r.title)) add(`[data-b="row:${r.id}:title"]`, 'Every line needs a title'); });
+  } else if (String(c.id).startsWith('aw:')) { const id = c.id.slice(3), d = (ev.awards || {})[id];
+    if (d && !d.awards.length) add(`[data-a="addaward:${id}"]`, 'The Participant List is empty');
+    if (d) d.awards.forEach(a => { if (blank(a.award)) add(`[data-b="aw:${id}:${a.id}"]`, 'Name every award or role');
+      if (!a.rows.length) add(`[data-a="addawardee:${id}:${a.id}"]`, 'Add the people of every award or role');
+      a.rows.forEach((x, i) => { if (blank(x[0]) && blank(x[1])) add(`[data-b="ar:${id}:${a.id}:${i}:1"]`, 'Fill in or delete the empty row');
+        else if (blank(x[1]) && ev.date >= TODAY) add(`[data-b="ar:${id}:${a.id}:${i}:1"]`, 'Every person needs a name'); }); });  // past lists kept as the files held them (26/08/15: classes only)
+  } else if (c.id === 'guests') { const gs = ev.guests || [];
+    if (!gs.length) add('[data-a="addguest"]', 'The Guest List is empty');
+    gs.forEach(x => { if (blank(x.name)) add(`[data-b="gu:${x.id}:name"]`, 'Every guest needs a name'); });
+  }
+  return g;
+}
+// After a Done that waited, every redraw marks what is still missing, so the marks survive the page being redrawn
+const markGaps = () => { if (!S.edit || !S.need) return; gaps(EV()).forEach(([sel]) => { const el = app.querySelector(sel); if (el) (el.tagName === 'SELECT' ? el.closest('.pk') : el).classList.add('need'); }); };
+function showGaps(g) {
+  S.need = true; markGaps();
+  const first = app.querySelector('.need'); if (first) first.scrollIntoView({block: 'center', behavior: 'smooth'});
+  toast(g[0][1]);
+}
 const tidyMcs = ev => { if (!ev || !ev.mcs) return; if (canDoc(ev, 'script')) ev.rows.forEach(r => { r.say = r.say.filter(x => hasSource(ev, x)); }); const speaks = n => ev.rows.some(r => r.say.some(s => s.sp === n)); ev.mcs = ev.mcs.filter((m, i) => m[0] || m[1] || speaks(m[1]) || i === 0 && ev.mcs.length === 1); };
 // The next MC for a new line: after the last speaker, round the MCs
 // The MC after this paragraph's MC, for a new paragraph started below it with Return
@@ -1371,13 +1411,16 @@ document.addEventListener('click', async e => {
     case 'doc': go({p: 'doc', ev: ev.id, id: arg}); break;
     case 'members': S.sheet = null; go({p: 'members'}); break;
     case 'group': go({p: 'group', id: arg}); break;
-    case 'edit': S.edit = true; S.snap = snapOf(); render(); break;
+    case 'edit': S.edit = true; S.need = false; S.snap = snapOf(); render(); break;
     // Done saves at once (not after the usual pause), so a teacher's new account comes back while the page is still open
     case 'done': if (document.activeElement) document.activeElement.blur();
       if (cur().p === 'group') { const short = Object.values(PASSWORDS).find(x => x && x.trim() && [...x.replace(/\s+/g, '')].length < 8); if (short) { toast('A password needs 8 characters or more'); break; }
         CHAIRS = CHAIRS.map(x => x.trim()).filter(Boolean); ADMINS = ADMINS.map(x => x.trim()).filter(Boolean); S.edit = false; savePasswords(); render(); break; }
       tidyMcs(ev); if (ev && cur().p === 'event') ev.tasks = ev.tasks.filter(t => t.role || t.text.trim());
-      if (ev) ev.rows = ev.rows.filter(r => r.time || r.title.trim() || (r.remark || '').trim() || r.say.length || ev.tasks.some(t => t.row === r.id)); S.edit = false; if (ev && snapOf() !== S.snap) log(ev, 'Edited ' + (cur().p === 'doc' ? 'a document' : 'the event')); render(); persistSoon(0); catchUp(); break;
+      if (ev) ev.rows = ev.rows.filter(r => r.time || r.title.trim() || (r.remark || '').trim() || r.say.length || ev.tasks.some(t => t.row === r.id));
+      { const one = named(ev || {}); if (ev && one.length === 1) ev.rows.forEach(r => r.say.forEach(x => { if (x.type === 'line') x.sp = one[0][1]; })); }  // one MC speaks every line
+      { const g = gaps(ev); if (g.length) { render(); showGaps(g); break; } }
+      S.edit = false; if (ev && snapOf() !== S.snap) log(ev, 'Edited ' + (cur().p === 'doc' ? 'a document' : 'the event')); render(); persistSoon(0); catchUp(); break;
     case 'cancel': if (snapOf() === S.snap) { S.edit = false; render(); catchUp(); } else { S.alert = {t: 'Discard Changes?', m: 'Your changes will be lost.', no: 'Keep Editing', verb: 'Discard', act: 'discard'}; layer(); } break;
     case 'keep': S.alert = null; layer(); break;
     case 'discard': restore(S.snap); S.alert = null; S.edit = false; render(); catchUp(); break;
@@ -1531,6 +1574,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopImmediatePropagation(); mentionPick(MENT.i); }
   else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); mentionClose(); }
 }, true);
+document.addEventListener('input', e => { const nd = e.target.closest && e.target.closest('.need'); if (nd) nd.classList.remove('need'); });
 document.addEventListener('input', e => {
   const t = e.target, d = t.dataset || {};
   if (TAGGED.test(d.b || '') || MENT) mentionCheck(t);
@@ -1720,7 +1764,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = 'e09499203a88';
+const PAGE_VER = 'ea61d095c577';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
@@ -2154,7 +2198,7 @@ async function wordFile(ev, id) {
     // The Script goes through MC Scripts' own Word layout
     const mcs = named(ev).map((m, i) => ({id: 'm' + i, cls: m[0], name: m[1]})), byName = n => (mcs.find(m => m.name === n) || {}).id;
     const blocks = ev.rows.filter(r => r.say.length).flatMap(r => [{id: 'h' + r.id, type: 'cue', text: [r.time, r.title].filter(Boolean).join('　')},
-      ...r.say.flatMap(s => s.type === 'line' ? [{id: s.id, type: 'line', mc: byName(s.sp), text: s.text}] : s.type === 'cue' ? [{id: s.id, type: 'cue', text: s.text}]
+      ...r.say.flatMap(s => s.type === 'line' ? [{id: s.id, type: 'line', mc: byName(spOf(ev, s)), text: s.text}] : s.type === 'cue' ? [{id: s.id, type: 'cue', text: s.text}]
         : s.type === 'award' ? [{id: s.id + 'n', type: 'cue', text: awardOf(ev, s).award}, {id: s.id, type: 'award', text: hereRows(ev, s).map(x => x[1] + ' ' + x[2]).join('\n')}]
         : [{id: s.id, type: 'cue', text: hereRows(ev, s).map(x => x[1] + (x[2] ? '　' + x[2] : '')).join('\n')}])]);
     bytes = await ScriptGen.buildDocx(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});

@@ -45,6 +45,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{background:var(--canvas)}
+html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}  /* no pinch or double-tap zoom */
 body{margin:0;color:var(--text);font-family:var(--serif);font-size:17px;line-height:1.6;padding-inline:16px;padding-block:0 120px;-webkit-text-size-adjust:100%}
 button{font:inherit;color:inherit;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{opacity:.3;cursor:default}
@@ -274,6 +275,7 @@ body[data-view="join"] .lib,body[data-view="join"] .doc,body[data-view="join"] .
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
+document.addEventListener('gesturestart', e => e.preventDefault());  // iOS Safari ignores user-scalable=no for pinching
 %%GEN%%
 </script>
 <script>

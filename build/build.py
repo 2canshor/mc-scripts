@@ -17,7 +17,7 @@ open(os.path.join(here, 'Scripts.html'), 'w', encoding='utf-8').write('<meta cha
 page = page.replace('%%CLOUD%%', '{"api":"/api"}')
 i = page.index('</style>') + len('</style>')
 head = ('<!doctype html>\n<html lang="zh-Hant-HK">\n<head>\n<meta charset="utf-8">\n'
-        '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
+        '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">\n'
         '<meta name="apple-mobile-web-app-capable" content="yes">\n'
         '<meta name="apple-mobile-web-app-title" content="Scripts">\n<meta name="robots" content="noindex">\n')
 std = head + page[:i] + '\n</head>\n<body>' + page[i:] + '\n</body>\n</html>\n'
