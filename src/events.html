@@ -1162,6 +1162,8 @@ function pEvent(ev) {
   const title = ed && isLead()
     ? `<h1 class="tline"><span class="tpre">${dateF('ev:date', ev.date)}<span class="sep">｜</span></span><textarea class="fld f tname" rows="1" data-b="ev:name" placeholder="Event Name" aria-label="Event Name">${esc(ev.name)}</textarea></h1>` // tell-ok: CA title convention date｜name, bar in secondary
     : `<h1>${evTitle(ev)}</h1>`;
+  // Export the whole event (Build Brief 261004 item 7): for the Event Lead and Editors, beside Edit
+  if (isLead() && !ed) bar.r = `<button class="nb round glass" data-a="exportev" aria-label="Export Event">${ic('download')}</button>` + bar.r;
   return {...bar, fab: own ? {act: own[0], label: 'New ' + own[2]} : null, title: ev.name, body: title + facts(ev, ed && isLead()) + yourPart(ev, ed) + documents(ev, ed && isLead()) + feedbackSec(ev)};
 }
 // Facts: a symbol and a value, no labels (each label is the symbol's spoken name). The event begins at Assembly.
@@ -1824,6 +1826,7 @@ document.addEventListener('click', async e => {
       S.pwOpen.add(arg); if (!PWSHOW) { try { const r = await api('passwords'); PWSHOW = r.ok ? await r.json() : {}; } catch (x) { toast('No connection'); S.pwOpen.delete(arg); break; } } render(); break; }
     case 'export': exportAttendance(); break;
     case 'exportdoc': exportDoc(ev, cur().id); break;
+    case 'exportev': exportEvent(ev); break;
     case 'askdoc': S.alert = {t: `Delete This ${arg === 'script' ? 'Script' : arg === 'guests' ? 'Guest List' : 'Participant List'}?`, m: 'It goes for everyone.', verb: 'Delete', act: 'deldocpage:' + arg}; layer(); break;
     case 'deldocpage': if (arg === 'script') { ev.rows.forEach(rw => rw.say = []); ev.mcs = []; } else { if (arg === 'guests') ev.guests = null; else delete ev.awards[arg.slice(3)]; tidyMcs(ev); }
       S.alert = null; S.edit = false; S.stack.pop(); render(); toast('Deleted'); break;
@@ -2094,7 +2097,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '0c468273af30';
+const PAGE_VER = '2cdd3c56e8c5';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
@@ -2521,6 +2524,25 @@ function wtable(widths, rows) {
 }
 const DOC_ZH = {rundown: '程序表', script: '講稿', awards: '參與者名單', guests: '嘉賓名單'};
 const DOC_EN = {rundown: 'Rundown', script: 'Script', awards: 'Participant List', guests: 'Guest List'};
+// The whole event as one folder 「YYMMDD 活動名稱」, downloaded as a zip: the Word file of each of its documents, each named
+// 「活動名稱 YYMMDD 類型」 as when downloaded alone. No attendance. Several Participant Lists are told apart by their first award.
+async function exportEvent(ev) {
+  toast('Preparing the folder');
+  const lists = Object.keys(ev.awards || {}), zh = /[㐀-鿿]/.test(ev.name), type = (zh ? DOC_ZH : DOC_EN).awards;
+  const ids = [...(ev.rows.length ? ['rundown'] : []), ...(hasScript(ev) ? ['script'] : []), ...lists.map(id => 'aw:' + id), ...(ev.guests ? ['guests'] : [])];
+  if (!ids.length) { toast('Nothing to export yet'); return; }
+  try {
+    const JSZip = await loadZip(), zip = new JSZip(), folder = `${ev.date.replace(/\//g, '')} ${ev.name.replace(/[\\/:*?"<>|]/g, '').trim() || 'Event'}`, dir = zip.folder(folder), used = new Set();
+    for (const id of ids) {
+      const f = await wordFile(ev, id); let name = f.name;
+      if (id.startsWith('aw:') && lists.length > 1) { const first = ((ev.awards[id.slice(3)].awards || [])[0] || {}).award || '', q = first.replace(/[\\/:*?"<>|]/g, '').trim() || String(lists.indexOf(id.slice(3)) + 1);
+        name = name.replace(new RegExp(type + '\\.docx$'), q + (zh ? '' : ' ') + type + '.docx'); }
+      for (let i = 2; used.has(name); i++) name = name.replace(/( \d+)?\.docx$/, ` ${i}.docx`);
+      used.add(name); dir.file(name, await f.arrayBuffer());
+    }
+    saveFile(folder + '.zip', await zip.generateAsync({type: 'blob'})); toast('Saved ' + folder + '.zip');
+  } catch (e) { toast(SYNC.offline ? 'No connection. Try again when online' : 'The folder could not be made'); }
+}
 async function wordFile(ev, id) {
   const JSZip = await loadZip(), type = id.startsWith('aw:') ? 'awards' : id, zh = /[㐀-鿿]/.test(ev.name), docName = (zh ? DOC_ZH : DOC_EN)[type];
   const ymd = ev.date.replace(/\//g, ''), name = `${ev.name.trim() || 'Event'} ${ymd} ${docName}.docx`;
