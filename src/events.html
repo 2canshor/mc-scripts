@@ -291,23 +291,25 @@ textarea.fld{display:inline-block}
 .mbg,.dimbg,.alert{touch-action:none}
 .menu button{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;font-size:16px}
 .menu button svg.i{color:var(--secondary)}
-@media (hover:hover){.menu button:hover{background:var(--field)}}
+@media (hover:hover){.menu button:not(:disabled):hover{background:var(--field)}}
+.menu button:disabled{opacity:.4;cursor:default}
 /* ---------- Sheets ---------- */
 /* Help: the library's rows, the download ring, and the video layer (no edge, the library dimmed behind it) */
 .hh{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .hh .nb{flex:none}
-.g-hv{grid-template-columns:30px minmax(0,1fr)}
-.g-hv .hp{width:30px;height:43px;border-radius:6px;object-fit:cover;background:var(--field)}
+.g-hv{grid-template-columns:22px minmax(0,1fr)}
 .dlr{width:22px;height:22px;transform:rotate(-90deg)}
 .dlr circle{fill:none;stroke-width:2.2}
 .dlr .tr{stroke:var(--field)}.dlr .pr{stroke:var(--text);transition:stroke-dashoffset .2s}
 .dlr .st{fill:var(--text);stroke:none}
-.hvbg{position:fixed;inset:0;z-index:30;background:var(--dim);display:grid;place-items:center;overscroll-behavior:contain}
-.hv{position:relative;height:min(calc(100dvh - 160px),calc((100vw - 32px) * 1554 / 1080));aspect-ratio:1080/1554}
-.hv video{display:block;width:100%;height:100%;border-radius:24px;background:#000;object-fit:cover}
-.hvx{position:absolute;left:0;top:-56px}
-.hvc{position:absolute;left:12px;right:12px;bottom:12px;height:48px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 16px 0 6px;transition:opacity .3s}
-.hvc.hide{opacity:0;pointer-events:none}
+/* A video plays on black, as in a video app, so its light pages do not glare in dark mode; Close sits on the video's corner and the
+   controls under it, never over the steps being shown (review 26/10/04) */
+.hvbg{position:fixed;inset:0;z-index:30;background:#000;display:grid;place-items:center;overscroll-behavior:contain} /* tell-ok: video backdrop */
+.hv{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:12px;width:min(calc(100vw - 32px),calc((100dvh - 132px) * 1080 / 1554))}
+.hv video{display:block;width:100%;aspect-ratio:1080/1554;border-radius:24px;background:#000;object-fit:cover} /* tell-ok: video backdrop */
+.hvx{position:absolute;right:12px;top:12px;z-index:1}
+.hvbg{--glass:rgba(44,44,41,.66);--text:#F2F0EA;--secondary:#B0AEA5;color:var(--text)} /* tell-ok: the dark mode tokens, since the backdrop is black in both modes */
+.hvc{height:48px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 16px 0 6px}
 .hvp{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--text)}
 .hvp svg.i{width:20px;height:20px;fill:currentColor} /* stroke-ok: play and pause are filled shapes */
 .hvr{flex:1;min-width:0;accent-color:var(--text);height:24px}
@@ -400,8 +402,14 @@ textarea.fld{display:inline-block}
 .face:active{background:var(--current)}
 /* 活動後問卷: the questions read down the page, as the event page does */
 .gate.fb{justify-content:flex-start;padding-top:max(56px,env(safe-area-inset-top,0px))}
-.fq{font-size:17px;font-weight:600;margin:0 0 6px}
-.fbp{margin:0 0 6px;color:var(--secondary);white-space:pre-line}
+.fq{font-size:17px;font-weight:600;margin:0 0 10px}
+.fbq+.fbq{margin-top:36px}
+.fbo{background:var(--field);border-radius:14px;padding:4px 0;overflow:hidden}
+.fbo>.row{width:100%;margin:0;padding:10px 16px;border-radius:0}
+.fbo>.row svg.i{color:var(--fill)}
+.fbo .tag{background:var(--canvas)}
+.fbo .tag.on{background:var(--primary)}
+.fbp{margin:0 0 10px;color:var(--secondary);white-space:pre-line}
 .fbm{grid-template-columns:minmax(0,1fr) auto}
 .fbt{display:flex;gap:6px}
 .fbt .tag{min-height:32px;padding:0 12px}
@@ -412,6 +420,19 @@ textarea.fld{display:inline-block}
 .fbr{grid-template-columns:minmax(0,1fr);row-gap:2px}
 .fbw{display:flex;align-items:center;gap:6px;min-width:0}
 .fbw .gl{font-size:15px;color:var(--secondary)}
+.g-kv .pk{white-space:nowrap}
+.rmkl.empty{display:none}
+.g-tme:focus-within .rmkl.empty{display:block}
+.noline,.noline .pk,.noline .ph{color:var(--danger)}
+.fbtags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.fbg{grid-template-columns:auto minmax(0,1fr);column-gap:16px}
+.fbg .pct{font-size:22px;font-weight:600;color:var(--danger);font-variant-numeric:tabular-nums}
+.fbg .pct.ok{color:var(--present)}
+.meter{position:relative;height:6px;border-radius:3px;background:var(--field)}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--danger)}
+.meter i.ok{background:var(--present)}
+.meter b{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;border-radius:1px;background:var(--secondary)}
+.fbo .av{background:var(--canvas)}
 .face .av{width:64px;height:64px;font-size:26px}
 .g-ev .av,.g-sw .av{font-size:15px}
 </style>
@@ -858,7 +879,9 @@ const taggable = () => [...new Set([...CHAIRS, ...ALL_GROUPS.flatMap(members)].f
 // A Remark as read: links open, and @Name of a known person shows their photo and name (longest names first, so 陳大文 wins over 陳大)
 function rich(s) {
   const ns = taggable().sort((a, b) => b.length - a.length).map(n => esc(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const html = linked(s);
+  // （影片：title） in a Remark (the Event Lead SOP's default Remarks) opens that help video, when one has that title
+  const html = linked(s).replace(/（影片：([^）]+)）/g, (m, t) => { const v = HELP.find(x => x.title === t.replace(/&amp;/g, '&'));
+    return v ? `（<span class="lk" role="button" tabindex="0" data-a="hv:${v.id}">影片：${t}</span>）` : m; });
   return ns.length ? html.replace(new RegExp('@(' + ns.join('|') + ')', 'g'), (m, n) => mention(n.replace(/&amp;/g, '&'), V() && n === V().name)) : html;
 }
 const named = ev => (ev.mcs || []).filter(m => m[1]);
@@ -1010,15 +1033,17 @@ function pFeedback() {
   const q = FB.due[0]; if (!S.fb || S.fb.id !== q.id) S.fb = {id: q.id, a: {follow: [], praise: [], grew: []}, busy: false};
   const a = S.fb.a, on = (k, v) => Array.isArray(a[k]) ? a[k].includes(v) : a[k] === v;
   const opt = k => FB_Q[k].map(v => `<button class="row g-opt" data-a="fb:${k}:${esc(v)}"${Array.isArray(a[k]) ? ` aria-pressed="${on(k, v)}"` : ''}><span>${esc(v)}</span><span>${on(k, v) ? ic('check') : ''}</span></button>`).join('');
-  const ask = (h, body, pre = '') => `<section class="sec"><h2 class="fq">${h}</h2>${pre}<div class="list">${body}</div></section>`;
-  const grew = ask('今次活動令你哪方面有進步？', opt('grew'), '<p class="fbp">可選多項</p>');
+  // A question is a heading; its answers sit together in one filled group, as iOS lists its choices, so the two never read alike.
+  // Fields to type in follow the group, each in its own fill. Placeholders name the field, with no example (§52).
+  const ask = (h, body, pre = '', after = '') => `<section class="sec fbq"><h2 class="fq">${h}</h2>${pre}<div class="list fbo">${body}</div>${after}</section>`;
+  const grew = ask('今次活動令你哪方面有進步？', opt('grew'));
   const line = (k, ph) => `<textarea class="fld fbin" rows="1" data-b="fb:${k}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">${esc(a[k] || '')}</textarea>`;
   let body = '';
-  if (q.role === 'teacher') body = ask('今次 CA 的安排合你需要嗎？', opt('fit')) + (a.fit && a.fit !== '合' ? ask('哪方面要改善？', opt('area') + line('note', '補充（可不填），例：講稿遲了兩天才收到')) : '');
-  else if (q.role === 'member') body = ask('你的 Task 順利嗎？', opt('ok')) + (a.ok === '有問題' ? ask('甚麼問題？', opt('why') + line('note', '補充（可不填），例：物資遲了十分鐘送到')) : '') + grew;
+  if (q.role === 'teacher') body = ask('今次 CA 的安排合你需要嗎？', opt('fit')) + (a.fit && a.fit !== '合' ? ask('哪方面要改善？', opt('area'), '', line('note', '補充')) : '');
+  else if (q.role === 'member') body = ask('你的 Task 順利嗎？', opt('ok')) + (a.ok === '有問題' ? ask('甚麼問題？', opt('why'), '', line('note', '補充')) : '') + grew;
   else { const tg = (k, n, w) => `<button class="tag${a[k].includes(n) ? ' on' : ''}" data-a="fb:${k}:${esc(n)}" aria-pressed="${a[k].includes(n)}">${w}</button>`;
     body = (q.promise ? ask('上次承諾做到了嗎？', opt('kept'), `<p class="fbp">「${esc(q.promise)}」</p>`) : '') +
-      ask('有沒有跟計劃不同？', opt('diff') + (a.diff === '有' ? line('reason', '原因，例：物資遲了十分鐘送到') + line('avoid', '下次怎樣避免，例：提早一天點算物資') : '')) + grew +
+      ask('有沒有跟計劃不同？', opt('diff'), '', a.diff === '有' ? line('reason', '原因') + line('avoid', '下次怎樣避免') : '') + grew +
       (q.people.length ? ask('誰需要跟進或讚賞？', q.people.map(n => `<div class="row fbm"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span><span class="fbt">${tg('follow', n, '跟進')}${tg('praise', n, '讚賞')}</span></div>`).join('')) : ''); }
   const done = q.role !== 'teacher' || (a.fit && a.fit !== '合');
   const sub = FB.preview ? `Preview · ${{teacher: 'Teacher', gl: 'Group Lead', member: 'Member'}[q.role]}` : FB.due.length > 1 ? `1 of ${FB.due.length}` : '';
@@ -1041,7 +1066,7 @@ function fbPreview() {
   const g = ev.groups[0].name, base = {name: ev.name, date: ev.date};
   FB = {due: [{...base, id: ev.id + ':t', role: 'teacher'}, {...base, id: ev.id + ':l', role: 'gl', group: g, promise: '提早一天點算物資', people: roster(g).people.map(p => p[1]).filter(Boolean)},
     {...base, id: ev.id + ':m', role: 'member', group: g}], key: fbKey(), day: TODAY, preview: true};
-  S.fb = null; render();
+  S.fb = null; helpClose(); render();
 }
 const fbEnd = () => { FB = {due: [], key: '', day: ''}; S.fb = null; history.replaceState(null, '', location.pathname); render(); loadFeedback(); };
 addEventListener('hashchange', fbPreview);
@@ -1075,33 +1100,39 @@ function feedbackSec(ev) {
   if (!isLead() || S.edit || !ev.date || ev.date < FB_FROM || ev.date >= TODAY) return '';
   const f = FBA[ev.id]; if (!f || (!f.busy && Date.now() - f.at > 60000)) loadAnswers(ev.id);
   if (!f || !f.list) return '';
-  // Teachers first, then each group: its Group Lead, then its members
-  const order = {teacher: 0, gl: 1, member: 2}, l = [...f.list].sort((x, y) => (x.role === 'teacher' ? 0 : 1) - (y.role === 'teacher' ? 0 : 1) || String(x.grp || '').localeCompare(String(y.grp || '')) || order[x.role] - order[y.role] || x.at - y.at);
-  // Labels around the answers are interface text, so English; the answers stay as chosen (decided 26/10/04 16:35–16:37)
-  const grewOf = d => d.grew && d.grew.length ? (d.grew[0] === '沒有明顯進步' ? d.grew[0] : 'Grew in: ' + d.grew.join('、')) : '';
+  if (!f.list.length) return `<section class="sec"><p class="sh">Feedback</p><p class="empty">No answers yet</p></section>`;
+  // The answers read as the questionnaire asked them, in Chinese; growth shows as tags (review 26/10/04)
+  const tags = d => d.grew && d.grew.length ? `<span class="fbtags">${d.grew.map(g => `<span class="tag">${esc(g)}</span>`).join('')}</span>` : '';
   const said = r => { const d = r.data;
-    if (r.role === 'teacher') return [[d.fit, d.area].filter(Boolean).join('，'), d.note];
-    if (r.role === 'member') return [[d.ok, d.why].filter(Boolean).join('，'), d.note, grewOf(d)];
-    return [grewOf(d), d.promise ? `Last promise: ${d.promise}（${d.kept}）` : '', d.diff === '有' ? `Differed from the plan: ${d.reason}` : 'Went as planned', d.diff === '有' ? `Next time: ${d.avoid}` : '',
-      d.follow && d.follow.length ? 'Follow up: ' + d.follow.join('、') : '', d.praise && d.praise.length ? 'Praise: ' + d.praise.join('、') : '']; };
-  const row = r => `<div class="row fbr"><span class="fbw">${r.grp ? gicon(r.grp) : ''}${mention(r.name)}${r.role === 'gl' ? '<span class="gl">Group Lead</span>' : ''}</span><span class="cap">${said(r).filter(Boolean).map(esc).join('\n')}</span></div>`;
-  // Against the plan's 60%: of the members and Group Leads who answered, how many say they grew
-  const asked = l.filter(r => r.role !== 'teacher' && r.data.grew && r.data.grew.length), grown = asked.filter(r => r.data.grew[0] !== '沒有明顯進步').length;
-  const sum = asked.length ? `<p class="cap fbs">${grown} of ${asked.length} members say they grew (${Math.round(grown / asked.length * 100)}%)</p>` : '';
-  return `<section class="sec"><p class="sh">Feedback</p>${sum}${l.length ? `<div class="list">${l.map(row).join('')}</div>` : '<p class="empty">No answers yet</p>'}</section>`;
+    if (r.role === 'teacher') return [[d.fit, d.area].filter(Boolean).join('・'), d.note];
+    if (r.role === 'member') return [[d.ok, d.why].filter(Boolean).join('・'), d.note];
+    return [d.promise ? `上次承諾「${d.promise}」${d.kept}` : '', d.diff === '有' ? `跟計劃不同：${d.reason}` : '跟計劃進行', d.diff === '有' ? `下次：${d.avoid}` : '',
+      d.follow && d.follow.length ? '跟進：' + d.follow.join('、') : '', d.praise && d.praise.length ? '讚賞：' + d.praise.join('、') : '']; };
+  const row = r => `<div class="row fbr"><span class="fbw">${mention(r.name)}${r.role === 'gl' ? '<span class="gl">Group Lead</span>' : ''}</span><span class="cap">${said(r).filter(Boolean).map(esc).join('\n')}</span>${tags(r.data)}</div>`;
+  // Against the plan's 60%: the share of members and Group Leads who say they grew, green once it reaches 60%
+  const asked = f.list.filter(r => r.role !== 'teacher' && r.data.grew && r.data.grew.length), pct = asked.length ? Math.round(asked.filter(r => r.data.grew[0] !== '沒有明顯進步').length / asked.length * 100) : null;
+  const meter = pct === null ? '' : `<div class="row fbg" role="img" aria-label="${pct}% say they grew; goal 60%"><span class="pct${pct >= 60 ? ' ok' : ''}">${pct}%</span><span class="meter"><i class="${pct >= 60 ? 'ok' : ''}" style="width:${pct}%"></i><b style="left:60%"></b></span></div>`;
+  // Teachers first, then one group at a time, as Duty Groups open: its Group Lead, then its members
+  const teachers = f.list.filter(r => r.role === 'teacher').map(row).join(''), groups = [...new Set(f.list.filter(r => r.grp).map(r => r.grp))].sort();
+  const grp = g => { const k = `${ev.id}:f:${g}`, open = !!S.open[k], l = f.list.filter(r => r.grp === g).sort((x, y) => (x.role === 'gl' ? 0 : 1) - (y.role === 'gl' ? 0 : 1) || x.at - y.at);
+    return (open ? `<div class="opened" data-shut="g:${esc(k)}">` : '') + `<button class="row g-ic gx${open ? ' open' : ''}" data-a="gx:${esc(k)}" aria-expanded="${open}">${keySym(g)}<span>${gname(g)}</span><span class="t">${l.length}</span>${ic('chev-d', 'go dis')}</button>` +
+      (open ? `<div class="gbody">${l.map(row).join('')}</div></div>` : ''); };
+  return `<section class="sec"><p class="sh">Feedback</p><div class="list">${meter}${teachers}${groups.map(grp).join('')}</div></section>`;
 }
 // Help (26/10/04, project doc "Help Page Handoff 261004"): the 38 how-to videos exactly as published. The signed-in account's
 // own section comes first, then Everyone; a search looks through all of them, by title and by the words readers type.
 // Everything here is English but the videos' own titles (decided 26/10/04 16:35).
-const HELP = [{"id": "assembly-time", "title": "查看集合時間和地點", "sec": ["A"], "search": ["集合", "幾點到", "喺邊度", "查集合時間和地點", "知道幾點、在哪裏集合", "查看集合時間和地點"], "video": "assembly-time.mp4", "poster": "assembly-time.png"}, {"id": "find-event-lead", "title": "聯絡活動負責主席", "sec": ["A"], "search": ["問邊個", "負責人", "Event Lead 係邊個", "找 Event Lead", "找負責這場活動的主席", "聯絡負責主席", "聯絡活動負責主席"], "video": "find-event-lead.mp4", "poster": "find-event-lead.png"}, {"id": "find-group-lead", "title": "聯絡組長", "sec": ["A"], "search": ["請假", "組長係邊個", "問邊個", "找自己的 Group Lead（組長）", "找我的組長", "聯絡組長"], "video": "find-group-lead.mp4", "poster": "find-group-lead.png"}, {"id": "download-script", "title": "下載講稿", "sec": ["A"], "search": ["下載講稿", "Word", "列印講稿", "邊份講稿", "下載講稿 Word 檔"], "video": "download-script.mp4", "poster": "download-script.png"}, {"id": "search-events", "title": "搜尋活動", "sec": ["A"], "search": ["搵活動", "search", "搜尋活動", "找一場活動"], "video": "search-events.mp4", "poster": "search-events.png"}, {"id": "change-photo", "title": "更換頭像", "sec": ["A"], "search": ["頭像", "相片", "profile photo", "換頭像", "換我的相片", "更換頭像"], "video": "change-photo.mp4", "poster": "change-photo.png"}, {"id": "sign-out", "title": "登出帳戶", "sec": ["A"], "search": ["登出", "sign out", "換帳戶", "登出帳戶"], "video": "sign-out.mp4", "poster": "sign-out.png"}, {"id": "sign-in", "title": "登入帳戶", "sec": ["A"], "search": ["登入", "揀名", "Who Are You", "密碼", "登入並揀名字", "登入，揀自己的名字", "登入組員帳戶", "揀錯名", "換人", "switch", "揀錯名，轉換身分", "揀錯名字，換回自己", "重新選擇名字", "重新選擇登入名字", "組長登入", "Group Lead 帳戶", "Group Lead（組長）登入", "登入組長帳戶", "代理組長登入", "Stand-in（代理組長）登入", "代組長登入", "登入代任帳戶", "登入代任組長帳戶", "Chair 登入", "老師登入 Editor", "登入並揀名字（Event Lead）", "主席登入", "登入主席帳戶", "老師登入", "老師密碼", "登入老師帳戶", "代任組長登入"], "video": "sign-in.mp4", "poster": "sign-in.png"}, {"id": "my-tasks", "title": "查看我的工作", "sec": ["M"], "search": ["我要做咩", "睇唔到我個名", "我嘅 task", "看我的 Task", "看我要做甚麼", "查看我的工作", "當日做咩", "On the Day", "幾點到位", "找當日要做的 Task", "看活動當日我要做甚麼", "查看當日工作", "查看活動當日工作"], "video": "my-tasks.mp4", "poster": "my-tasks.png"}, {"id": "new-script", "title": "撰寫講稿", "sec": ["M"], "search": ["開講稿", "新講稿", "New Script", "開新講稿", "開一份新講稿", "建立講稿", "改講稿", "寫稿", "邊份講稿", "司儀稿", "寫講稿（MC Line、Stage Direction）", "寫講稿、加讀音提示", "撰寫講稿", "刪段", "刪稿", "刪除講稿段落", "刪除講稿其中一段", "讀得獎名單", "頒獎名單入稿", "把得獎者名單加入講稿", "把得獎名單放入講稿", "插入得獎名單", "加入得獎名單", "在講稿加入得獎名單"], "video": "new-script.mp4", "poster": "new-script.png"}, {"id": "new-participant-list", "title": "建立得獎名單", "sec": ["M"], "search": ["得獎名單", "參與者名單", "Participant List", "開 Participant List（得獎名單）並加人", "開得獎名單，加入得獎者", "建立得獎名單"], "video": "new-participant-list.mp4", "poster": "new-participant-list.png"}, {"id": "roll-call-participants", "title": "記錄得獎者出席", "sec": ["M"], "search": ["點名", "到場", "剔名", "點名 Participant List", "得獎者到了，打剔", "記錄得獎者出席"], "video": "roll-call-participants.mp4", "poster": "roll-call-participants.png"}, {"id": "new-guest-list", "title": "建立嘉賓名單", "sec": ["M"], "search": ["嘉賓名單", "Guest List", "開 Guest List（嘉賓名單）並加嘉賓", "開嘉賓名單，加入嘉賓", "建立嘉賓名單"], "video": "new-guest-list.mp4", "poster": "new-guest-list.png"}, {"id": "roll-call-guests", "title": "記錄嘉賓出席", "sec": ["M"], "search": ["嘉賓到場", "點名嘉賓", "點名 Guest List", "嘉賓到了，打剔", "記錄嘉賓出席"], "video": "roll-call-guests.mp4", "poster": "roll-call-guests.png"}, {"id": "group-tasks", "title": "查看本組工作", "sec": ["L"], "search": ["本組工作", "組長睇 task", "看本組 Task", "看我組要做的工作", "查看本組工作"], "video": "group-tasks.mp4", "poster": "group-tasks.png"}, {"id": "add-member-to-task", "title": "分配組員工作", "sec": ["L", "E"], "search": ["分工", "派 task", "加人", "編更", "把組員加到 Task", "把工作分給組員", "分配工作", "分配組員工作", "取消分工", "移走組員", "把組員從 Task 移走", "把組員從工作移走", "移除工作負責人", "當日改人", "即場派 task", "當日在 Rundown 分配 Task", "活動當日分工作", "分配當日工作", "Chair 跟 task", "紅色數字", "把人加到 Task（包括 Chair）", "把人加到工作（包括主席）", "指派負責人", "指派工作負責人"], "video": "add-member-to-task.mp4", "poster": "add-member-to-task.png"}, {"id": "tick-task", "title": "記錄組員出席", "sec": ["L"], "search": ["剔名", "記出席", "點名組員", "attendance", "剔 Task（記出席）", "組員做完，打剔（記出席）", "記錄組員出席", "剔錯", "取消出席", "取消剔 Task", "剔錯了，取消", "更正出席紀錄"], "video": "tick-task.mp4", "poster": "tick-task.png"}, {"id": "mark-on-leave", "title": "記錄組員請假", "sec": ["L"], "search": ["請假", "病假", "On Leave", "唔嚟", "標 On Leave（請假）", "組員請假，標記請假", "記錄組員請假", "取消請假", "取消 On Leave", "取消請假紀錄"], "video": "mark-on-leave.mp4", "poster": "mark-on-leave.png"}, {"id": "stand-in", "title": "委任代任組長", "sec": ["L"], "search": ["代理組長", "Stand-in", "組長唔得閒", "揀 Stand-in（代理組長）", "我來不到，找組員代我做組長", "委任代任組長", "取消代理組長", "結束 Stand-in（代理組長）", "結束代組長", "結束代任安排"], "video": "stand-in.mp4", "poster": "stand-in.png"}, {"id": "export-attendance", "title": "下載出席紀錄", "sec": ["L", "E"], "search": ["出席紀錄", "下載出席", "Excel", "Export Attendance（本組出席紀錄）", "下載我組的出席紀錄", "下載本組出席紀錄", "全年出席", "List of Members", "Export Attendance（全部出席紀錄）", "下載全部出席紀錄", "下載全年出席紀錄"], "video": "export-attendance.mp4", "poster": "export-attendance.png"}, {"id": "new-event", "title": "新增活動", "sec": ["E"], "search": ["開活動", "新活動", "New Event", "新增活動", "開一場新活動"], "video": "new-event.mp4", "poster": "new-event.png"}, {"id": "edit-event", "title": "修改活動資料", "sec": ["E"], "search": ["改時間", "改地點", "改 Event Lead", "Remarks", "改活動資料", "修改活動資料", "負責老師", "跟進老師", "加老師", "設 Leading／Supporting Teacher", "填負責老師", "指定負責老師", "指定活動負責老師"], "video": "edit-event.mp4", "poster": "edit-event.png"}, {"id": "copy-teacher-account", "title": "管理老師帳戶", "sec": ["E"], "search": ["老師帳戶", "老師密碼", "send 老師登入", "複製新老師帳戶", "把帳戶傳給新老師", "提供老師登入資料", "刪老師帳戶", "刪除老師帳戶"], "video": "copy-teacher-account.mp4", "poster": "copy-teacher-account.png"}, {"id": "add-duty-group", "title": "安排當值小組", "sec": ["E"], "search": ["加當值組", "排組", "Duty Group", "Add Duty Group（加當值組）", "派一組當值", "安排當值小組", "換組", "調組", "Covering", "換 Duty Group（當值組）", "換另一組當值", "更換當值小組", "刪當值組", "移除 Duty Group（當值組）", "取消一組的當值", "取消小組當值"], "video": "add-duty-group.mp4", "poster": "add-duty-group.png"}, {"id": "add-task-before", "title": "新增小組工作", "sec": ["E"], "search": ["加 task", "加工作", "事前工作", "Add Task（Before the Event）", "加活動前的工作", "新增活動前工作", "當日 task", "時段工作", "Add Task（On the Day）", "加活動當日的工作", "新增當日工作", "刪 task", "刪除 Task", "刪除工作"], "video": "add-task-before.mp4", "poster": "add-task-before.png"}, {"id": "move-task", "title": "改派小組工作", "sec": ["E"], "search": ["拖 task", "移 task", "Unassigned", "問號組", "移動 Task（換組、換時段、處理 Unassigned）", "把工作搬去另一組或另一個時間", "轉交工作", "改派小組工作"], "video": "move-task.mp4", "poster": "move-task.png"}, {"id": "tag-in-remark", "title": "在備註標示相關同學", "sec": ["E"], "search": ["@人", "tag 人", "標記", "在 Remark 用 @ 標記人", "在備註提及某人", "提及同學", "在備註標示相關同學"], "video": "tag-in-remark.mp4", "poster": "tag-in-remark.png"}, {"id": "write-rundown", "title": "編寫活動流程", "sec": ["E"], "search": ["程序表", "加時段", "Add Line", "編寫 Rundown（程序表）", "寫活動當日的流程", "編寫活動流程", "刪時段", "調次序", "移動或刪除 Rundown line", "搬動或刪除流程其中一行", "調整活動流程"], "video": "write-rundown.mp4", "poster": "write-rundown.png"}, {"id": "add-document", "title": "新增活動文件", "sec": ["E"], "search": ["加文件", "開講稿", "開名單", "Add Document", "加文件（講稿、名單）", "新增文件", "新增活動文件", "刪講稿", "刪名單", "刪除整份文件", "刪除文件", "刪除活動文件"], "video": "add-document.mp4", "poster": "add-document.png"}, {"id": "discard-changes", "title": "放棄未儲存修改", "sec": ["E"], "search": ["改錯", "取消修改", "Discard", "放棄修改", "不儲存，放棄修改", "放棄未儲存修改"], "video": "discard-changes.mp4", "poster": "discard-changes.png"}, {"id": "restore-version", "title": "還原活動舊版本", "sec": ["E"], "search": ["改動紀錄", "還原", "undo", "History", "看 History 並還原版本", "看修改紀錄，還原舊版本", "還原舊版本", "還原活動舊版本"], "video": "restore-version.mp4", "poster": "restore-version.png"}, {"id": "delete-event", "title": "刪除活動", "sec": ["E"], "search": ["刪活動", "取消活動", "刪除活動", "救返活動", "刪錯活動", "Recently Deleted", "還原刪除了的活動", "救回刪除了的活動", "復原已刪活動"], "video": "delete-event.mp4", "poster": "delete-event.png"}, {"id": "edit-roster", "title": "修改組員名單", "sec": ["E"], "search": ["加組員", "名單", "roster", "Users & Groups", "改組員名單", "修改組員名單", "換組長", "改 Group Lead（組長）", "更換組長"], "video": "edit-roster.mp4", "poster": "edit-roster.png"}, {"id": "change-password", "title": "管理帳戶密碼", "sec": ["E"], "search": ["改密碼", "重設密碼", "改帳戶密碼", "更改密碼", "更改帳戶密碼", "睇密碼", "忘記密碼", "看帳戶密碼", "查看密碼", "查看帳戶密碼"], "video": "change-password.mp4", "poster": "change-password.png"}, {"id": "edit-chairs-editors", "title": "管理主席及老師名單", "sec": ["E"], "search": ["加 Chair", "加 CA 老師", "加減 Chair 或 Editor 老師", "加減主席或老師", "管理主席及老師名單"], "video": "edit-chairs-editors.mp4", "poster": "edit-chairs-editors.png"}, {"id": "set-stand-in-for-group", "title": "委任代任組長", "sec": ["E"], "search": ["幫組長揀代理組長", "為某組設 Stand-in（代理組長）", "幫某組找代組長", "委任代任組長"], "video": "set-stand-in-for-group.mp4", "poster": "set-stand-in-for-group.png"}, {"id": "connect-applications", "title": "匯入老師申請", "sec": ["E"], "search": ["老師申請", "CA Support 表格", "Google Sheet", "連接 Applications", "連接申請表", "匯入老師申請"], "video": "connect-applications.mp4", "poster": "connect-applications.png"}, {"id": "view-students", "title": "查看活動安排", "sec": ["T"], "search": ["邊個學生負責", "學生名單", "看負責學生", "看負責的學生", "查看負責學生", "查看當值學生", "活動安排", "流程", "看 Tasks 和 Rundown", "看工作和流程", "查看工作及流程", "查看活動工作及流程"], "video": "view-students.mp4", "poster": "view-students.png"}], HELP_SEC = {A: 'Everyone', M: 'Members', L: 'Group Leads', E: 'Chairs', T: 'Teachers'};
+const HELP = [{"id": "assembly-time", "title": "查看集合時間和地點", "sec": ["A"], "search": ["集合", "幾點到", "喺邊度", "查集合時間和地點", "知道幾點、在哪裏集合", "查看集合時間和地點"], "video": "assembly-time.mp4", "poster": "assembly-time.png"}, {"id": "find-event-lead", "title": "聯絡活動負責主席", "sec": ["A"], "search": ["問邊個", "負責人", "Event Lead 係邊個", "找 Event Lead", "找負責這場活動的主席", "聯絡負責主席", "聯絡活動負責主席"], "video": "find-event-lead.mp4", "poster": "find-event-lead.png"}, {"id": "find-group-lead", "title": "聯絡組長", "sec": ["A"], "search": ["請假", "組長係邊個", "問邊個", "找自己的 Group Lead（組長）", "找我的組長", "聯絡組長"], "video": "find-group-lead.mp4", "poster": "find-group-lead.png"}, {"id": "download-script", "title": "下載講稿", "sec": ["A"], "search": ["下載講稿", "Word", "列印講稿", "邊份講稿", "下載講稿 Word 檔"], "video": "download-script.mp4", "poster": "download-script.png"}, {"id": "search-events", "title": "搜尋活動", "sec": ["A"], "search": ["搵活動", "search", "搜尋活動", "找一場活動"], "video": "search-events.mp4", "poster": "search-events.png"}, {"id": "change-photo", "title": "更換頭像", "sec": ["A"], "search": ["頭像", "相片", "profile photo", "換頭像", "換我的相片", "更換頭像"], "video": "change-photo.mp4", "poster": "change-photo.png"}, {"id": "sign-out", "title": "登出帳戶", "sec": ["A"], "search": ["登出", "sign out", "換帳戶", "登出帳戶"], "video": "sign-out.mp4", "poster": "sign-out.png"}, {"id": "sign-in", "title": "登入帳戶", "sec": ["A"], "search": ["登入", "揀名", "Who Are You", "密碼", "登入並揀名字", "登入，揀自己的名字", "登入組員帳戶", "揀錯名", "換人", "switch", "揀錯名，轉換身分", "揀錯名字，換回自己", "重新選擇名字", "重新選擇登入名字", "組長登入", "Group Lead 帳戶", "Group Lead（組長）登入", "登入組長帳戶", "代理組長登入", "Stand-in（代理組長）登入", "代組長登入", "登入代任帳戶", "登入代任組長帳戶", "Chair 登入", "老師登入 Editor", "登入並揀名字（Event Lead）", "主席登入", "登入主席帳戶", "老師登入", "老師密碼", "登入老師帳戶", "代任組長登入"], "video": "sign-in.mp4", "poster": "sign-in.png"}, {"id": "my-tasks", "title": "查看我的工作", "sec": ["M"], "search": ["我要做咩", "睇唔到我個名", "我嘅 task", "看我的 Task", "看我要做甚麼", "查看我的工作", "當日做咩", "On the Day", "幾點到位", "找當日要做的 Task", "看活動當日我要做甚麼", "查看當日工作", "查看活動當日工作"], "video": "my-tasks.mp4", "poster": "my-tasks.png"}, {"id": "new-script", "title": "撰寫講稿", "sec": ["M"], "search": ["開講稿", "新講稿", "New Script", "開新講稿", "開一份新講稿", "建立講稿", "改講稿", "寫稿", "邊份講稿", "司儀稿", "寫講稿（MC Line、Stage Direction）", "寫講稿、加讀音提示", "撰寫講稿", "刪段", "刪稿", "刪除講稿段落", "刪除講稿其中一段", "讀得獎名單", "頒獎名單入稿", "把得獎者名單加入講稿", "把得獎名單放入講稿", "插入得獎名單", "加入得獎名單", "在講稿加入得獎名單"], "video": "new-script.mp4", "poster": "new-script.png"}, {"id": "new-participant-list", "title": "建立得獎名單", "sec": ["M"], "search": ["得獎名單", "參與者名單", "Participant List", "開 Participant List（得獎名單）並加人", "開得獎名單，加入得獎者", "建立得獎名單"], "video": "new-participant-list.mp4", "poster": "new-participant-list.png"}, {"id": "roll-call-participants", "title": "記錄得獎者出席", "sec": ["M"], "search": ["點名", "到場", "剔名", "點名 Participant List", "得獎者到了，打剔", "記錄得獎者出席"], "video": "roll-call-participants.mp4", "poster": "roll-call-participants.png"}, {"id": "new-guest-list", "title": "建立嘉賓名單", "sec": ["M"], "search": ["嘉賓名單", "Guest List", "開 Guest List（嘉賓名單）並加嘉賓", "開嘉賓名單，加入嘉賓", "建立嘉賓名單"], "video": "new-guest-list.mp4", "poster": "new-guest-list.png"}, {"id": "roll-call-guests", "title": "記錄嘉賓出席", "sec": ["M"], "search": ["嘉賓到場", "點名嘉賓", "點名 Guest List", "嘉賓到了，打剔", "記錄嘉賓出席"], "video": "roll-call-guests.mp4", "poster": "roll-call-guests.png"}, {"id": "group-tasks", "title": "查看本組工作", "sec": ["L"], "search": ["本組工作", "組長睇 task", "看本組 Task", "看我組要做的工作", "查看本組工作"], "video": "group-tasks.mp4", "poster": "group-tasks.png"}, {"id": "add-member-to-task", "title": "分配組員工作", "sec": ["L", "E"], "search": ["分工", "派 task", "加人", "編更", "把組員加到 Task", "把工作分給組員", "分配工作", "分配組員工作", "取消分工", "移走組員", "把組員從 Task 移走", "把組員從工作移走", "移除工作負責人", "當日改人", "即場派 task", "當日在 Rundown 分配 Task", "活動當日分工作", "分配當日工作", "Chair 跟 task", "紅色數字", "把人加到 Task（包括 Chair）", "把人加到工作（包括主席）", "指派負責人", "指派工作負責人"], "video": "add-member-to-task.mp4", "poster": "add-member-to-task.png"}, {"id": "tick-task", "title": "記錄組員出席", "sec": ["L"], "search": ["剔名", "記出席", "點名組員", "attendance", "剔 Task（記出席）", "組員做完，打剔（記出席）", "記錄組員出席", "剔錯", "取消出席", "取消剔 Task", "剔錯了，取消", "更正出席紀錄"], "video": "tick-task.mp4", "poster": "tick-task.png"}, {"id": "mark-on-leave", "title": "記錄組員請假", "sec": ["L"], "search": ["請假", "病假", "On Leave", "唔嚟", "標 On Leave（請假）", "組員請假，標記請假", "記錄組員請假", "取消請假", "取消 On Leave", "取消請假紀錄"], "video": "mark-on-leave.mp4", "poster": "mark-on-leave.png"}, {"id": "stand-in", "title": "委任代任組長", "sec": ["L"], "search": ["代理組長", "Stand-in", "組長唔得閒", "揀 Stand-in（代理組長）", "我來不到，找組員代我做組長", "委任代任組長", "取消代理組長", "結束 Stand-in（代理組長）", "結束代組長", "結束代任安排"], "video": "stand-in.mp4", "poster": "stand-in.png"}, {"id": "export-attendance", "title": "下載出席紀錄", "sec": ["L", "E"], "search": ["出席紀錄", "下載出席", "Excel", "Export Attendance（本組出席紀錄）", "下載我組的出席紀錄", "下載本組出席紀錄", "全年出席", "List of Members", "Export Attendance（全部出席紀錄）", "下載全部出席紀錄", "下載全年出席紀錄"], "video": "export-attendance.mp4", "poster": "export-attendance.png"}, {"id": "new-event", "title": "新增活動", "sec": ["E"], "search": ["開活動", "新活動", "New Event", "新增活動", "開一場新活動"], "video": "new-event.mp4", "poster": "new-event.png"}, {"id": "edit-event", "title": "修改活動資料", "sec": ["E"], "search": ["改時間", "改地點", "改 Event Lead", "Remarks", "改活動資料", "修改活動資料", "負責老師", "跟進老師", "加老師", "設 Leading／Supporting Teacher", "填負責老師", "指定負責老師", "指定活動負責老師"], "video": "edit-event.mp4", "poster": "edit-event.png"}, {"id": "copy-teacher-account", "title": "管理老師帳戶", "sec": ["E"], "search": ["老師帳戶", "老師密碼", "send 老師登入", "複製新老師帳戶", "把帳戶傳給新老師", "提供老師登入資料", "刪老師帳戶", "刪除老師帳戶"], "video": "copy-teacher-account.mp4", "poster": "copy-teacher-account.png"}, {"id": "add-duty-group", "title": "安排當值小組", "sec": ["E"], "search": ["加當值組", "排組", "Duty Group", "Add Duty Group（加當值組）", "派一組當值", "安排當值小組", "換組", "調組", "Covering", "換 Duty Group（當值組）", "換另一組當值", "更換當值小組", "刪當值組", "移除 Duty Group（當值組）", "取消一組的當值", "取消小組當值"], "video": "add-duty-group.mp4", "poster": "add-duty-group.png"}, {"id": "add-task-before", "title": "新增小組工作", "sec": ["E"], "search": ["加 task", "加工作", "事前工作", "Add Task（Before the Event）", "加活動前的工作", "新增活動前工作", "當日 task", "時段工作", "Add Task（On the Day）", "加活動當日的工作", "新增當日工作", "刪 task", "刪除 Task", "刪除工作"], "video": "add-task-before.mp4", "poster": "add-task-before.png"}, {"id": "move-task", "title": "改派小組工作", "sec": ["E"], "search": ["拖 task", "移 task", "Unassigned", "問號組", "移動 Task（換組、換時段、處理 Unassigned）", "把工作搬去另一組或另一個時間", "轉交工作", "改派小組工作"], "video": "move-task.mp4", "poster": "move-task.png"}, {"id": "tag-in-remark", "title": "在備註標示相關同學", "sec": ["E"], "search": ["@人", "tag 人", "標記", "在 Remark 用 @ 標記人", "在備註提及某人", "提及同學", "在備註標示相關同學"], "video": "tag-in-remark.mp4", "poster": "tag-in-remark.png"}, {"id": "write-rundown", "title": "編寫活動流程", "sec": ["E"], "search": ["程序表", "加時段", "Add Line", "編寫 Rundown（程序表）", "寫活動當日的流程", "編寫活動流程", "刪時段", "調次序", "移動或刪除 Rundown line", "搬動或刪除流程其中一行", "調整活動流程"], "video": "write-rundown.mp4", "poster": "write-rundown.png"}, {"id": "add-document", "title": "新增活動文件", "sec": ["E"], "search": ["加文件", "開講稿", "開名單", "Add Document", "加文件（講稿、名單）", "新增文件", "新增活動文件", "刪講稿", "刪名單", "刪除整份文件", "刪除文件", "刪除活動文件"], "video": "add-document.mp4", "poster": "add-document.png"}, {"id": "discard-changes", "title": "放棄未儲存修改", "sec": ["E"], "search": ["改錯", "取消修改", "Discard", "放棄修改", "不儲存，放棄修改", "放棄未儲存修改"], "video": "discard-changes.mp4", "poster": "discard-changes.png"}, {"id": "restore-version", "title": "還原活動舊版本", "sec": ["E"], "search": ["改動紀錄", "還原", "undo", "History", "看 History 並還原版本", "看修改紀錄，還原舊版本", "還原舊版本", "還原活動舊版本"], "video": "restore-version.mp4", "poster": "restore-version.png"}, {"id": "delete-event", "title": "刪除活動", "sec": ["E"], "search": ["刪活動", "取消活動", "刪除活動", "救返活動", "刪錯活動", "Recently Deleted", "還原刪除了的活動", "救回刪除了的活動", "復原已刪活動"], "video": "delete-event.mp4", "poster": "delete-event.png"}, {"id": "edit-roster", "title": "修改組員名單", "sec": ["E"], "search": ["加組員", "名單", "roster", "Users & Groups", "改組員名單", "修改組員名單", "換組長", "改 Group Lead（組長）", "更換組長"], "video": "edit-roster.mp4", "poster": "edit-roster.png"}, {"id": "change-password", "title": "管理帳戶密碼", "sec": ["E"], "search": ["改密碼", "重設密碼", "改帳戶密碼", "更改密碼", "更改帳戶密碼", "睇密碼", "忘記密碼", "看帳戶密碼", "查看密碼", "查看帳戶密碼"], "video": "change-password.mp4", "poster": "change-password.png"}, {"id": "edit-chairs-editors", "title": "管理主席及老師名單", "sec": ["E"], "search": ["加 Chair", "加 CA 老師", "加減 Chair 或 Editor 老師", "加減主席或老師", "管理主席及老師名單"], "video": "edit-chairs-editors.mp4", "poster": "edit-chairs-editors.png"}, {"id": "set-stand-in-for-group", "title": "委任代任組長", "sec": ["E"], "search": ["幫組長揀代理組長", "為某組設 Stand-in（代理組長）", "幫某組找代組長", "委任代任組長"], "video": "set-stand-in-for-group.mp4", "poster": "set-stand-in-for-group.png"}, {"id": "connect-applications", "title": "匯入老師申請", "sec": ["E"], "search": ["老師申請", "CA Support 表格", "Google Sheet", "連接 Applications", "連接申請表", "匯入老師申請"], "video": "connect-applications.mp4", "poster": "connect-applications.png"}, {"id": "view-students", "title": "查看活動安排", "sec": ["T"], "search": ["邊個學生負責", "學生名單", "看負責學生", "看負責的學生", "查看負責學生", "查看當值學生", "活動安排", "流程", "看 Tasks 和 Rundown", "看工作和流程", "查看工作及流程", "查看活動工作及流程"], "video": "view-students.mp4", "poster": "view-students.png"}], HELP_SEC = {A: 'Everyone', M: 'Members', L: 'Group Lead', E: 'Event Lead', T: 'Teachers'};
 const helpSecs = () => { const a = ACCT(); return !a ? [] : a.type === 'lead' ? ['E'] : a.type === 'gl' ? ['L'] : a.type === 'group' ? ['M'] : ['T']; };
 function pHelp() {
   const q = S.find.trim().toLowerCase(), hit = v => !q || [v.title, ...v.search].some(w => w.toLowerCase().includes(q)), seen = new Set();
-  const row = v => `<button class="row g-hv" data-a="hv:${v.id}"><img class="hp" src="/help/${v.poster}" alt="" loading="lazy"><span>${esc(v.title)}</span></button>`;
+  // A row is the title alone, after the video symbol: the first frame was mostly a blank page and told nothing (review 26/10/04)
+  const row = v => `<button class="row g-hv" data-a="hv:${v.id}">${sym('video', '')}<span>${esc(v.title)}</span></button>`;
   const secs = (q ? ['A', 'M', 'L', 'E', 'T'] : [...helpSecs(), 'A']).map(k => { const l = HELP.filter(v => v.sec.includes(k) && hit(v) && !seen.has(v.id)); l.forEach(v => seen.add(v.id));
     return l.length ? `<section class="sec"><p class="sh">${HELP_SEC[k]}</p><div class="list">${l.map(row).join('')}</div></section>` : ''; }).join('');
   setTimeout(helpCheck, 0);
-  return {title: 'Help', search: 'help', l: backBtn(), body: `<h1 class="hh"><span>Help</span><button class="nb round glass" data-a="hdl" aria-label="${HDL.s === 'done' ? 'Downloaded' : HDL.s === 'run' ? 'Stop Download' : 'Download'}">${dlInner()}</button></h1>${secs || '<p class="empty sec">No results</p>'}`};
+  // Download sits with Back on the top row, as Export sits beside Edit on an event
+  return {title: 'Help', search: 'help', l: backBtn(), r: `<button class="nb round glass" data-a="hdl" aria-label="${HDL.s === 'done' ? 'Downloaded' : HDL.s === 'run' ? 'Stop Download' : 'Download'}">${dlInner()}</button>`, body: `<h1>Help</h1>${secs || '<p class="empty sec">No results</p>'}`};
 }
 // Download for offline: every video and poster goes into the browser's cache (never handed out as files). The symbol shows
 // what the cache really holds each time the page opens, since iOS may clear it after a week without a visit.
@@ -1138,23 +1169,22 @@ function helpOpen(id) {
   const d = document.createElement('div'); d.className = 'hvbg';
   d.innerHTML = `<div class="hv" role="dialog" aria-modal="true" aria-label="${esc(v.title)}"><button class="nb round glass hvx" aria-label="Close">${ic('x')}</button><video src="/help/${v.video}" poster="/help/${v.poster}" muted playsinline autoplay loop preload="none"></video><div class="hvc glass"><button class="hvp" aria-label="Pause">${ic('pause')}</button><input class="hvr" type="range" min="0" max="1000" value="0" step="1" aria-label="Progress"><span class="hvt t">0:00</span></div></div>`;
   document.body.appendChild(d); document.documentElement.classList.add('locked');
-  const vid = d.querySelector('video'), cap = d.querySelector('.hvc'), pb = d.querySelector('.hvp'), bar = d.querySelector('.hvr'), tl = d.querySelector('.hvt');
-  let hideT = 0, drag = false;
-  const show = () => { cap.classList.remove('hide'); clearTimeout(hideT); if (!vid.paused && !drag) hideT = setTimeout(() => cap.classList.add('hide'), 2500); };
+  const vid = d.querySelector('video'), pb = d.querySelector('.hvp'), bar = d.querySelector('.hvr'), tl = d.querySelector('.hvt');
+  let drag = false;
   const mmss = x => { x = Math.max(0, Math.ceil(x || 0)); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}`; };
   const tick = () => { const D = vid.duration || 0; if (!drag && D) bar.value = Math.round(vid.currentTime / D * 1000); tl.textContent = '-' + mmss(D - vid.currentTime); };
-  const mark = () => { pb.innerHTML = ic(vid.paused ? 'play' : 'pause'); pb.setAttribute('aria-label', vid.paused ? 'Play' : 'Pause'); show(); };
+  const mark = () => { pb.innerHTML = ic(vid.paused ? 'play' : 'pause'); pb.setAttribute('aria-label', vid.paused ? 'Play' : 'Pause'); };
   vid.addEventListener('timeupdate', tick); vid.addEventListener('loadedmetadata', tick); vid.addEventListener('play', mark); vid.addEventListener('pause', mark);
-  vid.addEventListener('click', show);
+  vid.addEventListener('click', () => { if (vid.paused) vid.play().catch(() => {}); else vid.pause(); });  // a tap on the video plays or pauses it
   pb.addEventListener('click', () => { if (vid.paused) vid.play().catch(() => {}); else vid.pause(); });
-  bar.addEventListener('input', () => { drag = true; clearTimeout(hideT); if (vid.duration) { vid.currentTime = bar.value / 1000 * vid.duration; tick(); } });
-  bar.addEventListener('change', () => { drag = false; show(); });
+  bar.addEventListener('input', () => { drag = true; if (vid.duration) { vid.currentTime = bar.value / 1000 * vid.duration; tick(); } });
+  bar.addEventListener('change', () => { drag = false; });
   d.querySelector('.hvx').addEventListener('click', helpClose);
   d.addEventListener('click', e => { if (e.target === d) helpClose(); });
   d.addEventListener('touchmove', e => { if (!e.target.closest('.hvr')) e.preventDefault(); }, {passive: false});
-  HV = {d, stop: () => clearTimeout(hideT)}; show(); vid.play().catch(() => {});  // started from the tap, as well as by autoplay
+  HV = {d}; vid.play().catch(() => {});  // started from the tap, as well as by autoplay
 }
-function helpClose() { if (!HV) return; HV.stop(); HV.d.remove(); HV = null; if (!(S.sheet || S.menu || S.alert)) document.documentElement.classList.remove('locked'); }
+function helpClose() { if (!HV) return; HV.d.remove(); HV = null; if (!(S.sheet || S.menu || S.alert)) document.documentElement.classList.remove('locked'); }
 document.addEventListener('keydown', e => { if (HV && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); helpClose(); } }, true);
 function pEvents() {
   const q = S.find.trim().toLowerCase();
@@ -1246,25 +1276,28 @@ const keyName = k => k === 'All' ? 'Everyone' : k === UNASSIGNED ? 'Unassigned' 
 function dutyGroups(ev, ed) {
   const keys = groupKeys(ev, ed);
   if (ed) {
-    const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
+    const lineOpts = t => (rowOf(ev, t.row) ? '' : '<option value="" disabled selected hidden>Line</option>') + ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
     const row = t => `<div class="row g-tme" data-drag="task" data-id="${t.id}" data-in><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
-      <span>${t.row ? `<span class="fl lpk">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
+      <span>${t.row ? `<span class="fl lpk${rowOf(ev, t.row) ? '' : ' noline'}">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl${(t.remark || '').trim() ? '' : ' empty'}">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
     // One group is edited at a time (26/10/04): each group is a disclosure, as in reading, and only the open one shows its tasks
     // and its own Add Task. The rows stay one flat list, so a task dragged onto a closed group's row moves into that group.
     let shutKey = '';
     const body = keys.map(k => { const gr = ev.groups.find(x => x.name === k), l = sorted(ev, tasksOfKey(ev, k)), cov = gr && gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
       const key = `${ev.id}:g:${k}`, open = !!S.open[key], inA = open ? ' data-in' : '', chev = ic('chev-d', 'go dis');
       if (open) shutKey = 'g:' + key;
-      const head = gr ? `<div class="row g-p gh gx${open ? ' open' : ''}" data-head="g" data-g="${esc(k)}" data-a="gx:${esc(key)}" aria-expanded="${open}"${inA} tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) auto 18px">${keySym(k)}<span><span class="fl">${pick(`dg:${k}`, gname(k), dutyOpts(ev, kind(k), k), 'Group')}</span>${cov}</span>${rmB('askgroup:' + k, 'Remove duty group')}${chev}</div>`
+      // The group's row opens and closes it, as in reading (review 26/10/04); changing or removing the group is inside
+      const head = gr ? `<div class="row g-p gh gx${open ? ' open' : ''}" data-head="g" data-g="${esc(k)}" data-a="gx:${esc(key)}" aria-expanded="${open}"${inA} tabindex="-1" style="grid-template-columns:22px minmax(0,1fr) 18px">${keySym(k)}<span>${gname(k)}${cov}</span>${chev}</div>`
         : `<div class="row g-p gh gx${open ? ' open' : ''}" data-head="g" data-g="${esc(k)}" data-a="gx:${esc(key)}" aria-expanded="${open}"${inA} style="grid-template-columns:22px minmax(0,1fr) 18px">${keySym(k)}<span>${keyName(k)}</span>${chev}</div>`;
       if (!open) return head;
       const bl = l.filter(t => !t.row), dl = l.filter(t => t.row);
-      return head + `<p class="sub${bl.length ? '' : ' emp'}" data-head="before" data-g="${esc(k)}" data-in>Before the Event</p>${bl.map(row).join('')}<p class="sub${dl.length ? '' : ' emp'}" data-head="day" data-g="${esc(k)}" data-in>On the Day</p>${dl.map(row).join('')}` +
-        addB(`menu:addtask:${k}`, 'Add Task').replace('class="row add', 'data-in class="row add'); }).join('');
+      const swap = gr ? `<div class="row g-kv" data-in style="grid-template-columns:minmax(0,1fr) auto"><span>Group</span><span class="fl">${pick(`dg:${k}`, gname(k), dutyOpts(ev, kind(k), k), 'Group')}</span></div>` : '';
+      const drop = gr ? `<button class="row g-sw danger" data-in data-a="askgroup:${esc(k)}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>Remove Duty Group</span></button>` : '';
+      return head + swap + `<p class="sub${bl.length ? '' : ' emp'}" data-head="before" data-g="${esc(k)}" data-in>Before the Event</p>${bl.map(row).join('')}<p class="sub${dl.length ? '' : ' emp'}" data-head="day" data-g="${esc(k)}" data-in>On the Day</p>${dl.map(row).join('')}` +
+        addB(`menu:addtask:${k}`, 'Add Task').replace('class="row add', 'data-in class="row add') + drop; }).join('');
     return `<section class="sec"><p class="sh">Duty Groups</p><div class="list tasks gl"${shutKey ? ` data-range="${esc(shutKey)}"` : ''}>${body}</div><div class="list">${addB('menu:addgroup', 'Add Duty Group')}</div></section>`;
   }
   if (!keys.length) return `<section class="sec"><p class="sh">Duty Groups</p><p class="empty">No duty groups yet</p></section>`;
-  const read = (t, when) => `<button class="row g-tm" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
+  const read = (t, when) => `<button class="row g-tm" data-a="sheet:assign:${t.id}" style="grid-template-columns:var(--tc) minmax(0,1fr) 18px">${dot(`${ev.id}:t:${t.id}`)}<span class="t">${t.row && !rowOf(ev, t.row) ? sym('list', 'No line yet', 'ic noline') : when}</span><span>${lineOf(ev, t)}${esc(t.text)}${remark(t)}${names(t)}</span>${ic('chev-r', 'go')}</button>`;
   const rows = keys.map(k => { const gr = ev.groups.find(x => x.name === k), l = tasksOfKey(ev, k), open = !!S.open[`${ev.id}:g:${k}`];
     const n = k === 'All' ? 0 : l.filter(t => !t.names.length).length, cov = gr && gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
     const changed = l.some(t => isNew(`${ev.id}:t:${t.id}`)) && !open ? '<span class="udot" role="img" aria-label="Updated"></span>' : '';
@@ -1298,7 +1331,7 @@ function yourPart(ev, ed) {
 // tasks to remove, and Add Task to give another.
 // One open at a time in a list (26/10/03): opening a duty group or a member closes the one open beside it
 function toggleOpen(key) {
-  const was = !!S.open[key], pre = key.replace(/^([^:]+:[gm]:).*$/, '$1');
+  const was = !!S.open[key], pre = key.replace(/^([^:]+:[gmf]:).*$/, '$1');
   Object.keys(S.open).forEach(k => { if (k.startsWith(pre)) delete S.open[k]; });
   if (!was) S.open[key] = true;
 }
@@ -1479,13 +1512,18 @@ function sheet() {
   if (s.k === 'standin') {
     const g = s.g, x = STANDINS.find(y => y.grp === g), made = S.made && S.made.grp === g ? S.made : null;
     // The Stand-in lasts until the end of one duty day: the group's only upcoming duty, or the one chosen here (Build Brief 261004 item 11)
-    const duties = standinDuties(g), evId = duties.length === 1 ? duties[0].id : S.pickEv;
-    const dutySec = duties.length === 1 ? '' : `<section class="sec"><p class="sh">Choose a Duty</p>${duties.length ? `<div class="list">${duties.map(e => `<button class="row g-opt" data-a="standinev:${e.id}"><span>${evTitle(e)}</span>${check(S.pickEv === e.id)}</button>`).join('')}</div>` : '<p class="empty">No upcoming duty</p>'}</section>`;
+    // One choice per step (review 26/10/04): with several upcoming duties, the duty first, then Next to the member. Duties read as
+    // the Events list does: date and weekday in one column, the name beside it.
+    const duties = standinDuties(g), evId = duties.length === 1 ? duties[0].id : S.pickEv, dutyStep = duties.length !== 1 && !S.siMember;
+    const dutyRow = e => `<button class="row g-ev" data-a="standinev:${e.id}"><span class="t">${dmy(e.date)}${wd(e.date)}</span><span>${esc(e.name)}</span><span class="tail">${check(S.pickEv === e.id)}</span></button>`;
+    const dutySec = `<section class="sec"><p class="sh">Choose a Duty</p>${duties.length ? `<div class="list">${duties.map(dutyRow).join('')}</div>` : '<p class="empty">No upcoming duty</p>'}</section>`;
+    const left = !dutyStep && duties.length > 1 ? `<button class="nb round glass" data-a="standinstep:duty" aria-label="Back">${ic('back')}</button>` : close;
     const kv = (k, val) => `<div class="row" style="grid-template-columns:6em minmax(0,1fr)"><span class="t">${k}</span><span>${val}</span></div>`;
     h = made ? bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + `<div class="list">${kv('Member', esc(made.person))}${kv('Account', esc(made.id))}${kv('Password', esc(made.password))}${kv('Until', hkAt(made.until))}</div><button class="nb pri" style="width:100%;margin-top:16px" data-a="copyacct:standin">Copy</button>`
-      : bar(close, `Stand-in<span class="s2">${gname(g)}</span>`, '') + (x ? `<div class="list"><div class="row g-acct">${sym('key', 'Account')}<span>${esc(x.person)}<span class="cap">${esc(x.id)} · Until ${hkAt(x.until)}</span></span>${isLead() ? pwView(x.id, false) : ''}</div><button class="row g-sw danger" data-a="standinoff:${g}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>End Stand-in</span></button></div>` : '') +
-      dutySec + `<section class="sec"><p class="sh">Choose a Member</p><div class="list">${roster(g).people.map(p => p[1]).filter(n => n && !(x && x.person === n)).map(n => `<button class="row g-opt" data-a="standinpick:${esc(n)}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span>${check(S.pick === n)}</button>`).join('') || '<p class="empty">No members</p>'}</div></section>
-      <button class="nb pri" style="width:100%;margin-top:16px" data-a="standinon:${g}:${esc(S.pick || '')}"${S.pick && evId ? '' : ' disabled'}>Next</button>`;
+      : bar(left, `Stand-in<span class="s2">${gname(g)}</span>`, '') + (x && (dutyStep || duties.length === 1) ? `<div class="list"><div class="row g-acct">${sym('key', 'Account')}<span>${esc(x.person)}<span class="cap">${esc(x.id)} · Until ${hkAt(x.until)}</span></span>${isLead() ? pwView(x.id, false) : ''}</div><button class="row g-sw danger" data-a="standinoff:${g}"><span class="ic" style="color:inherit">${ic('trash')}</span><span>End Stand-in</span></button></div>` : '') +
+      (dutyStep ? dutySec + `<button class="nb pri" style="width:100%;margin-top:16px" data-a="standinstep:member"${evId ? '' : ' disabled'}>Next</button>`
+        : `<section class="sec"><p class="sh">Choose a Member</p><div class="list">${roster(g).people.map(p => p[1]).filter(n => n && !(x && x.person === n)).map(n => `<button class="row g-opt" data-a="standinpick:${esc(n)}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span>${check(S.pick === n)}</button>`).join('') || '<p class="empty">No members</p>'}</div></section>
+      <button class="nb pri" style="width:100%;margin-top:16px" data-a="standinon:${g}:${esc(S.pick || '')}"${S.pick && evId ? '' : ' disabled'}>Next</button>`);
   }
   if (s.k === 'card') h = bar(close, '', '') + cardOf(s.n);
   if (s.k === 'gcard') h = bar(close, '', '') + gcardOf(s.g);
@@ -1499,8 +1537,9 @@ function sheet() {
 function menuItems(k, arg) {
   const ev = EV();
   if (k === 'adddoc') return [canDoc(ev, 'script') && !hasScript(ev) && !(ev.mcs || []).length ? ['newscript', 'doc', 'Script'] : null, canDoc(ev, 'awards') && !Object.keys(ev.awards || {}).length ? ['newawards', 'users', 'Participant List'] : null, canDoc(ev, 'guests') && !ev.guests ? ['newguests', 'guests', 'Guest List'] : null].filter(Boolean);
-  if (k === 'addsay') { const lists = !listDone(ev, '整理得獎名單') ? [] : Object.entries(ev.awards || {}).flatMap(([lid, l]) => l.awards.filter(a => a.award && unread(ev, {type: 'award', list: lid, award: a.id}).length).map(a => [`addsay:${arg}:award:${lid}:${a.id}`, 'users', a.award]));
-    const guests = ev.guests && listDone(ev, '整理嘉賓名單') && unread(ev, {type: 'guests'}).length ? [[`addsay:${arg}:guests`, 'guests', 'Guest List']] : [];
+  // A list not done yet stays in the menu, greyed, as a menu shows what cannot be chosen yet (review 26/10/04)
+  if (k === 'addsay') { const aw = !listDone(ev, '整理得獎名單'), lists = Object.entries(ev.awards || {}).flatMap(([lid, l]) => l.awards.filter(a => a.award && unread(ev, {type: 'award', list: lid, award: a.id}).length).map(a => [`addsay:${arg}:award:${lid}:${a.id}`, 'users', a.award, aw]));
+    const guests = ev.guests && unread(ev, {type: 'guests'}).length ? [[`addsay:${arg}:guests`, 'guests', 'Guest List', !listDone(ev, '整理嘉賓名單')]] : [];
     return [[`addsay:${arg}:line`, 'line', 'MC Line'], [`addsay:${arg}:cue`, 'cue', 'Stage Direction'], ...lists, ...guests]; }
   if (k === 'addmt') { const [g, n] = arg.split(':');
     return sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && !t.names.includes(n))).map(t => [`pickn:${t.id}:${n}`, t.row ? 'list' : 'calendar', [t.text, t.row ? (rowOf(ev, t.row) || {}).time : md(t.date || '')].filter(Boolean).join('　')]); }
@@ -1542,7 +1581,7 @@ function render() {
 function layer() {
   let m = '';
   if (S.menu) { const items = menuItems(S.menu.k, S.menu.arg);
-    m = `<div class="mbg" data-a="closemenu"></div><div class="menu glass" role="menu" style="left:${S.menu.x}px;${S.menu.up ? `bottom:${S.menu.y}px` : `top:${S.menu.y}px`};max-height:${S.menu.h}px">${items.map(([a, i, l]) => `<button role="menuitem" data-a="${a}">${ic(...i.split(':'))}<span>${esc(l)}</span></button>`).join('')}</div>`; }
+    m = `<div class="mbg" data-a="closemenu"></div><div class="menu glass" role="menu" style="left:${S.menu.x}px;${S.menu.up ? `bottom:${S.menu.y}px` : `top:${S.menu.y}px`};max-height:${S.menu.h}px">${items.map(([a, i, l, off]) => `<button role="menuitem" data-a="${a}"${off ? ' disabled' : ''}>${ic(...i.split(':'))}<span>${esc(l)}</span></button>`).join('')}</div>`; }
   const al = S.alert ? `<div class="alert" role="alertdialog" aria-modal="true"><div><h2>${esc(S.alert.t)}</h2><p>${esc(S.alert.m)}</p><div class="b"><button data-a="keep">${esc(S.alert.no || 'Cancel')}</button><button class="d" data-a="${S.alert.act}">${esc(S.alert.verb)}</button></div></div></div>` : '';
   lay.innerHTML = sheet() + m + al + (S.toast ? `<div class="toast glass${S.toastAct ? ' act' : ''}" role="status"><span class="msg">${esc(S.toast)}</span>${S.toastAct ? `<button class="tb" data-a="${esc(S.toastAct[0])}">${esc(S.toastAct[1])}</button>` : ''}</div>` : '');
   const y0 = scrollY; document.documentElement.classList.toggle('locked', !!(S.sheet || S.menu || S.alert));
@@ -1697,7 +1736,8 @@ const dayBefore = ev => { const d = new Date(iso(ev.date) + 'T12:00'); d.setDate
 // 預設 Task (Build Brief 261004 items 3 and 4): the first duty group of a main group comes with that main group's usual Tasks,
 // their Remarks word for word from the Event Lead SOP. Work before the day is dated [usual, late application] school days before
 // the event, Monday to Friday (the site has no school calendar; the Event Lead moves a date that falls on a holiday). Work on the
-// day goes on the first Rundown line, for the Event Lead to move.
+// day waits for the Event Lead to choose its Rundown line, marked red until then (review 26/10/04: no line is guessed).
+const NO_LINE = '-';  // an On the Day task whose Rundown line is not chosen yet
 const R_MC = '按 Script 主持，只讀出 Script 上的名字。';
 const DEFAULT_TASKS = {
   MC: [['主持 1', R_MC], ['主持 2', R_MC],
@@ -1721,8 +1761,7 @@ const isLate = ev => workingBetween(arrivedOn(ev), ev.date) < 7;
 function addDefaults(ev, g) {
   const list = DEFAULT_TASKS[kind(g)]; if (!list || !ev.date) return;
   const late = isLate(ev);
-  if (list.some(x => !x[2]) && !ev.rows.length) ev.rows.push({id: uid(), time: ev.asmTime, title: '', place: ev.venue, say: []});
-  list.forEach(([text, remark, d]) => { const t = {id: uid(), text, to: [g], names: [], remark}; if (d) t.date = schoolDaysBefore(ev.date, d[late ? 1 : 0]); else t.row = ev.rows[0].id; ev.tasks.push(t); });
+  list.forEach(([text, remark, d]) => { const t = {id: uid(), text, to: [g], names: [], remark}; if (d) t.date = schoolDaysBefore(ev.date, d[late ? 1 : 0]); else t.row = NO_LINE; ev.tasks.push(t); });
 }
 function replaceGroup(ev, from, g) {
   const gr = ev.groups.find(x => x.name === from), days = Math.round((new Date(iso(ev.date)) - new Date(iso(TODAY))) / 864e5);
@@ -1857,7 +1896,8 @@ document.addEventListener('click', async e => {
     // Recently Deleted opens in place on Events (26/10/03), fetching the list the first time
     case 'delx': S.delOpen = !S.delOpen; render(); if (S.delOpen) { S.deleted = null; try { const r2 = await api('deleted'); S.deleted = r2.ok ? await r2.json() : []; } catch (err) { S.deleted = []; } render(); } break;
     case 'cardopen': S.sheet = null; layer(); go({p: 'event', ev: arg}); break;
-    case 'standin': S.sheet = {k: 'standin', g: arg}; S.made = null; S.pick = null; S.pickEv = null; layer(); break;
+    case 'standin': S.sheet = {k: 'standin', g: arg}; S.made = null; S.pick = null; S.pickEv = null; S.siMember = false; layer(); break;
+    case 'standinstep': S.siMember = arg === 'member'; layer(); break;
     case 'standinpick': S.pick = arg; layer(); break;
     case 'standinev': S.pickEv = arg; layer(); break;
     case 'standinon': case 'standinoff': { const [g, n] = arg.split(':');
@@ -1866,7 +1906,7 @@ document.addEventListener('click', async e => {
       try { const r2 = await api('standin', {method: a === 'standinon' ? 'POST' : 'DELETE', body: JSON.stringify({group: g, person: n, event: evId})}), b2 = await r2.json();
         if (!r2.ok) throw new Error(b2.error);
         STANDINS = STANDINS.filter(y => y.grp !== g); PWSHOW = null;
-        if (a === 'standinon') { S.made = {...b2, grp: g}; S.pick = null; S.pickEv = null; STANDINS.push({id: b2.id, grp: g, person: b2.person, until: b2.until}); } else toast('Stand-in ended');
+        if (a === 'standinon') { S.made = {...b2, grp: g}; S.pick = null; S.pickEv = null; S.siMember = false; STANDINS.push({id: b2.id, grp: g, person: b2.person, until: b2.until}); } else toast('Stand-in ended');
         S.xaccts = null; render(); }
       catch (err) { toast(SYNC.offline ? 'No connection' : 'Not changed'); } break; }
     case 'copyacct': { const text = arg === 'standin' ? signInText(S.made.id, S.made.password, `${S.made.person}：${S.made.grp} Stand-in，有效至 ${hkAt(S.made.until)}`)
@@ -1932,6 +1972,7 @@ document.addEventListener('input', e => {
   if (d.find !== undefined) { S.find = t.value; const o = route(); app.innerHTML = `<main class="page${o.root ? ' root' : ''}">${o.body}</main>`; return; }
   if (!d.b) return;
   if (t.tagName === 'TEXTAREA') fit(t);
+  { const rk = t.closest('.rmkl'); if (rk) rk.classList.toggle('empty', !t.value.trim()); }  // a Remark with words stays shown
   if (t.closest('.tline')) indent(t.closest('.tline'));
   if (d.time !== undefined || d.date !== undefined) return;  // a time or a date is set when its field is left
   const again = setVal(d.b, t.value, t);
@@ -2115,7 +2156,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '08734de5e013';
+const PAGE_VER = '749cc4759900';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
