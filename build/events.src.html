@@ -2183,7 +2183,7 @@ async function exportAttendance() {
   const row = (r, ht, cells) => `<row r="${r}" ht="${ht}" customHeight="1">${cells.join('')}</row>`;
   rows.push(row(1, 42, [cell(1, 1, 1, 'Members')]));
   if (evs.length) rows.push(row(2, 19.5, [cell(first, 2, 3, 'Attendance'), ...evs.slice(1).map((e, k) => cell(first + 1 + k, 2, 3))]));
-  rows.push(row(3, 79.5, [cell(1, 3, 2, 'No'), cell(2, 3, 2, 'Name'), cell(3, 3, 2, 'Role'), cell(4, 3, 2, 'Group'), ...evs.map((e, k) => cell(first + k, 3, 2, `${e.date} ${e.name}`))]));
+  rows.push(row(3, 79.5, [cell(1, 3, 2, 'No'), cell(2, 3, 2, 'Name'), cell(3, 3, 2, 'Role'), cell(4, 3, 2, 'Group'), ...evs.map((e, k) => cell(first + k, 3, 2, `${dmy(e.date)} ${e.name}`))]));
   people.forEach((p, k) => { const r = 4 + k, lat = p.lead ? 6 : 4, zh = p.lead ? 7 : 5;
     rows.push(row(r, 19.5, [cell(1, r, lat, p.cls), cell(2, r, zh, p.n), cell(3, r, zh, p.lead ? '組長' : '組員'), cell(4, r, zh, zhGroup(p.g)),
       ...evs.map((e, j) => cell(first + j, r, STATUS_FILL[statusOf(e, p.g, p.n)] || 13))])); });
@@ -2301,8 +2301,11 @@ async function wordFile(ev, id) {
         : s.type === 'award' ? [{id: s.id + 'n', type: 'cue', text: awardOf(ev, s).award}, {id: s.id, type: 'award', text: hereRows(ev, s).map(x => x[1] + ' ' + x[2]).join('\n')}]
         : [{id: s.id, type: 'cue', text: hereRows(ev, s).map(x => x[1] + (x[2] ? '　' + x[2] : '')).join('\n')}])]);
     bytes = await ScriptGen.buildDocx(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});
+    // MC Scripts writes the title YY/MM/DD｜…; Event Centre's Word files put the day first (Build Brief 261004 item 8)
+    const z = await JSZip.loadAsync(bytes), doc = await z.file('word/document.xml').async('string'), was = esc(ev.date + '｜' + ev.name);
+    if (doc.includes(was)) { z.file('word/document.xml', doc.replace(was, esc(dmy(ev.date) + '｜' + ev.name))); bytes = await z.generateAsync({type: 'uint8array'}); }
   } else {
-    const title = [ev.date, ev.name, docName].join('｜');
+    const title = [dmy(ev.date), ev.name, docName].join('｜');  // day first, as the site shows dates (Build Brief 261004 item 8)
     let body = `<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:spacing w:after="360"/></w:pPr><w:r>${wt(title)}</w:r></w:p>`;
     if (type === 'rundown') {
       const tk = t => `${t.text}${t.remark ? '（' + t.remark + '）' : ''}${t.to.includes('All') ? '：Everyone' : t.names.length ? '：' + t.names.join('、') : ''}${t.to.includes('All') ? '' : '　' + t.to.join('、')}`;
