@@ -212,7 +212,22 @@ const lastSentence = (text) => {
   const last = parts.length ? parts[parts.length - 1] : s;
   return last.length > 40 ? "…" + last.slice(-40) : last;
 };
+// A Script paragraph holds one paragraph (Carson, 26/10/04: members typed whole speeches into one box, line breaks and all).
+// Each line break starts a new paragraph of the same kind and MC; the new ones get ids derived from the first, so every
+// read splits the same way until the event is next saved in this shape.
+function splitParas(ev) {
+  (ev.rows || []).forEach((r) => {
+    if (!Array.isArray(r.say) || !r.say.some((x) => (x.type === "line" || x.type === "cue") && /\n/.test(x.text || ""))) return;
+    r.say = r.say.flatMap((x) => {
+      if (!(x.type === "line" || x.type === "cue") || !/\n/.test(x.text || "")) return [x];
+      const parts = x.text.split(/\n+/).map((t) => t.trim()).filter(Boolean);
+      return (parts.length ? parts : [""]).map((t, k) => ({ ...x, id: k ? x.id + "_" + k : x.id, text: t }));
+    });
+  });
+  return ev;
+}
 export function upgrade(ev) {
+  if (ev && typeof ev === "object" && ev.v === 4) return splitParas(ev);
   if (!ev || typeof ev !== "object" || ev.v === 4) return ev;
   const arr = (x) => (Array.isArray(x) ? x.filter((y) => typeof y === "string") : []);
   const out = { id: ev.id, v: 4, date: ev.date || "", name: ev.name || "", asmTime: ev.asmTime || ev.start || "", venue: ev.venue || "",
@@ -531,7 +546,7 @@ export async function handleEvents(request, env, url, path) {
     let nw; try { nw = JSON.parse(body.data); } catch { return json({ error: "bad request" }, 400); }
     if (!nw || typeof nw !== "object" || nw.id !== id) return json({ error: "bad request" }, 400);
     if (nw.v !== 4) return json({ error: "reload" }, 403);  // a page from before 26/10/01
-    nw = trimLog(withHidden(acct, old, nw));
+    nw = trimLog(withHidden(acct, old, splitParas(nw)));
     // One document of each kind per event
     if (Object.keys(nw.awards || {}).length > Math.max(1, Object.keys((old && old.awards) || {}).length)) return json({ error: "one list" }, 400);
     const denied = checkWrite(acct, old, nw);

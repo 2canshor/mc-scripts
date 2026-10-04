@@ -161,7 +161,9 @@ button.tk:active{background:var(--current)}
 .lb>.tk:first-of-type{margin-top:4px}
 /* Script: MC | words; stage directions and awardees in the words column */
 .srow{display:grid;grid-template-columns:4.6em minmax(0,1fr);column-gap:14px;align-items:start;line-height:1.75;margin:0 0 14px}
-.srow.e{grid-template-columns:4.6em minmax(0,1fr) 24px}
+.srow.e{grid-template-columns:4.6em minmax(0,1fr) auto}
+.sblk{margin:0 0 14px;background:var(--canvas)}
+.slist>.srow.e{background:var(--canvas)}
 .srow .sp{font-weight:600;white-space:nowrap}
 .srow.cue .body,.srow.cue textarea{color:var(--secondary);font-size:15px}
 .aws{display:grid;grid-template-columns:3.4em minmax(0,1fr);line-height:1.75}
@@ -1098,12 +1100,15 @@ function pScript(ev) {
     if (s.type === 'award' || s.type === 'guests') { const rows = ed ? paraRows(ev, s) : hereRows(ev, s), head = s.type === 'award' ? [sym('users', 'Participant List', 'isym'), awardOf(ev, s).award] : [sym('guests', 'Guest List', 'isym'), 'Guest List'];
       const line = ([i, a, b]) => s.type === 'award' ? `<span class="aws${isHere(ev, s, i) ? '' : ' muted'}"><span class="c">${esc(a)}</span><span>${esc(b)}</span></span>` : `<span class="${isHere(ev, s, i) ? '' : 'muted'}">${esc(a)}<span class="muted">　${esc(b)}</span></span>`;
       if (!ed) return `<div class="srow">${dot(`${ev.id}:s:${s.id}`)}<span></span><div><span class="awn">${head[0]} ${esc(head[1])}</span>${rows.map(x => `<div>${line(x)}</div>`).join('')}</div></div>`;
-      return `<div class="srow e sub" tabindex="-1"><span></span><span class="awn">${head[0]} ${esc(head[1])}</span>${rmB(`delsay:${r.id}:${s.id}`, 'Remove')}</div>` +
-        rows.map(x => `<div class="srow e sub" tabindex="-1"><span></span>${line(x)}${rmB(`unrow:${r.id}:${s.id}:${x[0]}`, 'Take off this paragraph')}</div>`).join(''); }
+      return `<div class="sblk" data-drag="say" data-id="${s.id}"><div class="srow e sub" tabindex="-1"><span></span><span class="awn">${head[0]} ${esc(head[1])}</span><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Remove')}${grip('Move paragraph')}</span></div>` +
+        rows.map(x => `<div class="srow e sub" tabindex="-1"><span></span>${line(x)}<span class="rg">${rmB(`unrow:${r.id}:${s.id}:${x[0]}`, 'Take off this paragraph')}</span></div>`).join('') + '</div>'; }
     if (!ed) return `<div class="srow${s.type === 'cue' ? ' cue' : ''}">${dot(`${ev.id}:s:${s.id}`)}<span class="sp">${s.type === 'line' ? esc(s.sp) : ''}</span><div class="body">${esc(s.text)}</div></div>`;
     const sp = s.type !== 'line' ? '' : mcs.length > 1 ? pick(`say:${r.id}:${s.id}:sp`, s.sp ? `<span class="sp">${esc(s.sp)}</span>` : '', `<option value="" disabled ${s.sp ? '' : 'selected'}></option>` + mcs.map(m => `<option${m[1] === s.sp ? ' selected' : ''}>${esc(m[1])}</option>`).join(''), 'MC') : `<span class="sp">${esc(s.sp || (mcs[0] || [])[1] || '')}</span>`;
-    return `<div class="srow e${s.type === 'cue' ? ' cue' : ''}"><span>${sp}</span><textarea class="fld fo" rows="1" data-b="say:${r.id}:${s.id}:text" placeholder="${s.type === 'cue' ? 'Stage Direction' : 'MC Line'}" aria-label="Paragraph">${esc(s.text)}</textarea>${rmB(`delsay:${r.id}:${s.id}`, 'Delete paragraph')}</div>`; };
-  const blocks = ev.rows.filter(r => ed || r.say.some(s => hasSource(ev, s))).map(r => `<p class="lh"><span class="tn">${r.time}</span>　${esc(r.title)}</p>${r.say.filter(s => hasSource(ev, s)).map(s => para(r, s)).join('')}${ed ? `<div style="margin-left:calc(4.6em + 14px)">${addB('menu:addsay:' + r.id, 'Add')}</div>` : ''}`).join('');
+    return `<div class="srow e${s.type === 'cue' ? ' cue' : ''}" data-drag="say" data-id="${s.id}"><span>${sp}</span><textarea class="fld fo" rows="1" data-b="say:${r.id}:${s.id}:text" placeholder="${s.type === 'cue' ? 'Stage Direction' : 'MC Line'}" aria-label="Paragraph">${esc(s.text)}</textarea><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Delete paragraph')}${grip('Move paragraph')}</span></div>`; };
+  // Edit (26/10/04): one list of every line and its paragraphs, so each paragraph moves by its handle anywhere, to another
+  // line too; with a mouse the gold line between paragraphs inserts one there (MC Line, Stage Direction or a list)
+  const blocks = ed ? `<div class="list slist">${ev.rows.map(r => `<p class="lh" data-head="line" data-line="${r.id}"><span class="tn">${r.time}</span>　${esc(r.title)}</p>${r.say.filter(s => hasSource(ev, s)).map(s => para(r, s)).join('')}<div class="sadd" style="margin-left:calc(4.6em + 14px)">${addB('menu:addsay:' + r.id, 'Add')}</div>`).join('')}</div>`
+    : ev.rows.filter(r => r.say.some(s => hasSource(ev, s))).map(r => `<p class="lh"><span class="tn">${r.time}</span>　${esc(r.title)}</p>${r.say.filter(s => hasSource(ev, s)).map(s => para(r, s)).join('')}`).join('');
   // MC line: in Edit, class and name per MC, and one empty slot at the end for the next MC (up to four)
   const ms = ev.mcs || [], slot = (m, i) => `<span class="mc">${fld(`mc:${i}:0`, m[0], 'Class', 'upper')}${fld(`mc:${i}:1`, m[1], 'MC')}</span>`;
   const slots = [...ms.map(slot), ...(ms.length < 4 && ms.every(m => m[1]) ? [slot(['', ''], ms.length)] : [])].join('<span class="dot">．</span>');
@@ -1307,6 +1312,8 @@ const snapOf = () => JSON.stringify(cur().p === 'group' ? {ROSTER, PASSWORDS, CH
 const restore = j => { const o = JSON.parse(j); if (cur().p === 'group') { ROSTER = o.ROSTER; PASSWORDS = o.PASSWORDS; CHAIRS = o.CHAIRS; ADMINS = o.ADMINS; } else { const ev = EV(); Object.keys(ev).forEach(k => delete ev[k]); Object.assign(ev, o); } };
 const tidyMcs = ev => { if (!ev || !ev.mcs) return; if (canDoc(ev, 'script')) ev.rows.forEach(r => { r.say = r.say.filter(x => hasSource(ev, x)); }); const speaks = n => ev.rows.some(r => r.say.some(s => s.sp === n)); ev.mcs = ev.mcs.filter((m, i) => m[0] || m[1] || speaks(m[1]) || i === 0 && ev.mcs.length === 1); };
 // The next MC for a new line: after the last speaker, round the MCs
+// The MC after this paragraph's MC, for a new paragraph started below it with Return
+const nextMcAfter = (ev, rw, x) => { const ms = named(ev).map(m => m[1]); return x.type === 'line' && x.sp && ms.length ? ms[(ms.indexOf(x.sp) + 1) % ms.length] : nextMc(ev, rw); };
 const nextMc = (ev, r) => { const ms = named(ev).map(m => m[1]); if (!ms.length) return ''; const last = [...ev.rows.flatMap(x => x.say)].reverse().find(s => s.type === 'line' && s.sp); return last ? ms[(ms.indexOf(last.sp) + 1) % ms.length] : ms[0]; };
 
 /* ---------- Writing a value: one place for every field ---------- */
@@ -1377,7 +1384,7 @@ document.addEventListener('click', async e => {
     case 'discard': restore(S.snap); S.alert = null; S.edit = false; render(); catchUp(); break;
     case 'menu': { const rc = b.getBoundingClientRect(), up = rc.top > innerHeight - rc.bottom, x = Math.min(rc.left, innerWidth - 244);
       S.menu = {k: r[0], arg: r.slice(1).join(':'), x: Math.max(16, x), y: up ? innerHeight - rc.top + 6 : rc.bottom + 6, up, h: Math.floor((up ? rc.top : innerHeight - rc.bottom) - 6 - 16)}; layer(); break; }
-    case 'closemenu': S.menu = null; layer(); break;
+    case 'closemenu': S.menu = null; S.sayAt = null; layer(); break;
     case 'sheet': { const [k, x, y] = arg.split(':');
       if (k === 'new') S.draft = {name: '', date: '', asmTime: '', venue: '', leading: ''};
       S.sheet = {k, id: x}; layer();
@@ -1412,8 +1419,11 @@ document.addEventListener('click', async e => {
       S.alert = {t: 'Delete This Line?', m: `Its ${n} ${n > 1 ? 'tasks go' : 'task goes'} with it.`, verb: 'Delete', act: 'delrow:' + arg}; layer(); break; }
     case 'delrow': ev.rows = ev.rows.filter(x => x.id !== arg); ev.tasks = ev.tasks.filter(t => t.row !== arg); S.alert = null; render(); break;
     case 'addsay': { const rw = rowOf(ev, r[0]), type = r[1];
-      if (type === 'line' || type === 'cue') { const x = {id: uid(), type, sp: type === 'line' ? nextMc(ev, rw) : '', text: ''}; rw.say.push(x); render(); focus(`[data-b="say:${rw.id}:${x.id}:text"]`); break; }
-      if (type === 'award' || type === 'guests') { const x = type === 'award' ? {id: uid(), type, list: r[2], award: r[3]} : {id: uid(), type}; x.rows = unread(ev, x); rw.say.push(x); render(); }
+      const at = S.sayAt && S.sayAt.rid === rw.id ? S.sayAt : null; S.sayAt = null;
+      const put = x => { const a = at && at.after ? rw.say.findIndex(y => y.id === at.after) : -1, b2 = at && at.before ? rw.say.findIndex(y => y.id === at.before) : -1;
+        rw.say.splice(a >= 0 ? a + 1 : b2 >= 0 ? b2 : at ? 0 : rw.say.length, 0, x); };
+      if (type === 'line' || type === 'cue') { const x = {id: uid(), type, sp: type === 'line' ? nextMc(ev, rw) : '', text: ''}; put(x); render(); focus(`[data-b="say:${rw.id}:${x.id}:text"]`); break; }
+      if (type === 'award' || type === 'guests') { const x = type === 'award' ? {id: uid(), type, list: r[2], award: r[3]} : {id: uid(), type}; x.rows = unread(ev, x); put(x); render(); }
       break; }
     case 'unrow': { const [rid, sid, i] = arg.split(':'), x = rowOf(ev, rid).say.find(y => y.id === sid); x.rows = paraRows(ev, x).map(y => y[0]).filter(j => j !== +i); render(); break; }
     case 'delsay': { const [rid, sid] = arg.split(':'), rw = rowOf(ev, rid); rw.say = rw.say.filter(s => s.id !== sid); render(); break; }
@@ -1525,6 +1535,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('input', e => {
   const t = e.target, d = t.dataset || {};
   if (TAGGED.test(d.b || '') || MENT) mentionCheck(t);
+  if (/^say:[^:]+:[^:]+:text$/.test(d.b || '') && /\n/.test(t.value)) { sayParts(t); return; }
   if (d.find !== undefined) { S.find = t.value; const o = route(); app.innerHTML = `<main class="page root">${o.body}</main>`; return; }
   if (!d.b) return;
   if (t.tagName === 'TEXTAREA') fit(t);
@@ -1534,8 +1545,21 @@ document.addEventListener('input', e => {
   if (again) { if (S.sheet && lay.contains(t)) layer(); else render(); }
 });
 // One-line fields end on Return; a new MC slot appears once the MC line loses focus
+// A Script paragraph is one paragraph (26/10/04): Return starts the next one below, carrying the words after the cursor;
+// at the end of a paragraph the new one goes to the next MC, as Add does. Line breaks that arrive by pasting split the same way.
+function sayParts(t, caret) {
+  const [, rid, sid] = t.dataset.b.split(':'), ev = EV(), rw = ev && rowOf(ev, rid), x = rw && rw.say.find(y => y.id === sid); if (!x) return;
+  const v = t.value, chunks = caret === undefined ? v.split(/\n+/).map(c => c.trim()) : [v.slice(0, caret).replace(/\s+$/, ''), v.slice(caret).replace(/^\s+/, '')];
+  const keep = caret === undefined ? chunks.filter(Boolean) : chunks; if (!keep.length) return;
+  x.text = keep[0];
+  const add = keep.slice(1).map(c => ({id: uid(), type: x.type, sp: x.type === 'line' ? (caret !== undefined && !c ? nextMcAfter(ev, rw, x) : x.sp) : '', text: c}));
+  rw.say.splice(rw.say.indexOf(x) + 1, 0, ...add); render();
+  const last = add[add.length - 1] || x; focus(`[data-b="say:${rid}:${last.id}:text"]`);
+  const f = app.querySelector(`[data-b="say:${rid}:${last.id}:text"]`); if (f && caret !== undefined) f.setSelectionRange(0, 0);
+}
 document.addEventListener('keydown', e => {
   const t = e.target;
+  if (e.key === 'Enter' && !e.isComposing && t.dataset && /^say:[^:]+:[^:]+:text$/.test(t.dataset.b || '')) { e.preventDefault(); sayParts(t, t.selectionStart); return; }
   if (e.key === 'Escape' && S.menu) { S.menu = null; layer(); return; }
   if (e.key === 'Escape' && S.sheet) { S.sheet = null; render(); }
   if (S.edit && e.key === 'Enter' && !e.isComposing && t.dataset && /^(row:[^:]+:title|task:[^:]+:text)$/.test(t.dataset.b || '')) {
@@ -1571,10 +1595,14 @@ const placeOf = (sibs, at) => { let sec = null;
   for (let j = at - 1; j >= 0; j--) { const h = sibs[j].dataset; if (!h.head) continue; if (!sec && h.head !== 'g') sec = h.head; if (h.g !== undefined) return {sec: sec || 'before', g: h.g}; }
   return {sec: sec || 'before'}; };
 const toOfKey = g => g === 'All' ? ['All'] : g ? [g] : [];
-function insertAt(list, at) {  // at: the index among the list's rows and headings that the new row goes before
+function insertAt(list, at, rc) {  // at: the index among the list's rows and headings that the new row goes before
   const ev = EV(), sibs = [...list.children].filter(x => x.dataset && (x.dataset.drag || x.dataset.head)), kindKey = (sibs.find(x => x.dataset.drag) || {}).dataset;
   const before = sibs[at], above = (() => { for (let j = at - 1; j >= 0; j--) { if (sibs[j].dataset.head) return null; return sibs[j]; } return null; })();
   const below = before && !before.dataset.head ? before : null;
+  if (list.classList.contains('slist')) { let rid = null; for (let j = at - 1; j >= 0; j--) if (sibs[j].dataset.line) { rid = sibs[j].dataset.line; break; }
+    if (!rid) return; S.sayAt = {rid, after: above && above.dataset.id, before: below && below.dataset.id};
+    const r0 = rc || {left: 40, top: 200, bottom: 220}, up = r0.top > innerHeight - r0.bottom;
+    S.menu = {k: 'addsay', arg: rid, x: Math.max(16, Math.min(r0.left, innerWidth - 244)), y: up ? innerHeight - r0.top + 6 : r0.bottom + 6, up, h: Math.floor((up ? r0.top : innerHeight - r0.bottom) - 22)}; layer(); return; }
   if (list.querySelector('[data-drag="rows"]')) {
     const rw = {id: uid(), time: '', title: '', place: ev.venue || '', remark: '', say: []};
     const i = below ? ev.rows.findIndex(r => r.id === below.dataset.id) : above ? ev.rows.findIndex(r => r.id === above.dataset.id) + 1 : ev.rows.length;
@@ -1604,13 +1632,21 @@ if (matchMedia('(hover: hover) and (pointer: fine)').matches) document.addEventL
   if (!INS || INS.parentElement !== list) { hide(); INS = document.createElement('div'); INS.className = 'ins'; INS.innerHTML = `<button class="ins-b" aria-label="Insert here">${ic('plus')}</button>`; list.appendChild(INS); }
   INS.style.top = (best.y - lr.top) + 'px'; INS.dataset.at = best.at;
 });
-document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ins-b'); if (!b) return; const ins = b.parentElement, list = ins.parentElement, at = +ins.dataset.at; ins.remove(); INS = null; insertAt(list, at); });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ins-b'); if (!b) return; const ins = b.parentElement, list = ins.parentElement, at = +ins.dataset.at, rc = b.getBoundingClientRect(); ins.remove(); INS = null; insertAt(list, at, rc); });
 document.addEventListener('pointerleave', () => { if (INS) { INS.remove(); INS = null; } });
 
 /* ---------- Move a row by its handle (Rundown lines; the event's tasks in Edit, across Before the Event and On the Day) ---------- */
 // The row lifts and follows the finger; the rows it passes make room; near the top or bottom the list scrolls.
 // The arrow keys move it one place. Only rows with the same data-drag move among each other.
 let DRAG = null;
+// A Script paragraph to its new line and place: after the paragraph above it, or before the one below, or first on the line
+function placeSay(id, rid, afterId, beforeId) {
+  const ev = EV(), to = ev && rowOf(ev, rid), from = ev && ev.rows.find(r => r.say.some(x => x.id === id)); if (!to || !from) return;
+  const para = from.say.find(x => x.id === id); from.say = from.say.filter(x => x !== para);
+  const a = afterId ? to.say.findIndex(x => x.id === afterId) : -1, b = beforeId ? to.say.findIndex(x => x.id === beforeId) : -1;
+  to.say.splice(a >= 0 ? a + 1 : b >= 0 ? b : 0, 0, para);
+  render(); focus(`[data-id="${id}"] [data-grip]`);
+}
 function moveRow(kindKey, id, beforeId, afterId) {
   const ev = EV(); if (!ev) return;
   const key = kindKey === 'rows' ? 'rows' : 'tasks', list = ev[key], item = list.find(x => x.id === id); if (!item) return;
@@ -1656,6 +1692,8 @@ function drop(row, sibs, from, to) {
   const order = sibs.slice(); order.splice(from, 1); order.splice(to, 0, row);
   const i = order.indexOf(row), near = k => { for (let j = i + k; j >= 0 && j < order.length; j += k) { if (order[j].dataset.head) return null; return order[j]; } return null; };
   const above = near(-1), below = near(1);
+  if (row.dataset.drag === 'say') { let rid = null; for (let j = i - 1; j >= 0; j--) if (order[j].dataset.line) { rid = order[j].dataset.line; break; }
+    placeSay(row.dataset.id, rid, above && above.dataset.id, below && below.dataset.id); return; }
   if (row.dataset.drag === 'task') {
     const ev = EV(), t = ev.tasks.find(x => x.id === row.dataset.id), ref = above || below, rt = ref && ev.tasks.find(x => x.id === ref.dataset.id);
     const pl = placeOf(order, i), head = pl.sec;
@@ -1679,7 +1717,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '81bede92bcce';
+const PAGE_VER = 'a051e661409c';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
