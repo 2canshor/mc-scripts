@@ -775,14 +775,15 @@ const fbKey = () => S.acct + '|' + (S.who || '');
 // the questions ask what helped and what to improve together, not what went wrong. The logic reads positions, not words: the
 // first choice is all well, the second of diff and ok asks for more.
 const FB_Q = {fit: ['完全配合', '大致配合', '有待改善'], area: ['事前聯絡', '講稿內容', '司儀表現', '上台安排', '接待嘉賓', '時間控制', '同學態度'],
-  kept: ['順利實行', '未能實行'], diff: ['按計劃進行', '出現變化'], ok: ['十分順利', '遇到困難'], why: ['不清楚工作內容', '無法聯絡 Group Lead', '時間緊迫', '人手不足', '物資問題', '其他'],
+  kept: ['順利實行', '未能實行', '未有需要'], diff: ['按計劃進行', '出現變化，效果理想', '出現變化，有待改善'], ok: ['順利完成', '遇到困難'], why: ['不清楚工作內容', '無法聯絡 Group Lead', '時間緊迫', '人手不足', '物資問題', '其他'],
   // The 2026–27 plan's success criterion: 60% of members on duty say their 自信心、解難能力 and 溝通協作能力 grew. Several may be chosen.
   grew: ['自信心', '解難能力', '溝通協作能力', '沒有明顯提升']};
-const FB_WELL = FB_Q.fit[0], FB_DIFFER = FB_Q.diff[1], FB_PROBLEM = FB_Q.ok[1], FB_NONE = FB_Q.grew[3];
-const fbOk = (q, a) => q.role === 'teacher' ? !!a.fit && (a.fit === FB_WELL || !!a.area) : !(a.grew || []).length ? false : q.role === 'member' ? !!a.ok && (a.ok !== FB_PROBLEM || !!a.why)
-  : !!a.diff && (!q.promise || !!a.kept) && (a.diff !== FB_DIFFER || !!((a.reason || '').trim() && (a.avoid || '').trim()));
+// A change is not a fault (26/10/04 19:56): any change asks what happened, and only 有待改善 asks for an improvement
+const FB_WELL = FB_Q.fit[0], FB_ASPLAN = FB_Q.diff[0], FB_BETTER = FB_Q.diff[2], FB_PROBLEM = FB_Q.ok[1], FB_NONE = FB_Q.grew[3];
+const fbOk = (q, a) => q.role === 'teacher' ? !!a.fit && (a.fit === FB_WELL || !!(a.area || []).length || !!(a.note || '').trim()) : !(a.grew || []).length ? false : q.role === 'member' ? !!a.ok && (a.ok !== FB_PROBLEM || !!a.why)
+  : !!a.diff && (!q.promise || !!a.kept) && (a.diff === FB_ASPLAN || !!(a.reason || '').trim()) && (a.diff !== FB_BETTER || !!(a.avoid || '').trim());
 function pFeedback() {
-  const q = FB.due[0]; if (!S.fb || S.fb.id !== q.id) S.fb = {id: q.id, a: {praise: [], grew: []}, busy: false};
+  const q = FB.due[0]; if (!S.fb || S.fb.id !== q.id) S.fb = {id: q.id, a: {praise: [], grew: [], area: []}, busy: false};
   const a = S.fb.a, on = (k, v) => Array.isArray(a[k]) ? a[k].includes(v) : a[k] === v;
   // A chosen answer fills in Strong Yellow, the whole row (decided 26/10/04 18:43), with no tick at the far edge
   const opt = k => FB_Q[k].map(v => `<button class="row g-opt${on(k, v) ? ' on' : ''}" data-a="fb:${k}:${esc(v)}" aria-pressed="${on(k, v)}"><span>${esc(v)}</span></button>`).join('');
@@ -795,7 +796,7 @@ function pFeedback() {
   if (q.role === 'teacher') body = ask('這次的安排能否配合老師的需要？', opt('fit')) + (a.fit && a.fit !== FB_WELL ? ask('懇請老師指出我們可以改善的地方', opt('area'), '', line('note', '其他意見')) : '');
   else if (q.role === 'member') body = ask('這次的 Task 完成得順利嗎？', opt('ok')) + (a.ok === FB_PROBLEM ? ask('主要遇到哪方面的困難？', opt('why'), '', line('note', '其他意見')) : '') + grew;
   else body = (q.promise ? ask('上次訂下的改善方法，這次能夠實行嗎？', opt('kept'), `<p class="fbp">「${esc(q.promise)}」</p>`) : '') +
-      ask('這次活動是否按計劃進行？', opt('diff'), '', a.diff === FB_DIFFER ? line('reason', '當時情況') + line('avoid', '下次的改善方法') : '') + grew +
+      ask('小組這次的工作是否按計劃進行？', opt('diff'), '', a.diff && a.diff !== FB_ASPLAN ? line('reason', '當時情況') + (a.diff === FB_BETTER ? line('avoid', '下次的改善方法') : '') : '') + grew +
       // Praise only (26/10/04 19:24): a second tag for support set members against each other; a member's own 遇到困難 says who needs help
       (q.people.length ? ask('哪些組員這次的表現值得讚賞？', q.people.map(n => `<button class="row g-opt fbm${a.praise.includes(n) ? ' on' : ''}" data-a="fb:praise:${esc(n)}" aria-pressed="${a.praise.includes(n)}"><span class="opt-n">${pav(n)}<span>${esc(n)}</span></span></button>`).join('')) : '');
   const done = q.role !== 'teacher' || (a.fit && a.fit !== FB_WELL);
@@ -807,7 +808,7 @@ function pFeedback() {
 const fbReady = () => { const d = app.querySelector('[data-a="fbdone"]'); if (d && FB.due[0] && S.fb) d.disabled = !fbOk(FB.due[0], S.fb.a) || S.fb.busy; };
 function fbTap(arg) {
   const [k, ...r] = arg.split(':'), v = r.join(':'), a = S.fb.a;
-  if (k === 'praise' || k === 'grew') a[k] = a[k].includes(v) ? a[k].filter(x => x !== v) : [...a[k], v]; else a[k] = v;
+  if (k === 'praise' || k === 'grew' || k === 'area') a[k] = a[k].includes(v) ? a[k].filter(x => x !== v) : [...a[k], v]; else a[k] = v;
   if (k === 'grew' && a.grew.includes(v)) a.grew = a.grew.filter(x => (x === FB_NONE) === (v === FB_NONE));  // 沒有明顯提升 stands alone
   render(); if (k === 'fit' && v === FB_WELL) fbSend();
 }
@@ -857,9 +858,9 @@ function feedbackSec(ev) {
   // The answers read as the questionnaire asked them, in Chinese; growth shows as tags (review 26/10/04)
   const tags = d => d.grew && d.grew.length ? `<span class="fbtags">${d.grew.map(g => `<span class="tag">${esc(g)}</span>`).join('')}</span>` : '';
   const said = r => { const d = r.data;
-    if (r.role === 'teacher') return [[d.fit, d.area].filter(Boolean).join('・'), d.note];
+    if (r.role === 'teacher') return [[d.fit, Array.isArray(d.area) ? d.area.join('、') : d.area].filter(Boolean).join('・'), d.note];
     if (r.role === 'member') return [[d.ok, d.why].filter(Boolean).join('・'), d.note];
-    return [d.promise ? `上次的改善方法「${d.promise}」${d.kept}` : '', d.diff === FB_DIFFER ? `出現變化：${d.reason}` : '按計劃進行', d.diff === FB_DIFFER ? `改善方法：${d.avoid}` : '',
+    return [d.promise ? `上次的改善方法「${d.promise}」${d.kept}` : '', d.diff === FB_ASPLAN ? d.diff : `${d.diff}：${d.reason}`, d.avoid ? `改善方法：${d.avoid}` : '',
       d.praise && d.praise.length ? '讚賞：' + d.praise.join('、') : '']; };
   const row = r => `<div class="row fbr"><span class="fbw">${mention(r.name)}${r.role === 'gl' ? '<span class="gl">Group Lead</span>' : ''}</span><span class="cap">${said(r).filter(Boolean).map(esc).join('\n')}</span>${tags(r.data)}</div>`;
   // Against the plan's 60%: the share of members and Group Leads who say they grew, green once it reaches 60%

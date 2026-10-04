@@ -495,7 +495,8 @@ const FB_FROM = "26/10/05";
 const FIT = ["完全配合", "大致配合", "有待改善"], AREAS = ["事前聯絡", "講稿內容", "司儀表現", "上台安排", "接待嘉賓", "時間控制", "同學態度"];
 // 自信心、解難能力、溝通協作能力: the 2026–27 plan's success criterion (60% of members on duty say they grew)
 const GREW = ["自信心", "解難能力", "溝通協作能力"], NO_GROWTH = "沒有明顯提升";
-const KEPT = ["順利實行", "未能實行"], DIFF = ["按計劃進行", "出現變化"], OK = ["十分順利", "遇到困難"], WHY = ["不清楚工作內容", "無法聯絡 Group Lead", "時間緊迫", "人手不足", "物資問題", "其他"];
+// No answer assumes a change was a fault (26/10/04 19:56): a change can work out well, so only 有待改善 asks for an improvement
+const KEPT = ["順利實行", "未能實行", "未有需要"], DIFF = ["按計劃進行", "出現變化，效果理想", "出現變化，有待改善"], OK = ["順利完成", "遇到困難"], WHY = ["不清楚工作內容", "無法聯絡 Group Lead", "時間緊迫", "人手不足", "物資問題", "其他"];
 const hkToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, "/");
 const feedbackOpen = (ev) => !!ev.date && ev.date >= FB_FROM && ev.date < hkToday();
 async function feedbackContext(env) { return { rosters: (await settingOf(env, "rosters")) || {}, admins: (await settingOf(env, "admins")) || [] }; }
@@ -511,14 +512,17 @@ function feedbackRole(acct, ev, ctx) {
   if (acct.type === "gl") return onDuty(acct.group) ? { key: "l:" + acct.group, role: "gl", group: acct.group, name: acct.person || ((ctx.rosters[acct.group] || {}).lead || {}).name || acct.id } : null;
   if (acct.type === "group") {
     const n = acct.who, away = !!(((ev.leave || {})[acct.group] || {})[n]);
-    return n && onDuty(acct.group) && !away && peopleIn(ctx, acct.group).includes(n) ? { key: "m:" + acct.group + ":" + n, role: "member", group: acct.group, name: n } : null;
+    // Asked only of a member named on one of the group's tasks: the question is about their Task
+    const named = (ev.tasks || []).some((t) => (t.to || []).includes(acct.group) && (t.names || []).includes(n));
+    return n && onDuty(acct.group) && !away && named && peopleIn(ctx, acct.group).includes(n) ? { key: "m:" + acct.group + ":" + n, role: "member", group: acct.group, name: n } : null;
   }
   return null;
 }
-// A group's last promise: 「下次的改善方法」 from its Group Lead's latest answer for an earlier event
+// A group's improvement still open: the latest 「下次的改善方法」, carried until it is carried out (順利實行) or a newer one is set.
+// 未能實行 and 未有需要 keep it for the next event; going to plan does not clear it.
 async function promiseOf(env, group, date) {
   const { results } = await env.DB.prepare("SELECT data FROM feedback WHERE role = 'gl' AND grp = ? AND date < ? ORDER BY date DESC, at DESC").bind(group, date).all();
-  for (const r of results) { try { const d = JSON.parse(r.data); if (d.diff === DIFF[1] && d.avoid) return d.avoid; if (d.diff) return ""; } catch { /* skip */ } }
+  for (const r of results) { try { const d = JSON.parse(r.data); if (d.avoid) return d.avoid; if (d.promise) return d.kept === KEPT[0] ? "" : d.promise; if (d.diff) return ""; } catch { /* skip */ } }
   return "";
 }
 async function feedbackDue(env, acct) {
@@ -541,8 +545,9 @@ function cleanAnswer(me, a, promise, ctx) {
   if (me.role === "teacher") {
     const fit = one(a.fit, FIT); if (!fit) return null;
     if (fit === FIT[0]) return { fit };
-    const area = one(a.area, AREAS); if (!area) return null;
-    return { fit, area, note: line(a.note) };
+    // Several areas may need improving; a teacher may also write instead of choosing
+    const area = AREAS.filter((x) => (Array.isArray(a.area) ? a.area : []).includes(x)), note = line(a.note); if (!area.length && !note) return null;
+    return { fit, area, note };
   }
   const picked = Array.isArray(a.grew) ? a.grew : [], grew = picked.includes(NO_GROWTH) ? [NO_GROWTH] : GREW.filter((g) => picked.includes(g));
   if (!grew.length) return null;
@@ -556,7 +561,8 @@ function cleanAnswer(me, a, promise, ctx) {
   if (!diff || (promise && !kept)) return null;
   const out = { diff, grew }, ppl = peopleIn(ctx, me.group), names = (l) => [...new Set((Array.isArray(l) ? l : []).filter((n) => ppl.includes(n)))];
   if (promise) Object.assign(out, { promise, kept });
-  if (diff === DIFF[1]) { out.reason = line(a.reason); out.avoid = line(a.avoid); if (!out.reason || !out.avoid) return null; }
+  if (diff !== DIFF[0]) { out.reason = line(a.reason); if (!out.reason) return null; }
+  if (diff === DIFF[2]) { out.avoid = line(a.avoid); if (!out.avoid) return null; }
   out.praise = names(a.praise);
   return out;
 }
