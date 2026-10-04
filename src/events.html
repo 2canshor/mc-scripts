@@ -133,6 +133,11 @@ button.row:active,[data-a].row:active{background:var(--current)}
 .go.dis{transition:transform .2s ease}
 .gx.open .go.dis{transform:rotate(180deg)}
 .gbody{padding-bottom:8px}
+/* An open disclosure and everything it shows sit in one callout of the pressed colour (26/10/04), so the opened part reads
+   as belonging to its row; inside it, a pressed row takes the next fill */
+.opened{margin:0 -20px;padding:0 20px;border-radius:12px;background:var(--current)}
+.opened button.row:active,.opened [data-a].row:active,.opened .row.current{background:var(--field)}
+@media (hover:hover){.opened button.row:hover,.opened div.row[data-a]:hover{background:var(--field)}}
 .ssec{margin-top:2px}
 .list.gl>.gh+.sub,.list.gl>.sub:first-child{margin-top:2px}
 .list.gl>.row+.gh,.list.gl>.sub+.gh{margin-top:18px}
@@ -950,7 +955,7 @@ function pEvents() {
     ${up.length || !q ? `<section class="sec"><p class="sh">Upcoming</p>${up.length ? `<div class="list">${rows(up)}</div>` : '<p class="empty">No events yet</p>'}</section>` : ''}
     ${past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${rows(past)}</div></section>` : ''}
     ${q && !list.length ? '<p class="empty sec">No results</p>' : ''}
-    ${isLead() && !q ? `<section class="sec"><div class="list"><button class="row g-ic gx${S.delOpen ? ' open' : ''}" data-a="delx" aria-expanded="${!!S.delOpen}">${sym('trash', '')}<span>Recently Deleted</span><span></span>${ic('chev-d', 'go dis')}</button>${S.delOpen ? `<div class="gbody">${!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('') : '<p class="empty">No deleted events</p>'}</div>` : ''}</div></section>` : ''}`};
+    ${isLead() && !q ? `<section class="sec"><div class="list"><div class="${S.delOpen ? 'opened' : ''}"><button class="row g-ic gx${S.delOpen ? ' open' : ''}" data-a="delx" aria-expanded="${!!S.delOpen}">${sym('trash', '')}<span>Recently Deleted</span><span></span>${ic('chev-d', 'go dis')}</button>${S.delOpen ? `<div class="gbody">${!S.deleted ? '<p class="empty">Loading</p>' : S.deleted.length ? S.deleted.map((x, i) => `<button class="row" data-a="askundelete:${i}" style="grid-template-columns:minmax(0,1fr) auto"><span>${dmy(x.date)}｜${esc(x.name)}<span class="cap">Deleted ${dmy(new Date(x.at + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/'))}</span></span><span class="muted">Restore</span></button>`).join('') : '<p class="empty">No deleted events</p>'}</div>` : ''}</div></div></section>` : ''}`};
 }
 
 // The event: title, its facts, your part, its documents. The same order for everyone.
@@ -1039,8 +1044,8 @@ function dutyGroups(ev, ed) {
   const rows = keys.map(k => { const gr = ev.groups.find(x => x.name === k), l = tasksOfKey(ev, k), open = !!S.open[`${ev.id}:g:${k}`];
     const n = k === 'All' ? 0 : l.filter(t => !t.names.length).length, cov = gr && gr.covers ? `<span class="cap">Covering ${gname(gr.covers)}</span>` : '';
     const changed = l.some(t => isNew(`${ev.id}:t:${t.id}`)) && !open ? '<span class="udot" role="img" aria-label="Updated"></span>' : '';
-    return `<button class="row g-ic gx${open ? ' open' : ''}" data-a="gx:${ev.id}:g:${esc(k)}" aria-expanded="${open}">${changed}${gtap(k, keySym(k), ' gs')}<span>${gtap(k, keyName(k))}${cov}</span><span>${n && (k === UNASSIGNED || fills(k)) ? badge(n) : ''}</span>${ic('chev-d', 'go dis')}</button>` +
-      (open ? `<div class="gbody">${bothSecs(ev, l, read).replace(/<section class="sec"><p class="sh">/g, '<section class="ssec"><p class="sub">')}</div>` : ''); }).join('');
+    return (open ? '<div class="opened">' : '') + `<button class="row g-ic gx${open ? ' open' : ''}" data-a="gx:${ev.id}:g:${esc(k)}" aria-expanded="${open}">${changed}${gtap(k, keySym(k), ' gs')}<span>${gtap(k, keyName(k))}${cov}</span><span>${n && (k === UNASSIGNED || fills(k)) ? badge(n) : ''}</span>${ic('chev-d', 'go dis')}</button>` +
+      (open ? `<div class="gbody">${bothSecs(ev, l, read).replace(/<section class="sec"><p class="sh">/g, '<section class="ssec"><p class="sub">')}</div></div>` : ''); }).join('');
   return `<section class="sec"><p class="sh">Duty Groups</p><div class="list">${rows}</div></section>`;
 }
 function yourPart(ev, ed) {
@@ -1092,7 +1097,7 @@ function memberList(ev, g, ed) {
       ? ts.map(t => `<div class="row sub2" style="grid-template-columns:minmax(0,1fr) 24px" tabindex="-1"><span>${esc(t.text)}<span class="cap">${when(t)}</span></span>${rmB(`pickn:${t.id}:${esc(n)}`, 'Remove task')}</div>`).join('') +
         (all.some(t => !t.names.includes(n)) ? addB(`menu:addmt:${g}:${esc(n)}`, 'Add Task').replace('class="row add', 'class="row add sub2') : '')
       : (ts.length ? ts.map(t => { const on = !!at[tickKey(n, t.id)]; return `<div class="row g-chk sub2">${lv ? `<span class="ck lv">${ic('circle')}</span>` : `<button class="ck${on ? ' on' : ''}" data-a="tick:${g}:${esc(n)}:${t.id}" aria-pressed="${on}" aria-label="${esc(t.text)} done">${ic(on ? 'check-fill' : 'circle')}</button>`}<span>${esc(t.text)}<span class="cap">${when(t)}${on ? '　' + at[tickKey(n, t.id)] : ''}</span></span></div>`; }).join('') : '<p class="empty">No tasks yet</p>');
-    return `<div class="mrow${open ? ' open' : ''}">${head.replace('row g-mem', `row g-mem gx${open ? ' open' : ''}`)}<div class="gbody">${body}</div></div>`; }).join('');
+    return `<div class="mrow opened">${head.replace('row g-mem', `row g-mem gx${open ? ' open' : ''}`)}<div class="gbody">${body}</div></div>`; }).join('');
   return `<section class="sec"><p class="sh">Members</p><div class="list">${rows}</div></section>`;
 }
 function documents(ev, ed) {
@@ -1237,7 +1242,7 @@ function sheet() {
     h = bar(close, 'Account', '') +
       `<div class="me-row">${face}<span><strong>${esc(v.name)}</strong><span class="cap">${esc(v.type === 'lead' ? (v.name === ACCT().id ? '' : ACCT().id) : v.standin ? `${v.group} Stand-in · Until ${hkAt(ACCT().until)}` : v.group ? v.group + (v.type === 'gl' ? ' Lead' : '') : '')}</span></span></div>` +
       (others.length ? `<section class="sec"><p class="sh">Switch Person</p><div class="list">${others.map(x => `<button class="row g-sw" data-a="switch:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
-      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Users &amp; Groups</span>${ic('chev-r', 'go')}</button><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}` : ''}${v.type === 'gl' && !v.standin ? (x => `<button class="row g-sw" data-a="standin:${v.group}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) : 'None'}</span></button>`)(STANDINS.find(y => y.grp === v.group)) : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
+      (v.type === 'lead' || v.type === 'gl' ? `<section class="sec"><div class="list">${v.type === 'lead' ? `<button class="row g-sw" data-a="members" style="grid-template-columns:32px minmax(0,1fr) 18px">${sym('users', '')}<span>Users &amp; Groups</span>${ic('chev-r', 'go')}</button><div class="${S.appsOpen ? 'opened' : ''}"><button class="row g-sw" data-a="appsopen" aria-expanded="${!!S.appsOpen}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('inbox', '')}<span>Applications</span><span class="${APPS && APPS.error ? 'danger' : 'muted'}">${!(APPS && APPS.url) ? 'Not Set' : APPS.error ? 'Cannot Read' : 'Connected'}</span></button>${S.appsOpen ? `<div class="row g-sw"><span></span><span class="fl"><input class="fld f apps" type="url" data-b="apps" value="${esc((APPS || {}).url || '')}" placeholder="CA Support Form's Google Sheet" aria-label="CA Support Form's Google Sheet" autocomplete="off"></span></div>` : ''}</div>` : ''}${v.type === 'gl' && !v.standin ? (x => `<button class="row g-sw" data-a="standin:${v.group}" style="grid-template-columns:32px minmax(0,1fr) auto">${sym('key', '')}<span>Stand-in</span><span class="muted">${x ? esc(x.person) : 'None'}</span></button>`)(STANDINS.find(y => y.grp === v.group)) : ''}<button class="row g-sw" data-a="export">${sym('download', '')}<span>Export Attendance</span></button></div></section>` : '') +
       `<section class="sec"><div class="list"><button class="row g-sw danger" data-a="signout"><span class="ic" style="color:inherit">${ic('logout')}</span><span>Sign Out</span></button></div></section>`;
   }
   // A stand-in for a Group Lead: pick a member; the account and its password show once, with Copy, to send to them
@@ -1795,7 +1800,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '5f252b3cb473';
+const PAGE_VER = '826c6ac4e3e7';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
