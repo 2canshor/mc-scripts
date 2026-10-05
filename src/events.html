@@ -2004,6 +2004,9 @@ function mentionPick(j) {
   t.value = v.slice(0, m.at) + ins + v.slice(m.end); const at = m.at + ins.length; mentionClose();
   t.focus(); t.setSelectionRange(at, at); t.dispatchEvent(new Event('input', {bubbles: true}));
 }
+// A row's red Delete shows only while the row holds the focus. Safari (iPhone, iPad) does not focus a tapped button, so the tap
+// moved the focus off the row, hid the button and lost the click (Group Lead report, 26/10/06). Keeping the focus where it is lets the tap land.
+document.addEventListener('mousedown', e => { if (e.target.closest && e.target.closest('.ib.rm')) e.preventDefault(); });
 document.addEventListener('mousedown', e => { const b = e.target.closest && e.target.closest('.mpop [data-m]'); if (!b) return; e.preventDefault(); mentionPick(+b.dataset.m); });
 document.addEventListener('focusout', e => { if (MENT && e.target === MENT.field) setTimeout(() => { if (MENT && document.activeElement !== MENT.field) mentionClose(); }, 120); });
 document.addEventListener('keydown', e => {
@@ -2205,7 +2208,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '77a371e28612';
+const PAGE_VER = '026aa690dd5d';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
