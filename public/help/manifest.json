@@ -1,6 +1,28 @@
 {
-  "source": "Event Centre help videos, 39 groups",
+  "source": "Event Centre help videos, 40 groups",
   "videos": [
+    {
+      "id": "find-help",
+      "title": "尋找教學影片",
+      "sec": [
+        "A"
+      ],
+      "search": [
+        "Help",
+        "help",
+        "使用教學",
+        "教學",
+        "教學影片",
+        "點用",
+        "唔識",
+        "唔知點做",
+        "尋找教學影片"
+      ],
+      "duration": 18.3,
+      "bytes": 276874,
+      "video": "find-help.mp4",
+      "poster": "find-help.png"
+    },
     {
       "id": "assembly-time",
       "title": "查看集合時間和地點",
