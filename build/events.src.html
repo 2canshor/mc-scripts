@@ -375,7 +375,7 @@ textarea.fld{display:inline-block}
 @media (hover:hover){.mpop button:hover{background:var(--field)}}
 .toast{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));padding:10px 18px;border-radius:999px;font-size:15px;max-width:calc(100vw - 48px)}
 .toast.act{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 18px}
-.toast .msg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast .msg{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .toast .tb{height:36px;padding:0 14px;border:0;border-radius:999px;background:none;color:inherit;font:inherit;font-weight:600;cursor:pointer}
 .toast .tb:hover{background:var(--current)}
 .alert{position:fixed;z-index:45;inset:0;display:grid;place-items:center;background:var(--dim);padding:24px}
@@ -613,7 +613,7 @@ const seePage = () => { if (V()) S.toSee.forEach(seeNow); S.toSee = new Set(); }
 const nobody = g => `<span class="nob${fills(g) ? '' : ' plain'}" role="img" aria-label="No one yet">${ic('nobody')}</span>`;
 const badge = n => `<span class="badge" aria-label="${n} without a name">${n}</span>`;
 // A toast says what just happened; it may carry one action (MC Scripts' 復原), and then stays 8 seconds
-const toast = (m, act) => { S.toast = m; S.toastAct = act || null; layer(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; S.toastAct = null; layer(); }, act ? 8000 : 2400); };
+const toast = (m, act, ms) => { S.toast = m; S.toastAct = act || null; layer(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; S.toastAct = null; layer(); }, ms || (act ? 8000 : 2400)); };
 const hasScript = ev => ev.rows.some(r => r.say.length);
 // When a task happens: its date before the day, or its Rundown line's time. The time column holds only dates and times;
 // the line itself is named above the task, so a line without a time still shows where the task is.
@@ -2028,10 +2028,12 @@ function merge3(b, m, t) {
 }
 function replaceIn(target, src) { Object.keys(target).forEach(k => delete target[k]); Object.assign(target, src); }
 
-function apply(rows) {
+function apply(rows, heard) {
   let changed = false;
   rows.forEach(row => {
     SYNC.seq = Math.max(SYNC.seq, row.rev);
+    if (heard && row.data && (SYNC.rev[row.id] || 0) < row.rev) { const ev = EVENTS.find(e => e.id === row.id), u = (JSON.parse(row.data).upd || {})[row.id], was = ev && ev.upd && ev.upd[row.id];
+      if (u && V() && u.by !== V().name && (!was || was.at !== u.at)) heard.push({id: row.id, by: u.by, name: JSON.parse(row.data).name}); }
     if (row.id === editingId()) { SYNC.later.add(row.id); return; }
     if (SYNC.busy.has(row.id) || (SYNC.rev[row.id] || 0) >= row.rev) return;   // a save in flight is merged when it returns
     const i = EVENTS.findIndex(e => e.id === row.id), local = EVENTS[i];
@@ -2079,6 +2081,14 @@ function takeLists(b) {
   const adminDirty = SYNC.adminBase && J(ADMINS) !== SYNC.adminBase;
   if (b.admins && !adminDirty && !(cur() && cur().p === 'group' && S.edit)) { ADMINS = b.admins; SYNC.adminBase = J(ADMINS); }
 }
+// Reloaded onto a newer version: the pages that were open, as far as they still exist, and where the page was scrolled
+function afterUpdate() {
+  let a = null; try { a = JSON.parse(sessionStorage.getItem('ev4:updated')); sessionStorage.removeItem('ev4:updated'); } catch (e) {}
+  if (!a) return false;
+  const ok = x => x && (!x.ev || EVENTS.some(e => e.id === x.ev));
+  if (Array.isArray(a.stack) && a.stack.length && a.stack.every(ok)) { S.stack = a.stack; requestAnimationFrame(() => scrollTo(0, a.y || 0)); }
+  return true;
+}
 async function loadAll() {
   try {
     const r = await api('state?since=0&full=1'), b = await r.json();
@@ -2092,7 +2102,7 @@ async function loadAll() {
     SYNC.offline = false; SYNC.loaded = true; if (pruneGone()) persistSoon(100); cacheSave();
     if (S.who && !peopleOf(ACCT()).includes(S.who)) { S.who = null; store.del('who'); }
     if (!S.stack.length) S.stack = [{p: 'events'}];
-    refresh(); loadFeedback(); fbPreview();
+    const up = afterUpdate(); refresh(); if (up) toast('Event Centre updated'); loadFeedback(); fbPreview();
   } catch (e) {
     if (String(e.message) === 'signin') return;
     // Only a failed request means no connection; anything else keeps the loading symbol and tries again (26/10/03)
@@ -2105,16 +2115,39 @@ async function pull(full) {
   if (!SYNC.token || !SYNC.loaded || document.hidden) return;
   TODAY = new Date(Date.now() + 8 * 3600e3).toISOString().slice(2, 10).replace(/-/g, '/');
   try {
-    const r = await api('state?since=' + (full ? '0&full=1' : SYNC.seq)); if (!r.ok) return;
+    const r = await api('state?since=' + (full ? '0&full=1' : SYNC.seq));
+    if (!r.ok) { if (r.status === 503 && (await r.json().catch(() => ({}))).error === 'reload') newVersion(); return; }
     const b = await r.json(); SYNC.offline = false;
-    // A newer page is live: reload onto it while nothing is being changed here (no Edit, sheet, menu or alert, no unsent save)
-    if (b.ver && b.ver !== PAGE_VER && !S.edit && !S.sheet && !S.menu && !S.alert && !SYNC.busy.size && !EVENTS.some(e => J(e) !== SYNC.base[e.id])) { location.reload(); return; }
+    if (b.ver && b.ver !== PAGE_VER) { newVersion(); if (!NEWVER.told) return; }
     if (full) takeLists(b);
-    const photos = await syncPhotos(b.photos).catch(() => false), accts = takeAccounts(b);
-    const got = apply(b.rows), gone = full && pruneGone(); if (gone) persistSoon(100);
+    const photos = await syncPhotos(b.photos).catch(() => false), accts = takeAccounts(b), heard = [];
+    const got = apply(b.rows, heard), gone = full && pruneGone(); if (gone) persistSoon(100);
     if (got || photos || accts || full || gone) refresh();
+    if (heard.length) told(heard);
     if (full || FB.day !== TODAY) loadFeedback();
   } catch (e) { SYNC.offline = true; }
+}
+// Someone else's change reaching an open page: a toast for everyone, besides the dots (26/10/06). One event names who and
+// which, with View unless it is the page already open; several only count. The one being edited takes them in after Done.
+function told(heard) {
+  const c = cur() || {}, one = heard.length === 1 && heard[0];
+  if (!one) { toast(heard.length + ' events updated'); return; }
+  if (one.id === editingId()) toast(one.by + ' also updated this event');
+  else toast(one.by + ' updated ' + one.name, c.ev === one.id ? null : ['open:' + one.id, 'View']);
+}
+// A newer Event Centre is live: reload onto it as soon as nothing here would be lost (no Edit, sheet, menu, alert, toast
+// with an action, field being typed in or unsent save), back on the same page, then say so. Until then a toast says it
+// is waiting, so no one keeps using the old page unknowingly (26/10/06).
+const NEWVER = {on: false, told: false, t: 0};
+const idleNow = () => { const a = document.activeElement; return !S.edit && !S.sheet && !S.menu && !S.alert && !S.toastAct && !DRAG && !SYNC.busy.size
+  && !(a && a.matches && a.matches('input,textarea,select') && a.type !== 'checkbox') && !EVENTS.some(e => J(e) !== SYNC.base[e.id]); };
+function newVersion() {
+  if (!NEWVER.on) { NEWVER.on = true; NEWVER.t = setInterval(newVersion, 1000); }
+  if (idleNow()) {
+    try { sessionStorage.setItem('ev4:updated', J({stack: S.stack, y: scrollY})); } catch (e) {}
+    clearInterval(NEWVER.t); location.reload(); return;
+  }
+  if (!NEWVER.told) { NEWVER.told = true; toast('Updates when you finish', null, 8000); }
 }
 // After Done or Cancel: what others saved to this event while it was being edited
 function catchUp() { if (SYNC.later.size) { SYNC.later.clear(); pull(true); } }
@@ -2510,8 +2543,9 @@ if ('serviceWorker' in navigator) addEventListener('load', () => navigator.servi
 SYNC.token = store.get('token'); S.acct = ({Teacher: 'Viewer', Admin: 'Editor'})[store.get('acct')] || store.get('acct'); S.who = store.get('who'); S.seen = store.get('seen') || {}; XACCT = store.get('xacct');
 PHOTOS = store.get('photos') || {};
 if (SYNC.token && ACCT()) {
-  if (cacheLoad()) { SYNC.loaded = true; S.stack = [{p: 'events'}]; }
-  render(); loadAll();
+  let up = false;
+  if (cacheLoad()) { SYNC.loaded = true; S.stack = [{p: 'events'}]; up = afterUpdate(); }
+  render(); if (up) toast('Event Centre updated'); loadAll();
 } else { SYNC.token = null; S.acct = null; render(); }
 </script>
 </body>
