@@ -32,6 +32,11 @@ html,body{background:var(--canvas)}
 html{-webkit-text-size-adjust:100%}
 *{touch-action:manipulation}  /* no double-tap zoom anywhere (pinching is stopped in the script); pan-x pan-y on the page left taps without a click on iOS */
 body{margin:0;color:var(--text);font-family:var(--serif);font-size:17px;line-height:1.5;padding-inline:36px;-webkit-text-size-adjust:100%}
+/* Only words take the selection colour (Carson 26/10/09). Safari paints the space between and beside selected blocks too,
+   so the layout is unselectable and the elements that hold words opt back in; symbols and photos stay out. */
+body{-webkit-user-select:none;user-select:none}
+h1,h2,h3,p,span,a,label,li,td,th,b,strong,em,small,time,.srow .body,input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}
+svg,img,.av{-webkit-user-select:none;user-select:none}
 button,input,select,textarea{font:inherit;color:inherit}
 button{border:0;background:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left}
 svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round} /* stroke-ok: line icons */
