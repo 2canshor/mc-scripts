@@ -1618,7 +1618,7 @@ function route() {
   if (p.p === 'members') return pMembers();
   if (p.p === 'help') return pHelp();
   if (p.p === 'group') return pAccount(p.id);
-  const ev = EV(); if (!ev) { S.stack = [{p: 'events'}]; return pEvents(); }
+  const ev = EV(); if (!ev) { S.stack = [{p: 'events'}]; S.edit = false; return pEvents(); }
   if (p.p === 'event') return pEvent(ev);
   if (p.id === 'rundown') return pRundown(ev);
   if (p.id === 'script') return pScript(ev);
@@ -2217,7 +2217,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '2f9321c536aa';
+const PAGE_VER = '43d8a4105bb2';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
@@ -2232,7 +2232,14 @@ const isBlank = ev => !ev.name.trim() && !ev.date && !ev.rows.length && !ev.task
 const editingId = () => S.edit ? (cur() || {}).ev || null : null;
 function cacheSave() {
   if (!S.acct) return;
-  store.set('cache', {acct: S.acct, events: EVENTS, base: SYNC.base, rev: SYNC.rev, seq: SYNC.seq, rosters: ROSTER, chairs: CHAIRS, admins: ADMINS, adminBase: SYNC.adminBase, rosterBase: SYNC.rosterBase, chairBase: SYNC.chairBase});
+  // A page in Edit keeps its copy from before Edit too, so a reload (iOS closing the tab in the background) comes back in
+  // Edit and Cancel still restores it, instead of the unfinished changes being saved without Done (26/10/09)
+  store.set('cache', {acct: S.acct, events: EVENTS, base: SYNC.base, rev: SYNC.rev, seq: SYNC.seq, rosters: ROSTER, chairs: CHAIRS, admins: ADMINS, adminBase: SYNC.adminBase, rosterBase: SYNC.rosterBase, chairBase: SYNC.chairBase,
+    edit: S.edit && S.snap ? {stack: S.stack, snap: S.snap} : null});
+}
+function resumeEdit() {
+  const e = (store.get('cache') || {}).edit;
+  if (e && Array.isArray(e.stack) && e.stack.length && e.stack.every(x => x && (!x.ev || EVENTS.some(v => v.id === x.ev)))) { S.stack = e.stack; S.edit = true; S.snap = e.snap; }
 }
 function cacheLoad() {
   const c = store.get('cache');
@@ -2396,7 +2403,7 @@ function told(heard) {
   const c = cur() || {}, one = heard.length === 1 && heard[0];
   if (!one) { toast(heard.length + ' events updated'); return; }
   if (one.id === editingId()) toast(one.by + ' also updated this event');
-  else toast(one.by + ' updated ' + one.name, c.ev === one.id ? null : ['open:' + one.id, 'View']);
+  else toast(one.by + ' updated ' + one.name, c.ev === one.id || S.edit ? null : ['open:' + one.id, 'View']);  // View would leave Edit without Done or Cancel
 }
 // A newer Event Centre is live: reload onto it as soon as nothing here would be lost (no Edit, sheet, menu, alert, toast
 // with an action, field being typed in or unsent save), back on the same page, then say so. Until then a toast says it
@@ -2807,7 +2814,7 @@ SYNC.token = store.get('token'); S.acct = ({Teacher: 'Viewer', Admin: 'Editor'})
 PHOTOS = store.get('photos') || {};
 if (SYNC.token && ACCT()) {
   let up = false;
-  if (cacheLoad()) { SYNC.loaded = true; S.stack = [{p: 'events'}]; up = afterUpdate(); }
+  if (cacheLoad()) { SYNC.loaded = true; S.stack = [{p: 'events'}]; up = afterUpdate(); resumeEdit(); }
   render(); if (up) toast('Event Centre updated'); loadAll();
 } else { SYNC.token = null; S.acct = null; render(); }
 </script>
