@@ -820,8 +820,8 @@ const isLead = () => !!V() && V().type === 'lead';
 const vt = () => V().type;
 const seen = ev => isLead() || V().type === 'teacher' || ev.groups.some(g => g.name === V().group);
 // Who changes a document: the Event Lead, and the on-duty group whose work it is (MC: Script; Backstage: Participant List; Reception: Guest List)
-const DOC_KIND = {script: 'MC', awards: 'Backstage', guests: 'Reception'};
-const canDoc = (ev, type) => isLead() || (['member', 'gl'].includes(V().type) && kind(V().group) === DOC_KIND[type] && ev.groups.some(g => g.name === V().group));
+const DOC_KIND = {script: ['MC'], awards: ['Backstage', 'Reception'], guests: ['Backstage', 'Reception']};
+const canDoc = (ev, type) => isLead() || (['member', 'gl'].includes(V().type) && DOC_KIND[type].includes(kind(V().group)) && ev.groups.some(g => g.name === V().group));
 
 /* ---------- Helpers ---------- */
 // Links typed in text (the teacher's attachments in Remarks) open in a new tab
@@ -2217,7 +2217,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '85a3cd3c4ab1';
+const PAGE_VER = '2f9321c536aa';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};

@@ -12,7 +12,8 @@ export const ACCOUNTS = [
   ...GROUPS.map((g) => ({ id: g, type: "group", group: g })),
   ...GROUPS.map((g) => ({ id: g + " Lead", type: "gl", group: g }))
 ];
-const DOC_OF = { MC: "script", Backstage: "awards", Reception: "guests" };
+// Backstage and Reception both make and edit the Participant List and the Guest List (Carson, 26/10/09)
+const DOC_OF = { MC: ["script"], Backstage: ["awards", "guests"], Reception: ["awards", "guests"] };
 const kindOf = (g) => g.split(" ")[0];
 const MAX_EVENT = 900000, SESSION_DAYS = 180, ROUNDS = 100000, MIN_PASSWORD = 8, RESET_MS = 60 * 60000;
 const waitAfter = (n) => (n < 5 ? 0 : [30, 60, 300][n - 5] || 900) * 1000;  // wrong tries so far -> seconds before the next try
@@ -292,7 +293,7 @@ export function upgrade(ev) {
 // ---------- Units: the pieces of an event that rights are checked on ----------
 // Event Lead: everything. A Group Lead on duty (or the Acting Group Lead on the day): names on their group's tasks,
 // roles in their group, Acting Group Lead, attendance and On Leave. On-duty members and Group Lead: their kind of
-// document (MC the Script, Backstage the Participant List, Reception the Guest List). The teacher reads.
+// documents (MC the Script; Backstage and Reception the Participant List and the Guest List). The teacher reads.
 const FIELDS = ["date", "name", "asmTime", "venue", "leading", "support", "lead", "remarks"];
 const KNOWN = new Set([...FIELDS, "id", "v", "groups", "mcs", "rows", "tasks", "awards", "guests", "att", "leave", "log", "upd", "roll"]);
 function units(ev) {
@@ -328,11 +329,11 @@ const docOfKey = (key) => Object.keys(DOC_KEY).find((d) => DOC_KEY[d].some((p) =
 function allowed(acct, old, key) {
   if (acct.type === "lead") return true;
   if (acct.type === "teacher" || !old) return false;
-  const g = leadsGroup(acct, old), mine = acct.group && onDuty(old, acct.group) ? DOC_OF[kindOf(acct.group)] : null;
+  const g = leadsGroup(acct, old), mine = acct.group && onDuty(old, acct.group) ? DOC_OF[kindOf(acct.group)] || [] : [];
   const d = docOfKey(key);
-  if (d) return mine === d;
+  if (d) return mine.includes(d);
   // The first Rundown line, made with a new Script when the Rundown is still empty
-  if ((key === "rows" || key.startsWith("r:")) && mine === "script" && !(old.rows || []).length) return true;
+  if ((key === "rows" || key.startsWith("r:")) && mine.includes("script") && !(old.rows || []).length) return true;
   if (!g) return false;
   if (key === `g:${g}:acting` || key === "a:" + g || key === "v:" + g) return true;
   // Names on a task given to their group; a role (a task with role) in their group

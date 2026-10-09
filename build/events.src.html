@@ -566,8 +566,8 @@ const isLead = () => !!V() && V().type === 'lead';
 const vt = () => V().type;
 const seen = ev => isLead() || V().type === 'teacher' || ev.groups.some(g => g.name === V().group);
 // Who changes a document: the Event Lead, and the on-duty group whose work it is (MC: Script; Backstage: Participant List; Reception: Guest List)
-const DOC_KIND = {script: 'MC', awards: 'Backstage', guests: 'Reception'};
-const canDoc = (ev, type) => isLead() || (['member', 'gl'].includes(V().type) && kind(V().group) === DOC_KIND[type] && ev.groups.some(g => g.name === V().group));
+const DOC_KIND = {script: ['MC'], awards: ['Backstage', 'Reception'], guests: ['Backstage', 'Reception']};
+const canDoc = (ev, type) => isLead() || (['member', 'gl'].includes(V().type) && DOC_KIND[type].includes(kind(V().group)) && ev.groups.some(g => g.name === V().group));
 
 /* ---------- Helpers ---------- */
 // Links typed in text (the teacher's attachments in Remarks) open in a new tab
