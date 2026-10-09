@@ -633,8 +633,12 @@ const owner = t => t.to.includes('All') ? sym('all', 'Everyone', 'ic gAll') : t.
 const names = t => { if (t.to.includes('All') && !t.names.length) return ''; const v = V();
   return `<span class="who">${t.names.length ? t.names.map(n => mention(n, n === v.name)).join('') : nobody(t.to[0])}</span>`; };
 const remark = t => t.remark ? `<span class="cap">${rich(t.remark)}</span>` : '';
-// Everyone who can be tagged with @ in a Remark (26/10/03, as in Teams): the chairs and every group's members
-const taggable = () => [...new Set([...CHAIRS, ...ALL_GROUPS.flatMap(members)].filter(Boolean))];
+// Everyone who can be tagged with @ in a Remark (26/10/03, as in Teams): the chairs, every group's members, and the
+// teachers (26/10/09): CA's teachers (the Editor account) and every event's Leading and Supporting Teachers, once each by code
+const teachers = () => { const seen = new Set();
+  return [...ADMINS, ...EVENTS.flatMap(e => [...(e.leading || []), ...(e.support || [])])].map(x => String(x || '').trim())
+    .filter(x => x && !seen.has(teacherCode(x)) && seen.add(teacherCode(x))); };
+const taggable = () => [...new Set([...CHAIRS, ...ALL_GROUPS.flatMap(members), ...teachers()].filter(Boolean))];
 // A Remark as read: links open, and @Name of a known person shows their photo and name (longest names first, so 陳大文 wins over 陳大)
 function rich(s) {
   const ns = taggable().sort((a, b) => b.length - a.length).map(n => esc(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
