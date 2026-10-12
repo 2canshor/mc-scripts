@@ -482,8 +482,8 @@ var ScriptGen = (function () {
     return zip.generateAsync({ type: "uint8array", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
   }
 
-  // Cue cards: the A4 Script on 5 × 3 in cards (landscape), one Word page per card, in the same styles and the same
-  // borderless table (MC name | class | text), with the title card first and {End of Script} at the foot of the last,
+  // Cue cards: the A4 Script on 5 × 3 in cards (landscape), in the same styles and the same layout
+  // (MC name | class | text), with the title card first and {End of Script} at the foot of the last,
   // and its type scaled from 11 pt to 14 pt to be read at arm's length. What a card needs on top of the A4 layout:
   // each Rundown line starts a card; a paragraph is cut only when it alone is longer than a card; a stage direction
   // goes over with the line it leads to; every card shows its Rundown line and number in its top right corner and names the MC on
@@ -492,17 +492,6 @@ var ScriptGen = (function () {
   var CARD = { w: 7200, h: 4320, m: 432, sz: 28, line: 380, cue: 20, cueLine: 300, block: 220, tight: 100, top: 150, cls: 1100, num: 900, end: 420 };
   CARD.W = CARD.w - 2 * CARD.m;
   CARD.room = CARD.h - 2 * CARD.m - CARD.cueLine - CARD.top; // under the Rundown line at the top
-  // Lines a paragraph takes: words wrapped greedily, a CJK character about 1 em, other letters about half, a space a quarter
-  function cardLines(s, sz, width) {
-    var n = 1, x = 0, em = sz * 10, max = width * 0.97;
-    (String(s).match(/[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60]|[^\s\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60]+|\s+/g) || []).forEach(function (w) {
-      var ww = /^\s/.test(w) ? em / 4 : isWide(w) ? em * 1.06 : w.length * em * 0.52; // 1.06: punctuation that may not start a line pushes characters down
-      if (x + ww > max && x > 0 && !/^\s/.test(w)) { n++; x = 0; }
-      x += /^\s/.test(w) && x === 0 ? 0 : ww;
-      while (x > max) { n++; x -= max; }
-    });
-    return n;
-  }
   // A paragraph too long for one card is cut at sentence ends, then at commas, and only then by length.
   function cutText(s, room, width, count) {
     var fits = function (x) { return count(x, CARD.sz, width) * CARD.line <= room; };
@@ -520,10 +509,8 @@ var ScriptGen = (function () {
     if (cur) out.push(cur);
     return out.map(function (x) { return x.trim(); }).filter(Boolean);
   }
-  // count(text, size in half points, width in twips) gives the lines a paragraph takes: an estimate for Word,
-  // which lays the text out itself, or the real lines when the PDF is drawn
+  // count(text, size in half points, width in twips) gives the lines a paragraph takes, as the PDF sets them
   function cards(state, count) {
-    count = count || cardLines;
     var d = describe(state), sp = d.speakers, segs = [], seg = null, lw = 0;
     named(state).forEach(function (m) { lw = Math.max(lw, twips(mcLabel(m) + d.colon)); });
     var ind = Math.max(1000, Math.ceil((lw * K + 200) / 100) * 100), textW = CARD.W - ind;
@@ -581,73 +568,10 @@ var ScriptGen = (function () {
     return { d: d, ind: ind, cards: out };
   }
 
-  function cardsXml(state) {
-    var C = cards(state), d = C.d, n = C.cards.length, ind = C.ind, rest = CARD.W - ind - CARD.cls;
-    var cols = [ind, CARD.cls, rest - CARD.num, CARD.num];
-    function sz(v) { return "<w:sz w:val=\"" + v + "\"/><w:szCs w:val=\"" + v + "\"/>"; }
-    var TXT = "<w:rPr>" + sz(CARD.sz) + "</w:rPr>", CUE = "<w:rPr>" + sz(CARD.cue) + "</w:rPr>";
-    var LBL = "<w:rPr><w:rFonts w:ascii=\"Anthropic Serif Text Medium\" w:hAnsi=\"Anthropic Serif Text Medium\"/>" + sz(CARD.sz) + "</w:rPr>";
-    function para(style, line, after, runs, jc) {
-      return "<w:p><w:pPr>" + (style ? "<w:pStyle w:val=\"" + style + "\"/>" : "") + "<w:spacing w:after=\"" + after + "\" w:line=\"" + line + "\" w:lineRule=\"exact\"/>" +
-        (jc ? "<w:jc w:val=\"" + jc + "\"/>" : "") + "</w:pPr>" + runs + "</w:p>";
-    }
-    function run(rpr, text) { return text ? "<w:r>" + rpr + t(text) + "</w:r>" : ""; }
-    function cell(from, span, inner) {
-      var w = 0; for (var i = from; i < from + span; i++) w += cols[i];
-      return "<w:tc><w:tcPr><w:tcW w:w=\"" + w + "\" w:type=\"dxa\"/>" + (span > 1 ? "<w:gridSpan w:val=\"" + span + "\"/>" : "") + "</w:tcPr>" + inner + "</w:tc>";
-    }
-    var none = "<w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/><w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/>";
-    function table(rows) {
-      return "<w:tbl><w:tblPr><w:tblW w:w=\"" + CARD.W + "\" w:type=\"dxa\"/><w:tblBorders>" + none + "</w:tblBorders><w:tblLayout w:type=\"fixed\"/>" +
-        "<w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"0\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"0\" w:type=\"dxa\"/></w:tblCellMar>" +
-        "<w:tblLook w:val=\"0000\" w:firstRow=\"0\" w:lastRow=\"0\" w:firstColumn=\"0\" w:lastColumn=\"0\" w:noHBand=\"1\" w:noVBand=\"1\"/></w:tblPr><w:tblGrid>" +
-        cols.map(function (w) { return "<w:gridCol w:w=\"" + w + "\"/>"; }).join("") + "</w:tblGrid>" + rows + "</w:tbl>";
-    }
-    function sect(centre) {
-      return "<w:sectPr><w:type w:val=\"nextPage\"/><w:pgSz w:w=\"" + CARD.w + "\" w:h=\"" + CARD.h + "\" w:orient=\"landscape\"/><w:pgMar w:top=\"" + CARD.m + "\" w:right=\"" + CARD.m +
-        "\" w:bottom=\"" + CARD.m + "\" w:left=\"" + CARD.m + "\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/><w:cols w:space=\"720\"/>" + (centre ? "<w:vAlign w:val=\"center\"/>" : "") + "<w:docGrid w:linePitch=\"360\"/></w:sectPr>";
-    }
-    // Each card ends its own section, so the next starts on a new page with no empty line at its top
-    function endCard(centre) { return "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr>" + sz(2) + "</w:rPr>" + sect(centre) + "</w:pPr></w:p>"; }
-    // The title card: the A4 Script's first lines, the title and the MCs, left-aligned and centred top to bottom
-    var x = "<w:p><w:pPr><w:pStyle w:val=\"Heading1\"/><w:spacing w:before=\"0\"/><w:rPr><w:sz w:val=\"48\"/><w:szCs w:val=\"48\"/></w:rPr></w:pPr><w:r><w:rPr><w:sz w:val=\"48\"/><w:szCs w:val=\"48\"/></w:rPr>" + t(d.title) + "</w:r></w:p>";
-    x += "<w:p><w:pPr><w:pStyle w:val=\"Heading3\"/><w:spacing w:after=\"0\"/></w:pPr><w:r>" + t(d.heading) + "</w:r></w:p>";
-    if (n) x += endCard(true);
-    C.cards.forEach(function (c, k) {
-      // The Rundown line sits with the card number in the top right corner, apart from the stage directions under it
-      var rows = "<w:tr>" + cell(0, 4, para("Caption", CARD.cueLine, CARD.top, run(CUE, (c.head ? c.head + "　　" : "") + (k + 1) + " / " + n), "right")) + "</w:tr>";
-      c.paras.forEach(function (p) {
-        var after = p.last ? CARD.block : p.kind === "award" ? 0 : CARD.tight;
-        if (p.kind === "line") rows += "<w:tr>" + cell(0, 1, para(null, CARD.line, after, p.show ? run(LBL, p.mc) : "")) + cell(1, 3, para(null, CARD.line, after, run(TXT, p.text))) + "</w:tr>";
-        else if (p.kind === "cue") rows += "<w:tr>" + cell(0, 1, para("Caption", CARD.cueLine, after, "")) + cell(1, 3, para("Caption", CARD.cueLine, after, run(CUE, p.text))) + "</w:tr>";
-        else rows += "<w:tr><w:trPr><w:cantSplit/></w:trPr>" + cell(0, 1, para(null, CARD.line, after, "")) + cell(1, 1, para(null, CARD.line, after, run(TXT, p.cls))) +
-          cell(2, 2, para(null, CARD.line, after, run(TXT, p.name))) + "</w:tr>";
-      });
-      x += table(rows);
-      if (k < n - 1) x += endCard();
-    });
-    // {End of Script} at the foot of the last card, as at the foot of the A4 Script's last page
-    var em = "<w:rPr><w:rStyle w:val=\"Emphasis\"/><w:sz w:val=\"28\"/><w:szCs w:val=\"28\"/></w:rPr>";
-    if (n) x += "<w:p><w:pPr><w:framePr w:wrap=\"around\" w:vAnchor=\"margin\" w:hAnchor=\"margin\" w:xAlign=\"center\" w:yAlign=\"bottom\"/><w:jc w:val=\"center\"/>" + em + "</w:pPr><w:r>" + em + t("{End of Script}") + "</w:r></w:p>";
-    return { body: x, sect: sect(!n).replace("<w:type w:val=\"nextPage\"/>", "") };
-  }
-
-  async function buildCards(JSZipLib, templateBase64, state) {
-    var zip = await JSZipLib.loadAsync(templateBase64, { base64: true });
-    var tpl = await zip.file("word/document.xml").async("string"), c = cardsXml(state);
-    var start = tpl.indexOf("<w:body>") + "<w:body>".length, end = tpl.lastIndexOf("</w:body>");
-    zip.file("word/document.xml", tpl.slice(0, start) + c.body + c.sect + tpl.slice(end));
-    return zip.generateAsync({ type: "uint8array", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-  }
-
-  // Cue cards on A4 paper, as a PDF: the same cards, five to a sheet so that a card printer is not needed.
-  // A 5 × 3 in card is 360 × 216 pt; down the left of the sheet three lie flat, down the right two stand on end, which
-  // fills 576 × 720 pt of the sheet's 595 × 842. Each card is outlined in a light hairline and the three straight cuts
-  // are marked above and below, so a guillotine cuts them exactly. The text is laid out here with the fonts' own
-  // widths, so a card never runs over.
   // getFont(src, text) resolves to the font cut down to text, or null (Anthropic Serif without its key: Noto Serif TC
   // then sets the Latin text too).
-  async function buildCardsPdf(PDFLib, fontkit, getFont, state) {
+  // What both PDFs share: the fonts, cut down to the script's text, the Word template's styles, line breaking and drawing.
+  async function pdfKit(PDFLib, fontkit, getFont, state) {
     var P = PDFLib, pdf = await P.PDFDocument.create();
     pdf.registerFontkit(fontkit);
     var d = describe(state), all = [d.title, d.title.toUpperCase(), d.heading, d.heading.toUpperCase(), "0123456789 /{End of Script}　"];
@@ -707,19 +631,28 @@ var ScriptGen = (function () {
       if (cur.trim()) lines.push(cur.trimEnd());
       return lines.length ? lines : [""];
     }
-    function stOf(sz) { return sz === CARD.cue ? ST.cue : ST.text; }
-    var C = cards(state, function (t, sz, w) { return wrap(t, stOf(sz), sz / 2, w / 20).length; });
-    var n = C.cards.length, ind = C.ind / 20, W = 360, H = 216, M = CARD.m / 20, TW = W - 2 * M;
-    var ops = P;
     // Text whose top sits at y (pt from the card's foot), in an exact line height, as Word places it
     function put(page, t, st, size, x, top, lineH, align, boxW) {
       var s = st.caps ? t.toUpperCase() : t, base = top - (lineH + size * 0.7) / 2;
       if (align === "right") x += boxW - width(t, st, size);
       if (align === "center") x += (boxW - width(t, st, size)) / 2;
-      if (st.bold) page.pushOperators(ops.setTextRenderingMode(ops.TextRenderingMode.FillAndOutline), ops.setLineWidth(size * 0.025), ops.setStrokingColor(st.color));
+      if (st.bold) page.pushOperators(P.setTextRenderingMode(P.TextRenderingMode.FillAndOutline), P.setLineWidth(size * 0.025), P.setStrokingColor(st.color));
       runs(s, st).forEach(function (r) { for (var ch of r.t) { if (ch.trim()) page.drawText(ch, { x: x, y: base, size: size, font: r.font, color: st.color }); x += cw(r.font, ch) * size; } });
-      if (st.bold) page.pushOperators(ops.setTextRenderingMode(ops.TextRenderingMode.Fill));
+      if (st.bold) page.pushOperators(P.setTextRenderingMode(P.TextRenderingMode.Fill));
     }
+    return { P: P, pdf: pdf, d: d, ST: ST, wrap: wrap, width: width, put: put, black: black };
+  }
+
+  // Cue cards on A4 paper, as a PDF: the same cards, five to a sheet so that a card printer is not needed.
+  // A 5 × 3 in card is 360 × 216 pt; down the left of the sheet three lie flat, down the right two stand on end, which
+  // fills 576 × 720 pt of the sheet's 595 × 842. Each card is outlined in a light hairline and the three straight cuts
+  // are marked above and below, so a guillotine cuts them exactly. The text is laid out here with the fonts' own
+  // widths, so a card never runs over.
+  async function buildCardsPdf(PDFLib, fontkit, getFont, state) {
+    var K_ = await pdfKit(PDFLib, fontkit, getFont, state), P = K_.P, pdf = K_.pdf, d = K_.d, ST = K_.ST, wrap = K_.wrap, put = K_.put, black = K_.black;
+    function stOf(sz) { return sz === CARD.cue ? ST.cue : ST.text; }
+    var C = cards(state, function (t, sz, w) { return wrap(t, stOf(sz), sz / 2, w / 20).length; });
+    var n = C.cards.length, ind = C.ind / 20, W = 360, H = 216, M = CARD.m / 20, TW = W - 2 * M;
     function drawCover(page) {
       var t1 = wrap(d.title, ST.h1, 24, TW), t3 = wrap(d.heading, ST.h3, 14, TW), y = (H + t1.length * 30 + 12 + t3.length * 19) / 2;  // left-aligned, centred top to bottom
       t1.forEach(function (l) { put(page, l, ST.h1, 24, M, y, 30); y -= 30; });
@@ -761,10 +694,45 @@ var ScriptGen = (function () {
         });
       }
       page.drawRectangle({ x: s.x, y: s.y, width: s.w, height: s.h, borderColor: P.rgb(0.75, 0.75, 0.75), borderWidth: 0.25 });
-      page.pushOperators(ops.pushGraphicsState(), ops.concatTransformationMatrix.apply(null, s.m));
+      page.pushOperators(P.pushGraphicsState(), P.concatTransformationMatrix.apply(null, s.m));
       if (c) drawCard(page, c, i - 1); else drawCover(page);
-      page.pushOperators(ops.popGraphicsState());
+      page.pushOperators(P.popGraphicsState());
     });
+    return pdf.save();
+  }
+
+  // The A4 Script as a PDF, laid out as the Word file: the title and MCs, then the MC name | class | text table in
+  // the template's styles (11 pt text, 8 pt grey stage directions), with {End of Script} at the foot of the last page.
+  async function buildScriptPdf(PDFLib, fontkit, getFont, state) {
+    var K_ = await pdfKit(PDFLib, fontkit, getFont, state), pdf = K_.pdf, d = K_.d, ST = K_.ST, wrap = K_.wrap, put = K_.put;
+    var PW = 595.28, PH = 841.89, M = 72, TW = PW - 2 * M, ind = d.indent / 20, CLS = 80, L = 15;
+    var page = pdf.addPage([PW, PH]), y = PH - M;
+    function newPage() { page = pdf.addPage([PW, PH]); y = PH - M; }
+    y -= 24;
+    wrap(d.title, ST.h1, 24, TW).forEach(function (l) { put(page, l, ST.h1, 24, M, y, 30); y -= 30; });
+    y -= 4 + 12;
+    wrap(d.heading, ST.h3, 14, TW).forEach(function (l) { put(page, l, ST.h3, 14, M, y, 19); y -= 19; });
+    y -= 24;
+    var paras = layout(state).paras.map(function (p) {
+      var st = p.kind === "cue" ? ST.cue : ST.text, size = p.kind === "cue" ? 8 : 11;
+      return { p: p, st: st, size: size, lines: p.kind === "award" ? [p.name] : wrap(p.text, st, size, TW - ind) };
+    });
+    paras.forEach(function (q, i) {
+      var p = q.p, next = paras[i + 1];
+      // A paragraph kept with the next (a stage direction, an award list's lead-in) moves on with its first line
+      var need = (p.keepNext && next ? q.lines.length + 1 : 1) * L;
+      if (y - need < M && y < PH - M) newPage();
+      q.lines.forEach(function (l, j) {
+        if (y - L < M) newPage();
+        if (j === 0 && p.kind === "line" && p.label) put(page, p.label, ST.text, 11, M, y, L);
+        if (j === 0 && p.kind === "award" && p.cls) put(page, p.cls, ST.text, 11, M + ind, y, L);
+        put(page, l, q.st, q.size, M + ind + (p.kind === "award" ? CLS : 0), y, L);
+        y -= L;
+      });
+      y -= p.after / 20;
+    });
+    if (y < M + 30) newPage();
+    put(page, "{End of Script}", ST.em, 14, M, M + 19, 19, "center", TW);
     return pdf.save();
   }
 
@@ -825,7 +793,7 @@ var ScriptGen = (function () {
   }
 
   return { isEnglish: isEnglish, describe: describe, layout: layout, speakers: speakers, bodyXml: bodyXml, awardRows: awardRows, lines: lines,
-    mcLabel: mcLabel, cls: cls, named: named, buildDocx: buildDocx, buildCards: buildCards, buildCardsPdf: buildCardsPdf, cards: cards, embedFonts: embedFonts, FACES: FACES, yymmdd: yymmdd };
+    mcLabel: mcLabel, cls: cls, named: named, buildDocx: buildDocx, buildCardsPdf: buildCardsPdf, buildScriptPdf: buildScriptPdf, cards: cards, embedFonts: embedFonts, FACES: FACES, yymmdd: yymmdd };
 })();
 if (typeof module !== "undefined") module.exports = ScriptGen;
 

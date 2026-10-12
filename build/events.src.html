@@ -722,7 +722,7 @@ function gcardOf(g) {
     (past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${past.map(e => evRow(e, 'cardopen')).join('')}</div></section>` : '');
 }
 const backBtn = () => `<button class="nb round glass" data-a="back" aria-label="Back">${ic('back')}</button>`;
-// A Script exports as the A4 Word file, as 3 × 5 in cue cards, or as those cards five to an A4 sheet, chosen from a menu; other documents export at once
+// A Script exports as a PDF, on A4 or as 3 × 5 in cue cards (five to an A4 sheet), chosen from a menu; other documents export at once
 const shareBtn = () => `<button class="nb round glass" data-a="${cur().id === 'script' ? 'menu:export' : 'exportdoc'}" aria-label="Export">${ic('download')}</button>`;
 const docBar = (canEdit, del) => { const b = editBar(canEdit, del ? `<div class="glass grp"><button class="nb danger" data-a="${del}" aria-label="Delete">${ic('trash')}</button></div>` : ''); return {...b, r: S.edit ? b.r : shareBtn() + b.r}; };
 const editBar = (canEdit, extra = '') => ({
@@ -1349,7 +1349,7 @@ function menuItems(k, arg) {
   if (k === 'addmt') { const [g, n] = arg.split(':');
     return sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && !t.names.includes(n))).map(t => [`pickn:${t.id}:${n}`, t.row ? 'list' : 'calendar', [t.text, t.row ? (rowOf(ev, t.row) || {}).time : md(t.date || '')].filter(Boolean).join('　')]); }
   if (k === 'addtask') return [[`addtask:date:${arg || ''}`, 'calendar', 'Before the Event'], ...ev.rows.map(r => [`addtask:row:${r.id}:${arg || ''}`, 'list', [r.time, r.title].filter(Boolean).join(' ')])];
-  if (k === 'export') return [['exportdoc', 'doc', 'A4'], ['exportcards', 'note', 'Cue Cards (3 × 5 in)'], ['exportsheet', 'note', 'Cue Cards on A4 (PDF)']];
+  if (k === 'export') return [['exportpdf', 'doc', 'A4'], ['exportsheet', 'note', '3 × 5 in']];
   if (k === 'addgroup') return ['MC', 'Backstage', 'Reception'].flatMap(kk => rotation(ev, kk).filter(x => !ev.groups.some(y => y.name === x.g)).map((x, i) => [`addgroup:${x.g}`, SYM[kk] + ':g' + x.g.slice(-1), `${x.g}${i === 0 ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}`]));
   return [];
 }
@@ -1689,8 +1689,8 @@ document.addEventListener('click', async e => {
       S.pwOpen.add(arg); if (!PWSHOW) { try { const r = await api('passwords'); PWSHOW = r.ok ? await r.json() : {}; } catch (x) { toast('No connection'); S.pwOpen.delete(arg); break; } } render(); break; }
     case 'export': isLead() ? exportAll() : exportAttendance(); break;
     case 'exportdoc': exportDoc(ev, cur().id); break;
-    case 'exportcards': exportDoc(ev, 'cue'); break;
-    case 'exportsheet': exportSheet(ev); break;
+    case 'exportpdf': exportPdf(ev, false); break;
+    case 'exportsheet': exportPdf(ev, true); break;
     case 'exportev': exportEvent(ev); break;
     case 'askdoc': S.alert = {t: `Delete This ${arg === 'script' ? 'Script' : arg === 'guests' ? 'Guest List' : 'Participant List'}?`, m: 'It goes for everyone.', verb: 'Delete', act: 'deldocpage:' + arg}; layer(); break;
     case 'deldocpage': if (arg === 'script') { ev.rows.forEach(rw => rw.say = []); ev.mcs = []; } else { if (arg === 'guests') ev.guests = null; else delete ev.awards[arg.slice(3)]; tidyMcs(ev); }
@@ -2525,9 +2525,9 @@ async function wordFile(ev, id) {
   const JSZip = await loadZip(), type = id.startsWith('aw:') ? 'awards' : id, zh = /[㐀-鿿]/.test(ev.name), docName = (zh ? DOC_ZH : DOC_EN)[type];
   const ymd = ev.date.replace(/\//g, ''), name = `${ev.name.trim() || 'Event'} ${ymd} ${docName}.docx`;
   let bytes;
-  if (type === 'script' || type === 'cue') {
-    // The Script goes through MC Scripts' own Word layout; cue cards through its card layout, each Rundown line starting a card
-    bytes = await (type === 'cue' ? ScriptGen.buildCards : ScriptGen.buildDocx)(JSZip, TEMPLATE_B64, scriptState(ev));
+  if (type === 'script') {
+    // The Script goes through MC Scripts' own Word layout
+    bytes = await ScriptGen.buildDocx(JSZip, TEMPLATE_B64, scriptState(ev));
   } else {
     const title = [dmy(ev.date), ev.name, docName].join('｜');  // day first, as the site shows dates (Build Brief 261004 item 8)
     let body = `<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:spacing w:after="360"/></w:pPr><w:r>${wt(title)}</w:r></w:p>`;
@@ -2551,16 +2551,16 @@ async function wordFile(ev, id) {
   bytes = await ScriptGen.embedFonts(JSZip, bytes, subsetFont).catch(() => bytes);
   return new File([bytes], name, {type: MIME});
 }
-// Cue cards on A4, five to a sheet, as a PDF (pdf-lib and fontkit are served from /pdf/)
+// The Script as a PDF: on A4 as the Word file, or as 3 × 5 in cue cards five to an A4 sheet (pdf-lib and fontkit are served from /pdf/)
 const loadScript = src => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => { s.remove(); no(new Error(src)); }; document.head.appendChild(s); });
 let pdfLibs = null;
-async function exportSheet(ev) {
+async function exportPdf(ev, cards) {
   toast('Preparing the PDF');
   try {
     pdfLibs = pdfLibs || Promise.all([loadScript('/pdf/pdf-lib-1.17.1.min.js'), loadScript('/pdf/fontkit-1.1.1.umd.min.js')]).catch(e => { pdfLibs = null; throw e; });
     await pdfLibs;
-    const bytes = await ScriptGen.buildCardsPdf(window.PDFLib, window.fontkit, subsetFont, scriptState(ev)), zh = /[㐀-鿿]/.test(ev.name);
-    const name = `${ev.name.trim() || 'Event'} ${ev.date.replace(/\//g, '')} ${(zh ? DOC_ZH : DOC_EN).cue}.pdf`;
+    const bytes = await ScriptGen[cards ? 'buildCardsPdf' : 'buildScriptPdf'](window.PDFLib, window.fontkit, subsetFont, scriptState(ev)), zh = /[㐀-鿿]/.test(ev.name);
+    const name = `${ev.name.trim() || 'Event'} ${ev.date.replace(/\//g, '')} ${(zh ? DOC_ZH : DOC_EN)[cards ? 'cue' : 'script']}.pdf`;
     saveFile(name, new Blob([bytes], {type: 'application/pdf'})); toast('Saved ' + name);
   } catch (e) { toast(SYNC.offline ? 'No connection. Try again when online' : 'The PDF could not be made'); }
 }
