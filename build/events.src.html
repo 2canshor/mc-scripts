@@ -2525,8 +2525,9 @@ async function wordFile(ev, id) {
     if (type === 'cue') bytes = await ScriptGen.buildCards(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});
     else bytes = await ScriptGen.buildDocx(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});
     // MC Scripts writes the title YY/MM/DD｜…; Event Centre's Word files put the day first (Build Brief 261004 item 8)
-    const z = await JSZip.loadAsync(bytes), doc = await z.file('word/document.xml').async('string'), was = esc(ev.date + '｜' + ev.name);
-    if (doc.includes(was)) { z.file('word/document.xml', doc.replace(was, esc(dmy(ev.date) + '｜' + ev.name))); bytes = await z.generateAsync({type: 'uint8array'}); }
+    // (an English script's title is joined with " | ")
+    const z = await JSZip.loadAsync(bytes), doc = await z.file('word/document.xml').async('string'), sep = doc.includes(esc(ev.date + ' | ' + ev.name)) ? ' | ' : '｜', was = esc(ev.date + sep + ev.name);
+    if (doc.includes(was)) { z.file('word/document.xml', doc.replace(was, esc(dmy(ev.date) + sep + ev.name))); bytes = await z.generateAsync({type: 'uint8array'}); }
   } else {
     const title = [dmy(ev.date), ev.name, docName].join('｜');  // day first, as the site shows dates (Build Brief 261004 item 8)
     let body = `<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:spacing w:after="360"/></w:pPr><w:r>${wt(title)}</w:r></w:p>`;

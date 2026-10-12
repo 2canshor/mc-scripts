@@ -192,40 +192,55 @@ var ScriptGen = (function () {
     return zip.generateAsync({ type: "uint8array", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
   }
 
-  // Cue cards: the same script on 5 × 3 in cards (landscape index cards), one Word page per card.
-  // Each Rundown line (a "head" cue) starts a new card; a long part runs on to further cards, broken
-  // between paragraphs, a stage direction kept with what follows it. Every card repeats its Rundown
-  // line and the MC's name at the top, so a card read on its own still says where it is and who speaks.
-  var CARD = { w: 7200, h: 4320, m: 432, text: 28, line: 400, cue: 20, cueLine: 300, head: 18, headLine: 240, after: 160, tight: 60, cls: 900 };
+  // Cue cards: the A4 Script on 5 × 3 in cards (landscape), one Word page per card, in the same styles and the same
+  // borderless table (MC name | class | text), with the title card first and {End of Script} at the foot of the last,
+  // and its type scaled from 11 pt to 14 pt to be read at arm's length. What a card needs on top of the A4 layout:
+  // each Rundown line starts a card; a paragraph is cut only when it alone is longer than a card; a stage direction
+  // goes over with the line it leads to; every card repeats its Rundown line, shows its number and names the MC on
+  // its first line; an award list run on to a new card repeats its award.
+  var K = 14 / 11;
+  var CARD = { w: 7200, h: 4320, m: 432, sz: 28, line: 380, cue: 20, cueLine: 300, block: 220, tight: 100, top: 150, cls: 1100, num: 900, end: 420 };
   CARD.W = CARD.w - 2 * CARD.m;
-  CARD.room = CARD.h - 2 * CARD.m - CARD.headLine - 120 - 80; // the head row and the gap under it
-  function cardLines(s, sz) {
-    var w = 0;
-    for (var ch of String(s)) w += isWide(ch) ? sz * 10 : sz * 4.9;
-    return Math.max(1, Math.ceil(w / (CARD.W * 0.96)));
-  }
-  // A paragraph too long for one card is cut at sentence ends, then by length.
-  function cutText(s, room, sz, label) {
-    var parts = String(s).match(/[^。！？!?.]+[。！？!?.]*[」』"']*\s*/g) || [s], out = [], cur = "";
-    var fits = function (x, first) { return cardLines((first ? label : "") + x, sz) * CARD.line <= room; };
-    parts.forEach(function (p) {
-      if (fits(cur + p, !out.length)) { cur += p; return; }
-      if (cur) { out.push(cur); cur = ""; }
-      while (!fits(p, !out.length)) { var n = Math.floor(p.length * 0.6); out.push(p.slice(0, n)); p = p.slice(n); }
-      cur = p;
+  CARD.room = CARD.h - 2 * CARD.m - CARD.cueLine - CARD.top; // under the Rundown line at the top
+  // Lines a paragraph takes: words wrapped greedily, a CJK character about 1 em, other letters about half, a space a quarter
+  function cardLines(s, sz, width) {
+    var n = 1, x = 0, em = sz * 10, max = width * 0.97;
+    (String(s).match(/[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60]|[^\s\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60]+|\s+/g) || []).forEach(function (w) {
+      var ww = /^\s/.test(w) ? em / 4 : isWide(w) ? em * 1.06 : w.length * em * 0.52; // 1.06: punctuation that may not start a line pushes characters down
+      if (x + ww > max && x > 0 && !/^\s/.test(w)) { n++; x = 0; }
+      x += /^\s/.test(w) && x === 0 ? 0 : ww;
+      while (x > max) { n++; x -= max; }
     });
+    return n;
+  }
+  // A paragraph too long for one card is cut at sentence ends, then at commas, and only then by length.
+  function cutText(s, room, width) {
+    var fits = function (x) { return cardLines(x, CARD.sz, width) * CARD.line <= room; };
+    function pieces(x, re) { return x.match(re) || [x]; }
+    var out = [], cur = "";
+    function add(p, level) {
+      if (fits(cur + p)) { cur += p; return; }
+      if (cur) { out.push(cur); cur = ""; }
+      if (fits(p)) { cur = p; return; }
+      if (level === 0) return pieces(p, /[^，,、；;：:]+[，,、；;：:]*\s*/g).forEach(function (q) { add(q, 1); });
+      while (!fits(p)) { var n = Math.floor(p.length * 0.6); out.push(p.slice(0, n)); p = p.slice(n); }
+      cur = p;
+    }
+    pieces(String(s), /[^。！？!?.]+[。！？!?.]*[」』"']*\s*/g).forEach(function (p) { add(p, 0); });
     if (cur) out.push(cur);
     return out.map(function (x) { return x.trim(); }).filter(Boolean);
   }
   function cards(state) {
-    var d = describe(state), sp = d.speakers, segs = [], seg = null;
+    var d = describe(state), sp = d.speakers, segs = [], seg = null, lw = 0;
+    named(state).forEach(function (m) { lw = Math.max(lw, twips(mcLabel(m) + d.colon)); });
+    var ind = Math.max(1000, Math.ceil((lw * K + 200) / 100) * 100), textW = CARD.W - ind;
     state.blocks.forEach(function (b, i) {
       var ls = lines(b.text);
       if (!ls.length) return;
       if (b.head || !seg) { seg = { head: b.head ? ls.join("　") : "", items: [] }; segs.push(seg); if (b.head) return; }
       var mc = b.type === "line" && sp[i] && d.byId[sp[i].mc];
       if (b.type === "line") ls.forEach(function (l, j) {
-        seg.items.push({ kind: "line", mc: mc ? mcLabel(mc) + d.colon + (d.en ? " " : "") : "", show: j === 0 && !!(sp[i] && sp[i].show), text: l, last: j === ls.length - 1 });
+        seg.items.push({ kind: "line", mc: mc ? mcLabel(mc) + d.colon : "", show: j === 0 && !!(sp[i] && sp[i].show), text: l, last: j === ls.length - 1 });
       });
       else if (b.type === "cue") ls.forEach(function (l, j) { seg.items.push({ kind: "cue", text: l, last: j === ls.length - 1 }); });
       else {
@@ -234,28 +249,16 @@ var ScriptGen = (function () {
         awardRows(b.text).forEach(function (r, j, all) { seg.items.push({ kind: "award", cls: r.cls, name: r.name, title: title, last: j === all.length - 1 }); });
       }
     });
-    var out = [];
+    function height(it) {
+      if (it.kind === "cue") return cardLines(it.text, CARD.cue, textW) * CARD.cueLine + (it.last ? CARD.block : CARD.tight);
+      if (it.kind === "award") return CARD.line + (it.last ? CARD.block : 0);
+      return cardLines(it.text, CARD.sz, textW) * CARD.line + (it.last ? CARD.block : CARD.tight);
+    }
+    var out = [], card = null, used = 0;
     segs.forEach(function (sg) {
-      var card = null, used = 0;
       function open() { card = { head: sg.head, paras: [] }; out.push(card); used = 0; }
-      function height(it, top) {
-        if (it.kind === "cue") return cardLines(it.text, CARD.cue) * CARD.cueLine + (it.last ? CARD.after : CARD.tight);
-        if (it.kind === "award") return CARD.line + (it.last ? CARD.after : 0);
-        return cardLines((it.show || top ? it.mc : "") + it.text, CARD.text) * CARD.line + (it.last ? CARD.after : CARD.tight);
-      }
-      open();
-      sg.items.forEach(function (it) {
-        var top = !card.paras.length;
-        // A line too long for any card is cut, each piece placed as its own line
-        if (it.kind === "line" && height(it, true) - CARD.after > CARD.room) {
-          var bits = cutText(it.text, CARD.room - CARD.after, CARD.text, it.mc);
-          bits.forEach(function (t, k) { place({ kind: "line", mc: it.mc, show: it.show && k === 0, text: t, last: it.last && k === bits.length - 1 }); });
-          return;
-        }
-        place(it);
-      });
       function place(it) {
-        var h = height(it, !card.paras.length);
+        var h = height(it);
         if (card.paras.length && used + h > CARD.room) {
           // Stage directions at the foot of a full card go over with the line they lead to
           var carry = [];
@@ -263,58 +266,77 @@ var ScriptGen = (function () {
           card.paras.length -= carry.length;
           open();
           if (!carry.length && it.kind === "award" && it.title) carry.push({ kind: "cue", text: it.title, last: true });
-          carry.forEach(function (c) { card.paras.push(c); used += height(c, false); });
-          h = height(it, !card.paras.length);
+          carry.forEach(function (c) { card.paras.push(c); used += height(c); });
         }
         // The MC's name is printed on the first line of each card
         var p = Object.assign({}, it);
         if (p.kind === "line" && !card.paras.some(function (x) { return x.kind === "line"; })) p.show = true;
         card.paras.push(p); used += h;
       }
+      open();
+      sg.items.forEach(function (it) {
+        if (it.kind === "line" && height(it) - CARD.block > CARD.room) {
+          var bits = cutText(it.text, CARD.room - CARD.block, textW);
+          bits.forEach(function (t, k) { place({ kind: "line", mc: it.mc, show: it.show && k === 0, text: t, last: it.last && k === bits.length - 1 }); });
+          return;
+        }
+        place(it);
+      });
     });
-    return { d: d, cards: out.filter(function (c) { return c.paras.length || c.head; }) };
+    // {End of Script} needs room at the foot of the last card
+    if (card && used + CARD.end > CARD.room) out.push({ head: card.head, paras: [] });
+    return { d: d, ind: ind, cards: out };
   }
 
   function cardsXml(state) {
-    var C = cards(state), n = C.cards.length, x = "";
-    var none = "<w:tblBorders><w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/><w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/></w:tblBorders>";
-    var mar = "<w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"0\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"0\" w:type=\"dxa\"/></w:tblCellMar>";
-    function table(cols, rows) {
-      return "<w:tbl><w:tblPr><w:tblW w:w=\"" + CARD.W + "\" w:type=\"dxa\"/>" + none + "<w:tblLayout w:type=\"fixed\"/>" + mar +
+    var C = cards(state), d = C.d, n = C.cards.length, ind = C.ind, rest = CARD.W - ind - CARD.cls;
+    var cols = [ind, CARD.cls, rest - CARD.num, CARD.num];
+    function sz(v) { return "<w:sz w:val=\"" + v + "\"/><w:szCs w:val=\"" + v + "\"/>"; }
+    var TXT = "<w:rPr>" + sz(CARD.sz) + "</w:rPr>", CUE = "<w:rPr>" + sz(CARD.cue) + "</w:rPr>";
+    var LBL = "<w:rPr><w:rFonts w:ascii=\"Anthropic Serif Text Medium\" w:hAnsi=\"Anthropic Serif Text Medium\"/>" + sz(CARD.sz) + "</w:rPr>";
+    function para(style, line, after, runs, jc) {
+      return "<w:p><w:pPr>" + (style ? "<w:pStyle w:val=\"" + style + "\"/>" : "") + "<w:spacing w:after=\"" + after + "\" w:line=\"" + line + "\" w:lineRule=\"exact\"/>" +
+        (jc ? "<w:jc w:val=\"" + jc + "\"/>" : "") + "</w:pPr>" + runs + "</w:p>";
+    }
+    function run(rpr, text) { return text ? "<w:r>" + rpr + t(text) + "</w:r>" : ""; }
+    function cell(from, span, inner) {
+      var w = 0; for (var i = from; i < from + span; i++) w += cols[i];
+      return "<w:tc><w:tcPr><w:tcW w:w=\"" + w + "\" w:type=\"dxa\"/>" + (span > 1 ? "<w:gridSpan w:val=\"" + span + "\"/>" : "") + "</w:tcPr>" + inner + "</w:tc>";
+    }
+    var none = "<w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/><w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/>";
+    function table(rows) {
+      return "<w:tbl><w:tblPr><w:tblW w:w=\"" + CARD.W + "\" w:type=\"dxa\"/><w:tblBorders>" + none + "</w:tblBorders><w:tblLayout w:type=\"fixed\"/>" +
+        "<w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"0\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"0\" w:type=\"dxa\"/></w:tblCellMar>" +
         "<w:tblLook w:val=\"0000\" w:firstRow=\"0\" w:lastRow=\"0\" w:firstColumn=\"0\" w:lastColumn=\"0\" w:noHBand=\"1\" w:noVBand=\"1\"/></w:tblPr><w:tblGrid>" +
         cols.map(function (w) { return "<w:gridCol w:w=\"" + w + "\"/>"; }).join("") + "</w:tblGrid>" + rows + "</w:tbl>";
     }
-    function cell(w, inner) { return "<w:tc><w:tcPr><w:tcW w:w=\"" + w + "\" w:type=\"dxa\"/></w:tcPr>" + inner + "</w:tc>"; }
-    function sz(v) { return "<w:sz w:val=\"" + v + "\"/><w:szCs w:val=\"" + v + "\"/>"; }
-    function ppr(style, line, after, extra) {
-      return "<w:pPr>" + (style ? "<w:pStyle w:val=\"" + style + "\"/>" : "") + (extra || "") + "<w:spacing w:before=\"0\" w:after=\"" + after + "\" w:line=\"" + line + "\" w:lineRule=\"exact\"/></w:pPr>";
+    function sect() {
+      return "<w:sectPr><w:type w:val=\"nextPage\"/><w:pgSz w:w=\"" + CARD.w + "\" w:h=\"" + CARD.h + "\" w:orient=\"landscape\"/><w:pgMar w:top=\"" + CARD.m + "\" w:right=\"" + CARD.m +
+        "\" w:bottom=\"" + CARD.m + "\" w:left=\"" + CARD.m + "\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/><w:cols w:space=\"720\"/>" + "<w:docGrid w:linePitch=\"360\"/></w:sectPr>";
     }
-    var LBL = "<w:rPr><w:rFonts w:ascii=\"Anthropic Serif Display Medium\" w:hAnsi=\"Anthropic Serif Display Medium\" w:eastAsia=\"Noto Serif TC SemiBold\"/>" + sz(CARD.text) + "</w:rPr>";
-    var TXT = "<w:rPr>" + sz(CARD.text) + "</w:rPr>", CUE = "<w:rPr>" + sz(CARD.cue) + "</w:rPr>", HD = "<w:rPr>" + sz(CARD.head) + "</w:rPr>";
-    var sect = "<w:pgSz w:w=\"" + CARD.w + "\" w:h=\"" + CARD.h + "\" w:orient=\"landscape\"/><w:pgMar w:top=\"" + CARD.m + "\" w:right=\"" + CARD.m + "\" w:bottom=\"" + CARD.m +
-      "\" w:left=\"" + CARD.m + "\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/><w:cols w:space=\"720\"/><w:docGrid w:linePitch=\"360\"/>";
+    // Each card ends its own section, so the next starts on a new page with no empty line at its top
+    function endCard() { return "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr>" + sz(2) + "</w:rPr>" + sect() + "</w:pPr></w:p>"; }
+    // The title card: the A4 Script's first lines, the title and the MCs
+    var x = "<w:p><w:pPr><w:pStyle w:val=\"Heading1\"/><w:spacing w:before=\"0\"/><w:rPr><w:sz w:val=\"48\"/><w:szCs w:val=\"48\"/></w:rPr></w:pPr><w:r><w:rPr><w:sz w:val=\"48\"/><w:szCs w:val=\"48\"/></w:rPr>" + t(d.title) + "</w:r></w:p>";
+    x += "<w:p><w:pPr><w:pStyle w:val=\"Heading3\"/><w:spacing w:after=\"0\"/></w:pPr><w:r>" + t(d.heading) + "</w:r></w:p>";
+    if (n) x += endCard();
     C.cards.forEach(function (c, k) {
-      var hl = CARD.W - 1200;
-      x += table([hl, 1200], "<w:tr>" + cell(hl, "<w:p>" + ppr("Caption", CARD.headLine, 0) + "<w:r>" + HD + t(c.head) + "</w:r></w:p>") +
-        cell(1200, "<w:p>" + ppr("Caption", CARD.headLine, 0, "<w:jc w:val=\"right\"/>") + "<w:r>" + HD + t((k + 1) + " / " + n) + "</w:r></w:p>") + "</w:tr>");
-      x += "<w:p>" + ppr(null, 120, 80) + "</w:p>";
-      var rows = "";
-      function flush() { if (rows) { x += table([CARD.cls, CARD.W - CARD.cls], rows); rows = ""; } }
+      var rows = "<w:tr>" + cell(0, 1, para("Caption", CARD.cueLine, CARD.top, "")) + cell(1, 2, para("Caption", CARD.cueLine, CARD.top, run(CUE, c.head))) +
+        cell(3, 1, para("Caption", CARD.cueLine, CARD.top, run(CUE, (k + 1) + " / " + n), "right")) + "</w:tr>";
       c.paras.forEach(function (p) {
-        if (p.kind === "award") {
-          rows += "<w:tr><w:trPr><w:cantSplit/></w:trPr>" + cell(CARD.cls, "<w:p>" + ppr(null, CARD.line, 0) + (p.cls ? "<w:r>" + TXT + t(p.cls) + "</w:r>" : "") + "</w:p>") +
-            cell(CARD.W - CARD.cls, "<w:p>" + ppr(null, CARD.line, p.last ? CARD.after : 0) + "<w:r>" + TXT + t(p.name) + "</w:r></w:p>") + "</w:tr>";
-          return;
-        }
-        flush();
-        if (p.kind === "cue") x += "<w:p>" + ppr("Caption", CARD.cueLine, p.last ? CARD.after : CARD.tight) + "<w:r>" + CUE + t(p.text) + "</w:r></w:p>";
-        else x += "<w:p>" + ppr(null, CARD.line, p.last ? CARD.after : CARD.tight) + (p.show && p.mc ? "<w:r>" + LBL + t(p.mc) + "</w:r>" : "") + "<w:r>" + TXT + t(p.text) + "</w:r></w:p>";
+        var after = p.last ? CARD.block : p.kind === "award" ? 0 : CARD.tight;
+        if (p.kind === "line") rows += "<w:tr>" + cell(0, 1, para(null, CARD.line, after, p.show ? run(LBL, p.mc) : "")) + cell(1, 3, para(null, CARD.line, after, run(TXT, p.text))) + "</w:tr>";
+        else if (p.kind === "cue") rows += "<w:tr>" + cell(0, 1, para("Caption", CARD.cueLine, after, "")) + cell(1, 3, para("Caption", CARD.cueLine, after, run(CUE, p.text))) + "</w:tr>";
+        else rows += "<w:tr><w:trPr><w:cantSplit/></w:trPr>" + cell(0, 1, para(null, CARD.line, after, "")) + cell(1, 1, para(null, CARD.line, after, run(TXT, p.cls))) +
+          cell(2, 2, para(null, CARD.line, after, run(TXT, p.name))) + "</w:tr>";
       });
-      flush();
-      // Each card ends its own section, so the next card starts on a new page without an empty line at its top
-      if (k < n - 1) x += "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr>" + sz(2) + "</w:rPr><w:sectPr><w:type w:val=\"nextPage\"/>" + sect + "</w:sectPr></w:pPr></w:p>";
+      x += table(rows);
+      if (k < n - 1) x += endCard();
     });
-    return { body: x || "<w:p/>", sect: "<w:sectPr>" + sect + "</w:sectPr>" };
+    // {End of Script} at the foot of the last card, as at the foot of the A4 Script's last page
+    var em = "<w:rPr><w:rStyle w:val=\"Emphasis\"/><w:sz w:val=\"28\"/><w:szCs w:val=\"28\"/></w:rPr>";
+    if (n) x += "<w:p><w:pPr><w:framePr w:wrap=\"around\" w:vAnchor=\"margin\" w:hAnchor=\"margin\" w:xAlign=\"center\" w:yAlign=\"bottom\"/><w:jc w:val=\"center\"/>" + em + "</w:pPr><w:r>" + em + t("{End of Script}") + "</w:r></w:p>";
+    return { body: x, sect: sect().replace("<w:type w:val=\"nextPage\"/>", "") };
   }
 
   async function buildCards(JSZipLib, templateBase64, state) {
