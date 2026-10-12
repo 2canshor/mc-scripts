@@ -722,8 +722,9 @@ function gcardOf(g) {
     (past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${past.map(e => evRow(e, 'cardopen')).join('')}</div></section>` : '');
 }
 const backBtn = () => `<button class="nb round glass" data-a="back" aria-label="Back">${ic('back')}</button>`;
-const shareBtn = `<button class="nb round glass" data-a="exportdoc" aria-label="Export">${ic('download')}</button>`;
-const docBar = (canEdit, del) => { const b = editBar(canEdit, del ? `<div class="glass grp"><button class="nb danger" data-a="${del}" aria-label="Delete">${ic('trash')}</button></div>` : ''); return {...b, r: S.edit ? b.r : shareBtn + b.r}; };
+// A Script exports as the A4 Word file or as 3 × 5 in cue cards, chosen from a menu; other documents export at once
+const shareBtn = () => `<button class="nb round glass" data-a="${cur().id === 'script' ? 'menu:export' : 'exportdoc'}" aria-label="Export">${ic('download')}</button>`;
+const docBar = (canEdit, del) => { const b = editBar(canEdit, del ? `<div class="glass grp"><button class="nb danger" data-a="${del}" aria-label="Delete">${ic('trash')}</button></div>` : ''); return {...b, r: S.edit ? b.r : shareBtn() + b.r}; };
 const editBar = (canEdit, extra = '') => ({
   l: S.edit ? `<button class="nb glass" data-a="cancel">Cancel</button>` : backBtn(),
   r: !canEdit ? '' : S.edit ? `${extra}<button class="nb pri" data-a="done">Done</button>` : `<button class="nb glass" data-a="edit">Edit</button>`});
@@ -1348,6 +1349,7 @@ function menuItems(k, arg) {
   if (k === 'addmt') { const [g, n] = arg.split(':');
     return sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && !t.names.includes(n))).map(t => [`pickn:${t.id}:${n}`, t.row ? 'list' : 'calendar', [t.text, t.row ? (rowOf(ev, t.row) || {}).time : md(t.date || '')].filter(Boolean).join('　')]); }
   if (k === 'addtask') return [[`addtask:date:${arg || ''}`, 'calendar', 'Before the Event'], ...ev.rows.map(r => [`addtask:row:${r.id}:${arg || ''}`, 'list', [r.time, r.title].filter(Boolean).join(' ')])];
+  if (k === 'export') return [['exportdoc', 'doc', 'A4'], ['exportcards', 'note', 'Cue Cards (3 × 5 in)']];
   if (k === 'addgroup') return ['MC', 'Backstage', 'Reception'].flatMap(kk => rotation(ev, kk).filter(x => !ev.groups.some(y => y.name === x.g)).map((x, i) => [`addgroup:${x.g}`, SYM[kk] + ':g' + x.g.slice(-1), `${x.g}${i === 0 ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}`]));
   return [];
 }
@@ -1687,6 +1689,7 @@ document.addEventListener('click', async e => {
       S.pwOpen.add(arg); if (!PWSHOW) { try { const r = await api('passwords'); PWSHOW = r.ok ? await r.json() : {}; } catch (x) { toast('No connection'); S.pwOpen.delete(arg); break; } } render(); break; }
     case 'export': isLead() ? exportAll() : exportAttendance(); break;
     case 'exportdoc': exportDoc(ev, cur().id); break;
+    case 'exportcards': exportDoc(ev, 'cue'); break;
     case 'exportev': exportEvent(ev); break;
     case 'askdoc': S.alert = {t: `Delete This ${arg === 'script' ? 'Script' : arg === 'guests' ? 'Guest List' : 'Participant List'}?`, m: 'It goes for everyone.', verb: 'Delete', act: 'deldocpage:' + arg}; layer(); break;
     case 'deldocpage': if (arg === 'script') { ev.rows.forEach(rw => rw.say = []); ev.mcs = []; } else { if (arg === 'guests') ev.guests = null; else delete ev.awards[arg.slice(3)]; tidyMcs(ev); }
@@ -2444,8 +2447,8 @@ function wtable(widths, rows) {
     `<w:tblGrid>${widths.map(w => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>` +
     rows.map(r => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${r.map((c, i) => `<w:tc><w:tcPr><w:tcW w:w="${c.span ? widths.slice(i).reduce((a, b) => a + b, 0) : widths[i]}" w:type="dxa"/>${c.span ? `<w:gridSpan w:val="${widths.length - i}"/>` : ''}</w:tcPr>${wp(c.t, c.s, c.after ?? 120, c.b)}</w:tc>`).join('')}</w:tr>`).join('') + '</w:tbl>';
 }
-const DOC_ZH = {rundown: '程序表', script: '講稿', awards: '參與者名單', guests: '嘉賓名單'};
-const DOC_EN = {rundown: 'Rundown', script: 'Script', awards: 'Participant List', guests: 'Guest List'};
+const DOC_ZH = {rundown: '程序表', script: '講稿', cue: '提示卡', awards: '參與者名單', guests: '嘉賓名單'};
+const DOC_EN = {rundown: 'Rundown', script: 'Script', cue: 'Cue Cards', awards: 'Participant List', guests: 'Guest List'};
 // The whole event as one folder 「YYMMDD 活動名稱」, downloaded as a zip: the Word file of each of its documents, each named
 // 「活動名稱 YYMMDD 類型」 as when downloaded alone. No attendance. Several Participant Lists are told apart by their first award.
 async function exportEvent(ev) {
@@ -2512,14 +2515,15 @@ async function wordFile(ev, id) {
   const JSZip = await loadZip(), type = id.startsWith('aw:') ? 'awards' : id, zh = /[㐀-鿿]/.test(ev.name), docName = (zh ? DOC_ZH : DOC_EN)[type];
   const ymd = ev.date.replace(/\//g, ''), name = `${ev.name.trim() || 'Event'} ${ymd} ${docName}.docx`;
   let bytes;
-  if (type === 'script') {
-    // The Script goes through MC Scripts' own Word layout
+  if (type === 'script' || type === 'cue') {
+    // The Script goes through MC Scripts' own Word layout; cue cards through its card layout, each Rundown line starting a card
     const mcs = named(ev).map((m, i) => ({id: 'm' + i, cls: m[0], name: m[1]})), byName = n => (mcs.find(m => m.name === n) || {}).id;
-    const blocks = ev.rows.filter(r => r.say.length).flatMap(r => [{id: 'h' + r.id, type: 'cue', text: [r.time, r.title].filter(Boolean).join('　')},
+    const blocks = ev.rows.filter(r => r.say.length).flatMap(r => [{id: 'h' + r.id, type: 'cue', head: true, text: [r.time, r.title].filter(Boolean).join('　')},
       ...r.say.flatMap(s => s.type === 'line' ? [{id: s.id, type: 'line', mc: byName(spOf(ev, s)), text: s.text}] : s.type === 'cue' ? [{id: s.id, type: 'cue', text: s.text}]
         : s.type === 'award' ? [{id: s.id + 'n', type: 'cue', text: awardOf(ev, s).award}, {id: s.id, type: 'award', text: hereRows(ev, s).map(x => x[1] + ' ' + x[2]).join('\n')}]
         : [{id: s.id, type: 'cue', text: hereRows(ev, s).map(x => x[1] + (x[2] ? '　' + x[2] : '')).join('\n')}])]);
-    bytes = await ScriptGen.buildDocx(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});
+    if (type === 'cue') bytes = await ScriptGen.buildCards(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});
+    else bytes = await ScriptGen.buildDocx(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});
     // MC Scripts writes the title YY/MM/DD｜…; Event Centre's Word files put the day first (Build Brief 261004 item 8)
     const z = await JSZip.loadAsync(bytes), doc = await z.file('word/document.xml').async('string'), was = esc(ev.date + '｜' + ev.name);
     if (doc.includes(was)) { z.file('word/document.xml', doc.replace(was, esc(dmy(ev.date) + '｜' + ev.name))); bytes = await z.generateAsync({type: 'uint8array'}); }
