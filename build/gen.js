@@ -392,22 +392,26 @@ var ScriptGen = (function () {
     var PW = 595.28, PH = 841.89, X0 = (PW - 576) / 2, TOP = (PH + 720) / 2;
     var slots = [0, 1, 2].map(function (i) { return { x: X0, y: TOP - H * (i + 1), w: W, h: H, m: [1, 0, 0, 1, X0, TOP - H * (i + 1)] }; })
       .concat([0, 1].map(function (j) { var x = X0 + W, y = TOP - W * (j + 1); return { x: x, y: y, w: H, h: W, m: [0, 1, -1, 0, x + H, y] }; }));
-    var items = [null].concat(C.cards), page = null;
-    items.forEach(function (c, i) {
-      var s = slots[i % 5];
-      if (i % 5 === 0) {
-        page = pdf.addPage([PW, PH]);
-        // Cut marks above and below the three vertical cuts
-        [X0, X0 + W, X0 + W + H].forEach(function (x) {
-          page.drawLine({ start: { x: x, y: TOP + 6 }, end: { x: x, y: TOP + 24 }, thickness: 0.4, color: black });
-          page.drawLine({ start: { x: x, y: TOP - 720 - 6 }, end: { x: x, y: TOP - 720 - 24 }, thickness: 0.4, color: black });
-        });
-      }
-      page.drawRectangle({ x: s.x, y: s.y, width: s.w, height: s.h, borderColor: P.rgb(0.75, 0.75, 0.75), borderWidth: 0.25 });
-      page.pushOperators(P.pushGraphicsState(), P.concatTransformationMatrix.apply(null, s.m));
-      if (c) drawCard(page, c, i - 1); else drawCover(page);
-      page.pushOperators(P.popGraphicsState());
-    });
+    // Cut and stack: with the sheets printed and cut as one pile, each place on the sheet makes one stack that is already
+    // in order. Sheet i, place j holds card j × sheets + i, so the stacks laid one after another, left column top to
+    // bottom then right, run from the title card to the last card.
+    var items = [null].concat(C.cards), sheets = Math.ceil(items.length / 5);
+    for (var i = 0; i < sheets; i++) {
+      var page = pdf.addPage([PW, PH]);
+      // Cut marks above and below the three vertical cuts
+      [X0, X0 + W, X0 + W + H].forEach(function (x) {
+        page.drawLine({ start: { x: x, y: TOP + 6 }, end: { x: x, y: TOP + 24 }, thickness: 0.4, color: black });
+        page.drawLine({ start: { x: x, y: TOP - 720 - 6 }, end: { x: x, y: TOP - 720 - 24 }, thickness: 0.4, color: black });
+      });
+      slots.forEach(function (s, j) {
+        var k = j * sheets + i;
+        page.drawRectangle({ x: s.x, y: s.y, width: s.w, height: s.h, borderColor: P.rgb(0.75, 0.75, 0.75), borderWidth: 0.25 });
+        if (k >= items.length) return;
+        page.pushOperators(P.pushGraphicsState(), P.concatTransformationMatrix.apply(null, s.m));
+        if (items[k]) drawCard(page, items[k], k - 1); else drawCover(page);
+        page.pushOperators(P.popGraphicsState());
+      });
+    }
     return pdf.save();
   }
 
