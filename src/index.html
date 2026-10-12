@@ -486,7 +486,7 @@ var ScriptGen = (function () {
   // borderless table (MC name | class | text), with the title card first and {End of Script} at the foot of the last,
   // and its type scaled from 11 pt to 14 pt to be read at arm's length. What a card needs on top of the A4 layout:
   // each Rundown line starts a card; a paragraph is cut only when it alone is longer than a card; a stage direction
-  // goes over with the line it leads to; every card repeats its Rundown line, shows its number and names the MC on
+  // goes over with the line it leads to; every card shows its Rundown line and number in its top right corner and names the MC on
   // its first line; an award list run on to a new card repeats its award.
   var K = 14 / 11;
   var CARD = { w: 7200, h: 4320, m: 432, sz: 28, line: 380, cue: 20, cueLine: 300, block: 220, tight: 100, top: 150, cls: 1100, num: 900, end: 420 };
@@ -611,8 +611,8 @@ var ScriptGen = (function () {
     x += "<w:p><w:pPr><w:pStyle w:val=\"Heading3\"/><w:spacing w:after=\"0\"/></w:pPr><w:r>" + t(d.heading) + "</w:r></w:p>";
     if (n) x += endCard();
     C.cards.forEach(function (c, k) {
-      var rows = "<w:tr>" + cell(0, 1, para("Caption", CARD.cueLine, CARD.top, "")) + cell(1, 2, para("Caption", CARD.cueLine, CARD.top, run(CUE, c.head))) +
-        cell(3, 1, para("Caption", CARD.cueLine, CARD.top, run(CUE, (k + 1) + " / " + n), "right")) + "</w:tr>";
+      // The Rundown line sits with the card number in the top right corner, apart from the stage directions under it
+      var rows = "<w:tr>" + cell(0, 4, para("Caption", CARD.cueLine, CARD.top, run(CUE, (c.head ? c.head + "　　" : "") + (k + 1) + " / " + n), "right")) + "</w:tr>";
       c.paras.forEach(function (p) {
         var after = p.last ? CARD.block : p.kind === "award" ? 0 : CARD.tight;
         if (p.kind === "line") rows += "<w:tr>" + cell(0, 1, para(null, CARD.line, after, p.show ? run(LBL, p.mc) : "")) + cell(1, 3, para(null, CARD.line, after, run(TXT, p.text))) + "</w:tr>";
