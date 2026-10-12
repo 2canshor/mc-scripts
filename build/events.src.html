@@ -722,7 +722,7 @@ function gcardOf(g) {
     (past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${past.map(e => evRow(e, 'cardopen')).join('')}</div></section>` : '');
 }
 const backBtn = () => `<button class="nb round glass" data-a="back" aria-label="Back">${ic('back')}</button>`;
-// A Script exports as the A4 Word file or as 3 × 5 in cue cards, chosen from a menu; other documents export at once
+// A Script exports as the A4 Word file, as 3 × 5 in cue cards, or as those cards five to an A4 sheet, chosen from a menu; other documents export at once
 const shareBtn = () => `<button class="nb round glass" data-a="${cur().id === 'script' ? 'menu:export' : 'exportdoc'}" aria-label="Export">${ic('download')}</button>`;
 const docBar = (canEdit, del) => { const b = editBar(canEdit, del ? `<div class="glass grp"><button class="nb danger" data-a="${del}" aria-label="Delete">${ic('trash')}</button></div>` : ''); return {...b, r: S.edit ? b.r : shareBtn() + b.r}; };
 const editBar = (canEdit, extra = '') => ({
@@ -1349,7 +1349,7 @@ function menuItems(k, arg) {
   if (k === 'addmt') { const [g, n] = arg.split(':');
     return sorted(ev, ev.tasks.filter(t => !t.role && t.to.includes(g) && !t.to.includes('All') && !t.names.includes(n))).map(t => [`pickn:${t.id}:${n}`, t.row ? 'list' : 'calendar', [t.text, t.row ? (rowOf(ev, t.row) || {}).time : md(t.date || '')].filter(Boolean).join('　')]); }
   if (k === 'addtask') return [[`addtask:date:${arg || ''}`, 'calendar', 'Before the Event'], ...ev.rows.map(r => [`addtask:row:${r.id}:${arg || ''}`, 'list', [r.time, r.title].filter(Boolean).join(' ')])];
-  if (k === 'export') return [['exportdoc', 'doc', 'A4'], ['exportcards', 'note', 'Cue Cards (3 × 5 in)']];
+  if (k === 'export') return [['exportdoc', 'doc', 'A4'], ['exportcards', 'note', 'Cue Cards (3 × 5 in)'], ['exportsheet', 'note', 'Cue Cards on A4 (PDF)']];
   if (k === 'addgroup') return ['MC', 'Backstage', 'Reception'].flatMap(kk => rotation(ev, kk).filter(x => !ev.groups.some(y => y.name === x.g)).map((x, i) => [`addgroup:${x.g}`, SYM[kk] + ':g' + x.g.slice(-1), `${x.g}${i === 0 ? ' (Next)' : ''}${x.also.length ? ' (Also ' + x.also.join('、') + ')' : ''}`]));
   return [];
 }
@@ -1690,6 +1690,7 @@ document.addEventListener('click', async e => {
     case 'export': isLead() ? exportAll() : exportAttendance(); break;
     case 'exportdoc': exportDoc(ev, cur().id); break;
     case 'exportcards': exportDoc(ev, 'cue'); break;
+    case 'exportsheet': exportSheet(ev); break;
     case 'exportev': exportEvent(ev); break;
     case 'askdoc': S.alert = {t: `Delete This ${arg === 'script' ? 'Script' : arg === 'guests' ? 'Guest List' : 'Participant List'}?`, m: 'It goes for everyone.', verb: 'Delete', act: 'deldocpage:' + arg}; layer(); break;
     case 'deldocpage': if (arg === 'script') { ev.rows.forEach(rw => rw.say = []); ev.mcs = []; } else { if (arg === 'guests') ev.guests = null; else delete ev.awards[arg.slice(3)]; tidyMcs(ev); }
@@ -2511,23 +2512,22 @@ async function feedbackFile(list) {
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView showGridLines="0" zoomScale="143" zoomScaleNormal="143" workbookViewId="0"><pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="19.5"/><cols>${cols}</cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A2:G${2 + list.length}"/><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>`;
   return xlsxBlob('Feedback', sheet, xlsxStyles(), `Feedback!$A$2:$G$${2 + list.length}`);
 }
+// The Script as MC Scripts' generator takes it. Its title puts the day first, as the site shows dates (Build Brief 261004 item 8).
+function scriptState(ev) {
+  const mcs = named(ev).map((m, i) => ({id: 'm' + i, cls: m[0], name: m[1]})), byName = n => (mcs.find(m => m.name === n) || {}).id;
+  const blocks = ev.rows.filter(r => r.say.length).flatMap(r => [{id: 'h' + r.id, type: 'cue', head: true, text: [r.time, r.title].filter(Boolean).join('　')},
+    ...r.say.flatMap(s => s.type === 'line' ? [{id: s.id, type: 'line', mc: byName(spOf(ev, s)), text: s.text}] : s.type === 'cue' ? [{id: s.id, type: 'cue', text: s.text}]
+      : s.type === 'award' ? [{id: s.id + 'n', type: 'cue', text: awardOf(ev, s).award}, {id: s.id, type: 'award', text: hereRows(ev, s).map(x => x[1] + ' ' + x[2]).join('\n')}]
+      : [{id: s.id, type: 'cue', text: hereRows(ev, s).map(x => x[1] + (x[2] ? '　' + x[2] : '')).join('\n')}])]);
+  return {event: ev.name, date: iso(ev.date), titleDate: dmy(ev.date), mcs, blocks};
+}
 async function wordFile(ev, id) {
   const JSZip = await loadZip(), type = id.startsWith('aw:') ? 'awards' : id, zh = /[㐀-鿿]/.test(ev.name), docName = (zh ? DOC_ZH : DOC_EN)[type];
   const ymd = ev.date.replace(/\//g, ''), name = `${ev.name.trim() || 'Event'} ${ymd} ${docName}.docx`;
   let bytes;
   if (type === 'script' || type === 'cue') {
     // The Script goes through MC Scripts' own Word layout; cue cards through its card layout, each Rundown line starting a card
-    const mcs = named(ev).map((m, i) => ({id: 'm' + i, cls: m[0], name: m[1]})), byName = n => (mcs.find(m => m.name === n) || {}).id;
-    const blocks = ev.rows.filter(r => r.say.length).flatMap(r => [{id: 'h' + r.id, type: 'cue', head: true, text: [r.time, r.title].filter(Boolean).join('　')},
-      ...r.say.flatMap(s => s.type === 'line' ? [{id: s.id, type: 'line', mc: byName(spOf(ev, s)), text: s.text}] : s.type === 'cue' ? [{id: s.id, type: 'cue', text: s.text}]
-        : s.type === 'award' ? [{id: s.id + 'n', type: 'cue', text: awardOf(ev, s).award}, {id: s.id, type: 'award', text: hereRows(ev, s).map(x => x[1] + ' ' + x[2]).join('\n')}]
-        : [{id: s.id, type: 'cue', text: hereRows(ev, s).map(x => x[1] + (x[2] ? '　' + x[2] : '')).join('\n')}])]);
-    if (type === 'cue') bytes = await ScriptGen.buildCards(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});
-    else bytes = await ScriptGen.buildDocx(JSZip, TEMPLATE_B64, {event: ev.name, date: iso(ev.date), mcs, blocks});
-    // MC Scripts writes the title YY/MM/DD｜…; Event Centre's Word files put the day first (Build Brief 261004 item 8)
-    // (an English script's title is joined with " | ")
-    const z = await JSZip.loadAsync(bytes), doc = await z.file('word/document.xml').async('string'), sep = doc.includes(esc(ev.date + ' | ' + ev.name)) ? ' | ' : '｜', was = esc(ev.date + sep + ev.name);
-    if (doc.includes(was)) { z.file('word/document.xml', doc.replace(was, esc(dmy(ev.date) + sep + ev.name))); bytes = await z.generateAsync({type: 'uint8array'}); }
+    bytes = await (type === 'cue' ? ScriptGen.buildCards : ScriptGen.buildDocx)(JSZip, TEMPLATE_B64, scriptState(ev));
   } else {
     const title = [dmy(ev.date), ev.name, docName].join('｜');  // day first, as the site shows dates (Build Brief 261004 item 8)
     let body = `<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:spacing w:after="360"/></w:pPr><w:r>${wt(title)}</w:r></w:p>`;
@@ -2550,6 +2550,19 @@ async function wordFile(ev, id) {
   }
   bytes = await ScriptGen.embedFonts(JSZip, bytes, subsetFont).catch(() => bytes);
   return new File([bytes], name, {type: MIME});
+}
+// Cue cards on A4, five to a sheet, as a PDF (pdf-lib and fontkit are served from /pdf/)
+const loadScript = src => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => { s.remove(); no(new Error(src)); }; document.head.appendChild(s); });
+let pdfLibs = null;
+async function exportSheet(ev) {
+  toast('Preparing the PDF');
+  try {
+    pdfLibs = pdfLibs || Promise.all([loadScript('/pdf/pdf-lib-1.17.1.min.js'), loadScript('/pdf/fontkit-1.1.1.umd.min.js')]).catch(e => { pdfLibs = null; throw e; });
+    await pdfLibs;
+    const bytes = await ScriptGen.buildCardsPdf(window.PDFLib, window.fontkit, subsetFont, scriptState(ev)), zh = /[㐀-鿿]/.test(ev.name);
+    const name = `${ev.name.trim() || 'Event'} ${ev.date.replace(/\//g, '')} ${(zh ? DOC_ZH : DOC_EN).cue}.pdf`;
+    saveFile(name, new Blob([bytes], {type: 'application/pdf'})); toast('Saved ' + name);
+  } catch (e) { toast(SYNC.offline ? 'No connection. Try again when online' : 'The PDF could not be made'); }
 }
 async function exportDoc(ev, id) {
   toast('Preparing the Word file');

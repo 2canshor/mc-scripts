@@ -77,7 +77,7 @@ var ScriptGen = (function () {
     var byId = {};
     state.mcs.forEach(function (m) { byId[m.id] = m; });
     var date = yymmdd(state.date, "/");
-    var title = [date || "YY/MM/DD", state.event.trim() || (en ? "Event" : "活動名稱"), (en ? "Script" : "講稿")].join(en ? " | " : "｜");
+    var title = [state.titleDate || date || "YY/MM/DD", state.event.trim() || (en ? "Event" : "活動名稱"), (en ? "Script" : "講稿")].join(en ? " | " : "｜");
     var heading = mcs.map(function (m) { return (cls(m.cls) + " " + m.name.trim()).trim(); }).join("．");
     var labelWidth = 0;
     mcs.forEach(function (m) { labelWidth = Math.max(labelWidth, twips(mcLabel(m) + colon)); });
@@ -214,8 +214,8 @@ var ScriptGen = (function () {
     return n;
   }
   // A paragraph too long for one card is cut at sentence ends, then at commas, and only then by length.
-  function cutText(s, room, width) {
-    var fits = function (x) { return cardLines(x, CARD.sz, width) * CARD.line <= room; };
+  function cutText(s, room, width, count) {
+    var fits = function (x) { return count(x, CARD.sz, width) * CARD.line <= room; };
     function pieces(x, re) { return x.match(re) || [x]; }
     var out = [], cur = "";
     function add(p, level) {
@@ -230,7 +230,10 @@ var ScriptGen = (function () {
     if (cur) out.push(cur);
     return out.map(function (x) { return x.trim(); }).filter(Boolean);
   }
-  function cards(state) {
+  // count(text, size in half points, width in twips) gives the lines a paragraph takes: an estimate for Word,
+  // which lays the text out itself, or the real lines when the PDF is drawn
+  function cards(state, count) {
+    count = count || cardLines;
     var d = describe(state), sp = d.speakers, segs = [], seg = null, lw = 0;
     named(state).forEach(function (m) { lw = Math.max(lw, twips(mcLabel(m) + d.colon)); });
     var ind = Math.max(1000, Math.ceil((lw * K + 200) / 100) * 100), textW = CARD.W - ind;
@@ -250,9 +253,9 @@ var ScriptGen = (function () {
       }
     });
     function height(it) {
-      if (it.kind === "cue") return cardLines(it.text, CARD.cue, textW) * CARD.cueLine + (it.last ? CARD.block : CARD.tight);
+      if (it.kind === "cue") return count(it.text, CARD.cue, textW) * CARD.cueLine + (it.last ? CARD.block : CARD.tight);
       if (it.kind === "award") return CARD.line + (it.last ? CARD.block : 0);
-      return cardLines(it.text, CARD.sz, textW) * CARD.line + (it.last ? CARD.block : CARD.tight);
+      return count(it.text, CARD.sz, textW) * CARD.line + (it.last ? CARD.block : CARD.tight);
     }
     var out = [], card = null, used = 0;
     segs.forEach(function (sg) {
@@ -276,7 +279,7 @@ var ScriptGen = (function () {
       open();
       sg.items.forEach(function (it) {
         if (it.kind === "line" && height(it) - CARD.block > CARD.room) {
-          var bits = cutText(it.text, CARD.room - CARD.block, textW);
+          var bits = cutText(it.text, CARD.room - CARD.block, textW, count);
           bits.forEach(function (t, k) { place({ kind: "line", mc: it.mc, show: it.show && k === 0, text: t, last: it.last && k === bits.length - 1 }); });
           return;
         }
@@ -310,16 +313,16 @@ var ScriptGen = (function () {
         "<w:tblLook w:val=\"0000\" w:firstRow=\"0\" w:lastRow=\"0\" w:firstColumn=\"0\" w:lastColumn=\"0\" w:noHBand=\"1\" w:noVBand=\"1\"/></w:tblPr><w:tblGrid>" +
         cols.map(function (w) { return "<w:gridCol w:w=\"" + w + "\"/>"; }).join("") + "</w:tblGrid>" + rows + "</w:tbl>";
     }
-    function sect() {
+    function sect(centre) {
       return "<w:sectPr><w:type w:val=\"nextPage\"/><w:pgSz w:w=\"" + CARD.w + "\" w:h=\"" + CARD.h + "\" w:orient=\"landscape\"/><w:pgMar w:top=\"" + CARD.m + "\" w:right=\"" + CARD.m +
-        "\" w:bottom=\"" + CARD.m + "\" w:left=\"" + CARD.m + "\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/><w:cols w:space=\"720\"/>" + "<w:docGrid w:linePitch=\"360\"/></w:sectPr>";
+        "\" w:bottom=\"" + CARD.m + "\" w:left=\"" + CARD.m + "\" w:header=\"0\" w:footer=\"0\" w:gutter=\"0\"/><w:cols w:space=\"720\"/>" + (centre ? "<w:vAlign w:val=\"center\"/>" : "") + "<w:docGrid w:linePitch=\"360\"/></w:sectPr>";
     }
     // Each card ends its own section, so the next starts on a new page with no empty line at its top
-    function endCard() { return "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr>" + sz(2) + "</w:rPr>" + sect() + "</w:pPr></w:p>"; }
-    // The title card: the A4 Script's first lines, the title and the MCs
+    function endCard(centre) { return "<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:rPr>" + sz(2) + "</w:rPr>" + sect(centre) + "</w:pPr></w:p>"; }
+    // The title card: the A4 Script's first lines, the title and the MCs, left-aligned and centred top to bottom
     var x = "<w:p><w:pPr><w:pStyle w:val=\"Heading1\"/><w:spacing w:before=\"0\"/><w:rPr><w:sz w:val=\"48\"/><w:szCs w:val=\"48\"/></w:rPr></w:pPr><w:r><w:rPr><w:sz w:val=\"48\"/><w:szCs w:val=\"48\"/></w:rPr>" + t(d.title) + "</w:r></w:p>";
     x += "<w:p><w:pPr><w:pStyle w:val=\"Heading3\"/><w:spacing w:after=\"0\"/></w:pPr><w:r>" + t(d.heading) + "</w:r></w:p>";
-    if (n) x += endCard();
+    if (n) x += endCard(true);
     C.cards.forEach(function (c, k) {
       // The Rundown line sits with the card number in the top right corner, apart from the stage directions under it
       var rows = "<w:tr>" + cell(0, 4, para("Caption", CARD.cueLine, CARD.top, run(CUE, (c.head ? c.head + "　　" : "") + (k + 1) + " / " + n), "right")) + "</w:tr>";
@@ -336,7 +339,7 @@ var ScriptGen = (function () {
     // {End of Script} at the foot of the last card, as at the foot of the A4 Script's last page
     var em = "<w:rPr><w:rStyle w:val=\"Emphasis\"/><w:sz w:val=\"28\"/><w:szCs w:val=\"28\"/></w:rPr>";
     if (n) x += "<w:p><w:pPr><w:framePr w:wrap=\"around\" w:vAnchor=\"margin\" w:hAnchor=\"margin\" w:xAlign=\"center\" w:yAlign=\"bottom\"/><w:jc w:val=\"center\"/>" + em + "</w:pPr><w:r>" + em + t("{End of Script}") + "</w:r></w:p>";
-    return { body: x, sect: sect().replace("<w:type w:val=\"nextPage\"/>", "") };
+    return { body: x, sect: sect(!n).replace("<w:type w:val=\"nextPage\"/>", "") };
   }
 
   async function buildCards(JSZipLib, templateBase64, state) {
@@ -345,6 +348,134 @@ var ScriptGen = (function () {
     var start = tpl.indexOf("<w:body>") + "<w:body>".length, end = tpl.lastIndexOf("</w:body>");
     zip.file("word/document.xml", tpl.slice(0, start) + c.body + c.sect + tpl.slice(end));
     return zip.generateAsync({ type: "uint8array", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  }
+
+  // Cue cards on A4 paper, as a PDF: the same cards, five to a sheet so that a card printer is not needed.
+  // A 5 × 3 in card is 360 × 216 pt; down the left of the sheet three lie flat, down the right two stand on end, which
+  // fills 576 × 720 pt of the sheet's 595 × 842. Each card is outlined in a light hairline and the three straight cuts
+  // are marked above and below, so a guillotine cuts them exactly. The text is laid out here with the fonts' own
+  // widths, so a card never runs over.
+  // getFont(src, text) resolves to the font cut down to text, or null (Anthropic Serif without its key: Noto Serif TC
+  // then sets the Latin text too).
+  async function buildCardsPdf(PDFLib, fontkit, getFont, state) {
+    var P = PDFLib, pdf = await P.PDFDocument.create();
+    pdf.registerFontkit(fontkit);
+    var d = describe(state), all = [d.title, d.title.toUpperCase(), d.heading, d.heading.toUpperCase(), "0123456789 /{End of Script}　"];
+    state.mcs.forEach(function (m) { all.push(mcLabel(m) + d.colon); });
+    state.blocks.forEach(function (b) { all.push(b.text); });
+    var text = all.join("");
+    async function face(src) { var b = await Promise.resolve(getFont(src, text)).catch(function () { return null; }); return b ? pdf.embedFont(b, { subset: false }) : null; }
+    var f = {};
+    var got = await Promise.all(["NotoSerifTC-Regular", "NotoSerifTC-SemiBold", "NotoSerifTC-Bold", "AnthropicSerif-Text-Medium", "AnthropicSerif-Display-Medium", "AnthropicSerif-Display-MediumItalic"].map(face));
+    f.cjk = got[0]; f.cjkSemi = got[1] || f.cjk; f.cjkBold = got[2] || f.cjk;
+    f.lat = got[3] || f.cjk; f.disp = got[4] || f.lat; f.dispI = got[5] || f.disp;
+    if (!f.cjk) throw new Error("font");
+    // The styles of the Word template: Normal, Caption (grey), Heading 1 (bold, capitals), Heading 3 (capitals), Emphasis
+    var grey = P.rgb(0.498, 0.498, 0.498), black = P.rgb(0, 0, 0);
+    var ST = { text: { lat: f.lat, cjk: f.cjk, color: black }, cue: { lat: f.lat, cjk: f.cjk, color: grey },
+      h1: { lat: f.lat, cjk: f.cjkBold, color: black, bold: true, caps: true }, h3: { lat: f.disp, cjk: f.cjkSemi, color: black, caps: true },
+      em: { lat: f.dispI, cjk: f.cjk, color: black } };
+    var has = {};
+    function covers(font, ch) {
+      if (!has[font.name]) has[font.name] = new Set(font.getCharacterSet());
+      return has[font.name].has(ch.codePointAt(0));
+    }
+    // A run of text split by font: CJK characters, and anything the Latin font lacks, in Noto Serif TC
+    function runs(t, st) {
+      var out = [];
+      for (var ch of String(t)) {
+        var font = !isWide(ch) && covers(st.lat, ch) ? st.lat : st.cjk, last = out[out.length - 1];
+        if (last && last.font === font) last.t += ch; else out.push({ t: ch, font: font });
+      }
+      return out;
+    }
+    // Widths character by character, and drawn so: a PDF viewer otherwise takes some glyphs' widths (Noto Serif TC's
+    // digits) from the font's width table, where pdf-lib leaves them out, and leaves gaps after them
+    var adv = {};
+    function cw(font, ch) { var k = font.name + ch; return k in adv ? adv[k] : (adv[k] = font.widthOfTextAtSize(ch, 1)); }
+    function width(t, st, size) { var w = 0; runs(st.caps ? t.toUpperCase() : t, st).forEach(function (r) { for (var ch of r.t) w += cw(r.font, ch) * size; }); return w; }
+    // Line breaking: at spaces and between CJK characters, never before closing punctuation or after opening punctuation
+    var CLOSE = "，。、；：！？）」』〉》〕】…,.;:!?)]", OPEN = "（「『〈《〔【([";
+    function wrap(t, st, size, max) {
+      var toks = String(t).match(/\s+|[^\sᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠]+|[\s\S]/g) || [], words = [];
+      toks.forEach(function (w) {
+        var prev = words[words.length - 1];
+        if (prev && !/^\s/.test(w) && !/\s$/.test(prev) && (CLOSE.indexOf(w[0]) >= 0 || OPEN.indexOf(prev[prev.length - 1]) >= 0 ||
+          (!isWide(w[0]) && !isWide(prev[prev.length - 1])))) words[words.length - 1] += w;
+        else words.push(w);
+      });
+      var lines = [], cur = "";
+      words.forEach(function (w) {
+        if (cur && !/^\s+$/.test(w) && width((cur + w).trimEnd(), st, size) > max) { lines.push(cur.trimEnd()); cur = ""; }
+        if (!cur && /^\s+$/.test(w)) return;
+        while (!cur && width(w, st, size) > max && w.length > 1) {  // a word longer than the line
+          var n = w.length; while (n > 1 && width(w.slice(0, n), st, size) > max) n--;
+          lines.push(w.slice(0, n)); w = w.slice(n);
+        }
+        cur += w;
+      });
+      if (cur.trim()) lines.push(cur.trimEnd());
+      return lines.length ? lines : [""];
+    }
+    function stOf(sz) { return sz === CARD.cue ? ST.cue : ST.text; }
+    var C = cards(state, function (t, sz, w) { return wrap(t, stOf(sz), sz / 2, w / 20).length; });
+    var n = C.cards.length, ind = C.ind / 20, W = 360, H = 216, M = CARD.m / 20, TW = W - 2 * M;
+    var ops = P;
+    // Text whose top sits at y (pt from the card's foot), in an exact line height, as Word places it
+    function put(page, t, st, size, x, top, lineH, align, boxW) {
+      var s = st.caps ? t.toUpperCase() : t, base = top - (lineH + size * 0.7) / 2;
+      if (align === "right") x += boxW - width(t, st, size);
+      if (align === "center") x += (boxW - width(t, st, size)) / 2;
+      if (st.bold) page.pushOperators(ops.setTextRenderingMode(ops.TextRenderingMode.FillAndOutline), ops.setLineWidth(size * 0.025), ops.setStrokingColor(st.color));
+      runs(s, st).forEach(function (r) { for (var ch of r.t) { if (ch.trim()) page.drawText(ch, { x: x, y: base, size: size, font: r.font, color: st.color }); x += cw(r.font, ch) * size; } });
+      if (st.bold) page.pushOperators(ops.setTextRenderingMode(ops.TextRenderingMode.Fill));
+    }
+    function drawCover(page) {
+      var t1 = wrap(d.title, ST.h1, 24, TW), t3 = wrap(d.heading, ST.h3, 14, TW), y = (H + t1.length * 30 + 12 + t3.length * 19) / 2;  // left-aligned, centred top to bottom
+      t1.forEach(function (l) { put(page, l, ST.h1, 24, M, y, 30); y -= 30; });
+      y -= 12;
+      t3.forEach(function (l) { put(page, l, ST.h3, 14, M, y, 19); y -= 19; });
+    }
+    function drawCard(page, c, k) {
+      var y = H - M, cueL = CARD.cueLine / 20, L = CARD.line / 20;
+      put(page, (c.head ? c.head + "　　" : "") + (k + 1) + " / " + n, ST.cue, CARD.cue / 2, M, y, cueL, "right", TW);
+      y -= cueL + CARD.top / 20;
+      c.paras.forEach(function (p) {
+        var after = (p.last ? CARD.block : p.kind === "award" ? 0 : CARD.tight) / 20;
+        if (p.kind === "line") {
+          if (p.show && p.mc) put(page, p.mc, ST.text, CARD.sz / 2, M, y, L);
+          wrap(p.text, ST.text, CARD.sz / 2, TW - ind).forEach(function (l) { put(page, l, ST.text, CARD.sz / 2, M + ind, y, L); y -= L; });
+        } else if (p.kind === "cue") {
+          wrap(p.text, ST.cue, CARD.cue / 2, TW - ind).forEach(function (l) { put(page, l, ST.cue, CARD.cue / 2, M + ind, y, cueL); y -= cueL; });
+        } else {
+          put(page, p.cls, ST.text, CARD.sz / 2, M + ind, y, L);
+          put(page, p.name, ST.text, CARD.sz / 2, M + ind + CARD.cls / 20, y, L); y -= L;
+        }
+        y -= after;
+      });
+      if (k === n - 1) put(page, "{End of Script}", ST.em, 14, M, M + 19, 19, "center", TW);
+    }
+    // The sheet: three flat cards down the left, two standing cards down the right, centred on A4
+    var PW = 595.28, PH = 841.89, X0 = (PW - 576) / 2, TOP = (PH + 720) / 2;
+    var slots = [0, 1, 2].map(function (i) { return { x: X0, y: TOP - H * (i + 1), w: W, h: H, m: [1, 0, 0, 1, X0, TOP - H * (i + 1)] }; })
+      .concat([0, 1].map(function (j) { var x = X0 + W, y = TOP - W * (j + 1); return { x: x, y: y, w: H, h: W, m: [0, 1, -1, 0, x + H, y] }; }));
+    var items = [null].concat(C.cards), page = null;
+    items.forEach(function (c, i) {
+      var s = slots[i % 5];
+      if (i % 5 === 0) {
+        page = pdf.addPage([PW, PH]);
+        // Cut marks above and below the three vertical cuts
+        [X0, X0 + W, X0 + W + H].forEach(function (x) {
+          page.drawLine({ start: { x: x, y: TOP + 6 }, end: { x: x, y: TOP + 24 }, thickness: 0.4, color: black });
+          page.drawLine({ start: { x: x, y: TOP - 720 - 6 }, end: { x: x, y: TOP - 720 - 24 }, thickness: 0.4, color: black });
+        });
+      }
+      page.drawRectangle({ x: s.x, y: s.y, width: s.w, height: s.h, borderColor: P.rgb(0.75, 0.75, 0.75), borderWidth: 0.25 });
+      page.pushOperators(ops.pushGraphicsState(), ops.concatTransformationMatrix.apply(null, s.m));
+      if (c) drawCard(page, c, i - 1); else drawCover(page);
+      page.pushOperators(ops.popGraphicsState());
+    });
+    return pdf.save();
   }
 
   // Fonts the Word file carries, so it looks the same on a device without them (iPad Word).
@@ -404,6 +535,6 @@ var ScriptGen = (function () {
   }
 
   return { isEnglish: isEnglish, describe: describe, layout: layout, speakers: speakers, bodyXml: bodyXml, awardRows: awardRows, lines: lines,
-    mcLabel: mcLabel, cls: cls, named: named, buildDocx: buildDocx, buildCards: buildCards, cards: cards, embedFonts: embedFonts, FACES: FACES, yymmdd: yymmdd };
+    mcLabel: mcLabel, cls: cls, named: named, buildDocx: buildDocx, buildCards: buildCards, buildCardsPdf: buildCardsPdf, cards: cards, embedFonts: embedFonts, FACES: FACES, yymmdd: yymmdd };
 })();
 if (typeof module !== "undefined") module.exports = ScriptGen;
