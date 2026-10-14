@@ -108,6 +108,11 @@ button.row:active,[data-a].row:active{background:var(--current)}
 @media (hover:hover){button.row:hover,div.row[data-a]:hover{background:var(--current)}}
 [data-a].row{cursor:pointer}
 .row.current{background:var(--current)}
+/* Filled rows next to each other join into one fill, as consecutive selected rows do in Finder and Mail: only the outer
+   corners stay round (26/10/04 20:33 chosen questionnaire answers looked notched as separate pills; 26/10/14 the same in
+   Upcoming with two events today, and in Tasks with two happening now) */
+.row.current+.row.current,.fbo>.row.on+.row.on{border-top-left-radius:0;border-top-right-radius:0}
+.row.current:has(+.row.current),.fbo>.row.on:has(+.row.on){border-bottom-left-radius:0;border-bottom-right-radius:0}
 .g-ic{grid-template-columns:22px minmax(0,1fr) auto 18px}   /* symbol | name | detail | › */
 .g-ice{grid-template-columns:22px minmax(0,1fr) auto 18px 24px}   /* symbol | name | detail | › | − (Edit) */
 .g-p{grid-template-columns:22px minmax(0,1fr)}               /* symbol | value */
@@ -415,10 +420,6 @@ textarea.fld{display:inline-block}
 .fbo>.g-opt{grid-template-columns:minmax(0,1fr)}
 .fbo>.row.on,.fbo>.row.on:active{background:var(--primary);color:var(--on-primary)}
 .fbo>.row.on .av{color:var(--text)} /* a photo's initial keeps its own colour on the yellow fill */
-/* Chosen answers next to each other join into one fill, as consecutive selected rows do in Finder and Mail:
-   only the outer corners stay round (26/10/04 20:33: three separate pills stacked edge to edge looked notched) */
-.fbo>.row.on+.row.on{border-top-left-radius:0;border-top-right-radius:0}
-.fbo>.row.on:has(+.row.on){border-bottom-left-radius:0;border-bottom-right-radius:0}
 .fbo .tag{background:var(--canvas)}
 @media (hover:hover){.fbo>.row:not(.on):hover{background:color-mix(in srgb,var(--text) 6%,var(--field))}}
 .fbo>.row:not(.on):active{background:color-mix(in srgb,var(--text) 10%,var(--field))}
@@ -2480,7 +2481,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '564b71b0334d';
+const PAGE_VER = 'c78ca226d556';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
