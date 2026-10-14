@@ -1212,10 +1212,18 @@ function personOf(n) {
   return {pos: '', up: [], evs: []};
 }
 // The card: photo, name, position; then Reports To and the person's events (upcoming first, then past)
+// The Event Lead sees the person's sign-in on the card itself, shown plainly with Copy (26/10/14: looking it up in Users &
+// Groups each time was a chore); a member signs in with their group's account, a Group Lead with the Lead's
+function acctOf(n, w) {
+  if (CHAIRS.includes(n)) return 'Event Lead';
+  if (w.g) return w.pos === 'Group Lead' ? w.g + ' Lead' : w.g;
+  return w.pos === 'CA Teacher' ? 'Editor' : w.pos === 'Teacher' ? teacherCode(n) : '';
+}
+const cardAcct = id => isLead() && id && PWSHOW && PWSHOW[id] ? `<section class="sec"><p class="sh">Account</p><div class="list"><div class="row g-acct">${sym('key', 'Account')}<span>${esc(id)}</span><span class="pw"><span class="pv">${esc(PWSHOW[id])}</span><button class="ib eye" data-a="copypw:${esc(id)}" aria-label="Copy Account">${ic('copy')}</button></span></div></div></section>` : '';
 function cardOf(n) {
   const w = personOf(n), up = w.evs.filter(e => e.date >= TODAY).sort(soonest), past = w.evs.filter(e => e.date < TODAY).sort(newest);
   const evRows = l => l.map(e => evRow(e, 'cardopen')).join('');
-  return `<div class="me-row"><span class="av">${avatar(n)}</span><span><strong>${esc(n)}</strong><span class="cap">${esc([w.pos, w.g, w.cls].filter(Boolean).join(' · '))}</span></span></div>` +
+  return `<div class="me-row"><span class="av">${avatar(n)}</span><span><strong>${esc(n)}</strong><span class="cap">${esc([w.pos, w.g, w.cls].filter(Boolean).join(' · '))}</span></span></div>` + cardAcct(acctOf(n, w)) +
     (w.up.length ? `<section class="sec"><p class="sh">Reports To</p><div class="list">${w.up.map(x => `<button class="row g-sw" data-a="card:${esc(x)}"><span class="av">${avatar(x)}</span><span>${esc(x)}</span></button>`).join('')}</div></section>` : '') +
     (up.length ? `<section class="sec"><p class="sh">Upcoming</p><div class="list">${evRows(up)}</div></section>` : '') +
     (past.length ? `<section class="sec"><p class="sh">Past</p><div class="list">${evRows(past)}</div></section>` : '');
@@ -1229,7 +1237,7 @@ function gcardOf(g) {
   const r = roster(g), evs = EVENTS.filter(e => e.groups.some(x => x.name === g)), up = evs.filter(e => e.date >= TODAY).sort(soonest), past = evs.filter(e => e.date < TODAY).sort(newest);
   const pr = (n, cls) => `<button class="row g-sw g-mb" data-a="card:${esc(n)}"><span class="av">${avatar(n)}</span><span>${esc(n)}</span><span class="t">${esc(cls)}</span></button>`;
   const people = r.people.filter(p => p[1]).slice().sort((a, b) => a[0].localeCompare(b[0]));
-  return `<div class="me-row"><span class="av gav${gcls(g)}">${ic(SYM[kind(g)])}</span><span><strong>${gname(g)}</strong></span></div>` +
+  return `<div class="me-row"><span class="av gav${gcls(g)}">${ic(SYM[kind(g)])}</span><span><strong>${gname(g)}</strong></span></div>` + cardAcct(g) +
     (r.lead[1] ? `<section class="sec"><p class="sh">Group Lead</p><div class="list">${pr(r.lead[1], r.lead[0])}</div></section>` : '') +
     (people.length ? `<section class="sec"><p class="sh">Members</p><div class="list">${people.map(p => pr(p[1], p[0])).join('')}</div></section>` : '') +
     (up.length ? `<section class="sec"><p class="sh">Upcoming</p><div class="list">${up.map(e => evRow(e, 'cardopen')).join('')}</div></section>` : '') +
@@ -1751,6 +1759,10 @@ function pGuests(ev) {
 /* ---------- Users & Groups (Event Lead) ---------- */
 // A password reads as dots; the eye shows it (as the server last saw it: set here, or used to sign in), and hides it again
 let PWSHOW = null;  // fetched when an eye is first tapped; never kept on the device
+// A card fetches them too, for the Event Lead, and redraws once they arrive
+async function cardPw() { if (!isLead() || PWSHOW) return;
+  try { const r = await api('passwords'); PWSHOW = r.ok ? await r.json() : {}; } catch (x) { return; }
+  if (S.sheet && ['card', 'gcard'].includes(S.sheet.k)) layer(); }
 const pwView = (id, ed, copy) => { if (ed) return `<span class="pw">${fld('pw:' + id, PASSWORDS[id] || '', 'New Password')}</span>`;
   const on = (S.pwOpen || new Set()).has(id), v = on && PWSHOW ? PWSHOW[id] : '';
   return `<span class="pw"><span class="pv${on ? '' : ' mask'}">${on ? (v ? esc(v) : '—') : '••••••'}</span><button class="ib eye" data-a="pweye:${esc(id)}" aria-label="${on ? 'Hide' : 'Show'} Password">${ic(on ? 'eye-off' : 'eye')}</button>${copy ? `<button class="ib eye" data-a="copypw:${esc(id)}" aria-label="Copy Account">${ic('copy')}</button>` : ''}</span>`; };
@@ -2194,10 +2206,10 @@ document.addEventListener('click', async e => {
     case 'switch': S.who = arg; store.set('who', arg); S.sheet = null; S.toSee = new Set(); render(); loadFeedback(); break;
     // Applications: the CA Support form's sheet. The row says whether it is read; tapping it shows the link to change it.
     case 'appsopen': S.appsOpen = !S.appsOpen; layer(); break;
-    // Copy on a teacher's account (Build Brief 261004 item 10): the same text as the new-account toast. The password is fetched
+    // Copy on an account (Build Brief 261004 item 10): the same text as the new-account toast; the teacher line only on a teacher's. The password is fetched
     // inside the copy itself when not yet shown, so Safari still counts the copy as part of the tap.
     case 'copypw': { const text = async () => { if (!PWSHOW) { const r = await api('passwords'); PWSHOW = r.ok ? await r.json() : {}; }
-        if (!PWSHOW[arg]) throw new Error('no password'); return signInText(arg, PWSHOW[arg], TEACHER_MORE); };
+        if (!PWSHOW[arg]) throw new Error('no password'); return signInText(arg, PWSHOW[arg], ['Event Lead', 'Editor', 'Viewer', ...ALL_GROUPS, ...ALL_GROUPS.map(g => g + ' Lead')].includes(arg) ? '' : TEACHER_MORE); };
       try { if (PWSHOW) await navigator.clipboard.writeText(await text()); else await navigator.clipboard.write([new ClipboardItem({'text/plain': text().then(t => new Blob([t], {type: 'text/plain'}))})]); toast('Copied'); }
       catch (err) { toast('Could not copy'); } break; }
     case 'pweye': { S.pwOpen = S.pwOpen || new Set(); if (S.pwOpen.has(arg)) { S.pwOpen.delete(arg); render(); break; }
@@ -2212,8 +2224,8 @@ document.addEventListener('click', async e => {
       S.alert = null; S.edit = false; S.stack.pop(); render(); toast('Deleted'); break;
     case 'gremove': ev.groups = ev.groups.filter(x => x.name !== arg); dropTasks(ev, arg); S.alert = null; render(); break;
     case 'signout': signOut(); break;
-    case 'gcard': S.sheet = {k: 'gcard', g: arg, prev: S.sheet || null}; layer(); if (lay.querySelector('.sheet')) lay.querySelector('.sheet').scrollTop = 0; break;
-    case 'card': S.sheet = {k: 'card', n: arg, prev: S.sheet || null}; layer(); if (lay.querySelector('.sheet')) lay.querySelector('.sheet').scrollTop = 0; break;
+    case 'gcard': S.sheet = {k: 'gcard', g: arg, prev: S.sheet || null}; layer(); if (lay.querySelector('.sheet')) lay.querySelector('.sheet').scrollTop = 0; cardPw(); break;
+    case 'card': S.sheet = {k: 'card', n: arg, prev: S.sheet || null}; layer(); if (lay.querySelector('.sheet')) lay.querySelector('.sheet').scrollTop = 0; cardPw(); break;
     case 'sback': S.sheet = S.sheet.prev; layer(); break;
     case 'gx': { const f = e.target.closest('select,input,textarea,.fl'); if (f && b.contains(f)) break; toggleOpen(arg); render(); break; }
     // Recently Deleted opens in place on Events (26/10/03), fetching the list the first time
@@ -2482,7 +2494,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = '8ed69d6a5a91';
+const PAGE_VER = '63ee6d63eab3';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
