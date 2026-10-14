@@ -757,7 +757,8 @@ const normTime = raw => { const t = String(raw).trim().replace(/[：.\s]/g, ':')
   return h < 24 && mi < 60 ? `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}` : null; };
 // A handle at the side of a row in Edit, as in Apple's lists: drag it to move the row
 const grip = label => `<button class="ib grip" data-grip aria-label="${esc(label)}">${ic('grip')}</button>`;
-const pick = (b, shown, opts, ph) => `<label class="pk f${shown ? '' : ' empty'}"><span${shown ? '' : ' class="ph"'}>${shown || ph}</span>${ic('chev-ud')}<select data-b="${b}" aria-label="${esc(ph)}">${opts}</select></label>`;
+// With nothing chosen, a hidden empty option is selected, so that choosing the first name is a change too (26/10/14)
+const pick = (b, shown, opts, ph) => `<label class="pk f${shown ? '' : ' empty'}"><span${shown ? '' : ' class="ph"'}>${shown || ph}</span>${ic('chev-ud')}<select data-b="${b}" aria-label="${esc(ph)}">${/ selected/.test(opts) ? '' : '<option value="" disabled selected hidden></option>'}${opts}</select></label>`;
 const rmB = (act, label) => `<button class="ib rm" data-a="${act}" aria-label="${esc(label)}">${ic('minus-c')}</button>`;
 const addB = (act, label, cols) => `<button class="row add${cols ? ' cols' : ''}" data-a="${act}"${cols ? ` style="--c1:${cols}"` : ''}>${ic('plus-c')}<span>${label}</span></button>`;
 const evLine = ev => `<span class="nw">${dmy(ev.date)}</span>｜${esc(ev.name)}`;
@@ -1055,7 +1056,7 @@ const keyName = k => k === 'All' ? 'Everyone' : k === UNASSIGNED ? 'Unassigned' 
 function dutyGroups(ev, ed) {
   const keys = groupKeys(ev, ed);
   if (ed) {
-    const lineOpts = t => (rowOf(ev, t.row) ? '' : '<option value="" disabled selected hidden>Line</option>') + ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
+    const lineOpts = t => ev.rows.map(r => `<option value="${r.id}"${r.id === t.row ? ' selected' : ''}>${esc([r.time, r.title].filter(Boolean).join(' '))}</option>`).join('');
     const row = t => `<div class="row g-tme${S.curTask === t.id ? ' cur' : ''}" data-drag="task" data-id="${t.id}" data-in><span>${!t.row ? dateF(`task:${t.id}:date`, t.date || '', 'Date', true) : `<span class="t">${(rowOf(ev, t.row) || {}).time || ''}</span>`}</span>
       <span>${t.row ? `<span class="fl lpk${rowOf(ev, t.row) ? '' : ' noline'}">${pick(`task:${t.id}:sec`, esc((rowOf(ev, t.row) || {}).title || ''), lineOpts(t), 'Line')}</span>` : ''}${fld(`task:${t.id}:text`, t.text, 'Task')}<span class="rmkl${(t.remark || '').trim() ? '' : ' empty'}">${box(`task:${t.id}:remark`, t.remark, 'Remark')}</span></span><span class="rg">${rmB('deltask:' + t.id, 'Delete task')}${grip('Move task')}</span></div>`;
     // One group is edited at a time (26/10/04): each group is a disclosure, as in reading, and only the open one shows its tasks
@@ -1206,7 +1207,7 @@ function pScript(ev) {
       return `<div class="sblk" data-drag="say" data-id="${s.id}"><div class="srow e lrow" tabindex="-1"><span></span><span class="awn">${head[0]} ${esc(head[1])}</span><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Remove')}${grip('Move paragraph')}</span></div>` +
         rows.map(x => `<div class="srow e lrow" tabindex="-1"><span></span>${line(x)}<span class="rg">${rmB(`unrow:${r.id}:${s.id}:${x[0]}`, 'Take off this paragraph')}<span class="nogrip"></span></span></div>`).join('') + '</div>'; }
     if (!ed) return `<div class="srow${s.type === 'cue' ? ' cue' : ''}">${dot(`${ev.id}:s:${s.id}`)}<span class="sp">${s.type === 'line' ? esc(spOf(ev, s)) : ''}</span><div class="body">${esc(s.text)}</div></div>`;
-    const sp = s.type !== 'line' ? '' : mcs.length > 1 ? pick(`say:${r.id}:${s.id}:sp`, s.sp ? `<span class="sp">${esc(s.sp)}</span>` : '', `<option value="" disabled ${s.sp ? '' : 'selected'}></option>` + mcs.map(m => `<option${m[1] === s.sp ? ' selected' : ''}>${esc(m[1])}</option>`).join(''), 'MC') : `<span class="sp">${esc(s.sp || (mcs[0] || [])[1] || '')}</span>`;
+    const sp = s.type !== 'line' ? '' : mcs.length > 1 ? pick(`say:${r.id}:${s.id}:sp`, s.sp ? `<span class="sp">${esc(s.sp)}</span>` : '', mcs.map(m => `<option${m[1] === s.sp ? ' selected' : ''}>${esc(m[1])}</option>`).join(''), 'MC') : `<span class="sp">${esc(s.sp || (mcs[0] || [])[1] || '')}</span>`;
     return `<div class="srow e${s.type === 'cue' ? ' cue' : ''}" data-drag="say" data-id="${s.id}"><span>${sp}</span><textarea class="fld fo" rows="1" data-b="say:${r.id}:${s.id}:text" placeholder="${s.type === 'cue' ? 'Stage Direction' : 'MC Line'}" aria-label="Paragraph">${esc(s.text)}</textarea><span class="rg">${rmB(`delsay:${r.id}:${s.id}`, 'Delete paragraph')}${grip('Move paragraph')}</span></div>`; };
   // Edit (26/10/04): one list of every line and its paragraphs, so each paragraph moves by its handle anywhere, to another
   // line too; with a mouse the gold line between paragraphs inserts one there (MC Line, Stage Direction or a list)
