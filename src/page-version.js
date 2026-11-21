@@ -1,2 +1,2 @@
 // Written by build/build.py: the version of src/events.html
-export const PAGE_VERSION = "63ee6d63eab3";
+export const PAGE_VERSION = "e5792e7dd7e7";

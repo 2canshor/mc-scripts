@@ -218,7 +218,7 @@ const lastSentence = (text) => {
 // Each line break starts a new paragraph of the same kind and MC; the new ones get ids derived from the first, so every
 // read splits the same way until the event is next saved in this shape.
 function splitParas(ev) {
-  (ev.rows || []).forEach((r) => {
+  [ev.rows || [], ...(Array.isArray(ev.scripts) ? ev.scripts.map(d => d.rows || []) : [])].flat().forEach((r) => {
     if (!Array.isArray(r.say) || !r.say.some((x) => (x.type === "line" || x.type === "cue") && /\n/.test(x.text || ""))) return;
     r.say = r.say.flatMap((x) => {
       if (!(x.type === "line" || x.type === "cue") || !/\n/.test(x.text || "")) return [x];
@@ -290,12 +290,26 @@ export function upgrade(ev) {
   return out;
 }
 
+// Additional Scripts are named documents; their ids and names must be unambiguous.
+function validScripts(ev) {
+  if (ev.scriptName !== undefined && typeof ev.scriptName !== "string") return false;
+  if (ev.scripts === undefined) return true;
+  if (!Array.isArray(ev.scripts)) return false;
+  const ids = new Set(), names = new Set();
+  if ((ev.mcs || []).length || (ev.rows || []).some(r => (r.say || []).length)) names.add(((ev.scriptName || "").trim() || "Script").toLowerCase());
+  return ev.scripts.every(d => {
+    if (!d || typeof d.id !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(d.id) || ids.has(d.id) || typeof d.name !== "string" || !d.name.trim() || names.has(d.name.trim().toLowerCase())) return false;
+    ids.add(d.id); names.add(d.name.trim().toLowerCase());
+    return Array.isArray(d.mcs) && d.mcs.every(m => Array.isArray(m) && m.length === 2 && m.every(x => typeof x === "string")) && Array.isArray(d.rows) && new Set(d.rows.map(r => r && r.id)).size === d.rows.length && d.rows.every(r => r && typeof r.id === "string" && Array.isArray(r.say) && r.say.every(p => p && typeof p.id === "string" && ["line", "cue", "award", "guests"].includes(p.type) && (!["line", "cue"].includes(p.type) || typeof p.text === "string")));
+  });
+}
+
 // ---------- Units: the pieces of an event that rights are checked on ----------
 // Event Lead: everything. A Group Lead on duty (or the Acting Group Lead on the day): names on their group's tasks,
 // roles in their group, Acting Group Lead, attendance and On Leave. On-duty members and Group Lead: their kind of
 // documents (MC the Script; Backstage and Reception the Participant List and the Guest List). The teacher reads.
 const FIELDS = ["date", "name", "asmTime", "venue", "leading", "support", "lead", "remarks"];
-const KNOWN = new Set([...FIELDS, "id", "v", "groups", "mcs", "rows", "tasks", "awards", "guests", "att", "leave", "log", "upd", "roll"]);
+const KNOWN = new Set([...FIELDS, "id", "v", "groups", "mcs", "scriptName", "scripts", "rows", "tasks", "awards", "guests", "att", "leave", "log", "upd", "roll"]);
 function units(ev) {
   const u = new Map(), put = (k, v) => u.set(k, JSON.stringify(v === undefined ? null : v));
   if (!ev) return u;
@@ -310,6 +324,8 @@ function units(ev) {
     (r.say || []).forEach((s) => put("s:" + s.id, { ...s, row: r.id }));
   });
   put("mcs", ev.mcs || []);
+  put("scriptName", ev.scriptName || "");
+  (ev.scripts || []).forEach(d => put("sc:" + d.id, d));
   (ev.tasks || []).forEach((t) => { const { names, ...rest } = t; put("t:" + t.id, rest); put("tn:" + t.id, names || []); });
   Object.entries(ev.awards || {}).forEach(([id, l]) => put("aw:" + id, l));
   put("gu", ev.guests === undefined ? null : ev.guests);
@@ -324,7 +340,7 @@ function leadsGroup(acct, ev) {
   return acct.group && acct.type === "gl" && onDuty(ev, acct.group) ? acct.group : null;
 }
 const taskOf = (ev, id) => ((ev && ev.tasks) || []).find((t) => t.id === id) || null;
-const DOC_KEY = { script: ["s:", "so:", "mcs"], awards: ["aw:", "ra"], guests: ["gu", "rg"] };
+const DOC_KEY = { script: ["s:", "so:", "mcs", "scriptName", "sc:"], awards: ["aw:", "ra"], guests: ["gu", "rg"] };
 const docOfKey = (key) => Object.keys(DOC_KEY).find((d) => DOC_KEY[d].some((p) => (p.endsWith(":") ? key.startsWith(p) : key === p)));
 function allowed(acct, old, key) {
   if (acct.type === "lead") return true;
@@ -387,7 +403,10 @@ function stamp(old, nw, by) {
   const says = (e) => (e.rows || []).flatMap((r) => r.say || []);
   const mcs = J(o.mcs || []) !== J(nw.mcs || []);
   if (mcs) bump("mcs");
-  if (diff(says(o), says(nw), "s") || mcs) bump("d:script");
+  if (diff(says(o), says(nw), "s") || mcs || J(o.scriptName || "") !== J(nw.scriptName || "")) bump("d:script");
+  const priorScripts = new Map((o.scripts || []).map(d => [d.id, J(d)]));
+  (nw.scripts || []).forEach(d => { if (priorScripts.get(d.id) !== J(d)) bump("d:script:" + d.id); });
+  if (J(o.scripts || []) !== J(nw.scripts || [])) any = true;
   const bare = (e) => (e.rows || []).map((r) => ({ ...r, say: 0 }));
   if (diff(bare(o), bare(nw), "r")) bump("d:rundown");
   const lists = new Set([...Object.keys(o.awards || {}), ...Object.keys(nw.awards || {})]);
@@ -662,8 +681,9 @@ export async function handleEvents(request, env, url, path) {
     let nw; try { nw = JSON.parse(body.data); } catch { return json({ error: "bad request" }, 400); }
     if (!nw || typeof nw !== "object" || nw.id !== id) return json({ error: "bad request" }, 400);
     if (nw.v !== 4) return json({ error: "reload" }, 403);  // a page from before 26/10/01
+    if (!validScripts(nw)) return json({ error: "script names" }, 400);
     nw = trimLog(withHidden(acct, old, splitParas(nw)));
-    // One document of each kind per event
+    // One Participant List per event; Scripts may have separate named documents.
     if (Object.keys(nw.awards || {}).length > Math.max(1, Object.keys((old && old.awards) || {}).length)) return json({ error: "one list" }, 400);
     const denied = checkWrite(acct, old, nw);
     if (denied) return json({ error: "forbidden", unit: denied }, 403);
