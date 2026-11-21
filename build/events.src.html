@@ -621,6 +621,34 @@ const badge = n => `<span class="badge" aria-label="${n} without a name">${n}</s
 // A toast says what just happened; it may carry one action (MC Scripts' 復原), and then stays 8 seconds
 const toast = (m, act, ms) => { S.toast = m; S.toastAct = act || null; layer(); clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = ''; S.toastAct = null; layer(); }, ms || (act ? 8000 : 2400)); };
 const hasScript = ev => ev.rows.some(r => r.say.length);
+// Additional Scripts keep their own MCs and paragraphs, linked to the event's shared Rundown ids.
+// The original mcs/rows.say remain the first Script: reading an old event never migrates its data.
+const scriptDocs = ev => [
+  ...(hasScript(ev) || (ev.mcs || []).length ? [{id: '', name: (ev.scriptName || '').trim() || 'Script'}] : []),
+  ...(ev.scripts || []).map(d => ({id: d.id, name: (d.name || '').trim() || 'Script'}))
+];
+function scriptView(ev, id) {
+  if (!id) return ev;
+  const doc = (ev.scripts || []).find(d => d.id === id);
+  if (!doc) return null;
+  return {...ev,
+    get scriptName() { return doc.name; }, set scriptName(v) { doc.name = v; },
+    get mcs() { return doc.mcs; }, set mcs(v) { doc.mcs = v; },
+    get rows() { return ev.rows.map(r => ({...r,
+      get say() { return (doc.rows.find(x => x.id === r.id) || {}).say || []; },
+      set say(v) { const x = doc.rows.find(x => x.id === r.id); if (x) x.say = v; else doc.rows.push({id: r.id, say: v}); }
+    })); }
+  };
+}
+const activeEvent = () => { const ev = EV(); return ev && cur().id === 'script' ? scriptView(ev, cur().script) : ev; };
+function prepareScript(ev) {
+  const d = ev && cur().script && (ev.scripts || []).find(x => x.id === cur().script);
+  if (d) ev.rows.forEach(r => { if (!d.rows.some(x => x.id === r.id)) d.rows.push({id: r.id, say: []}); });
+}
+const scriptTitle = ev => (ev.scriptName || '').trim() || 'Script';
+const safeScriptName = ev => (ev.scriptName || '').replace(/[\\/:*?"<>|]/g, '').trim();
+const scriptFilePart = ev => safeScriptName(ev) ? safeScriptName(ev) + ' ' : '';
+
 // When a task happens: its date before the day, or its Rundown line's time. The time column holds only dates and times;
 // the line itself is named above the task, so a line without a time still shows where the task is.
 const whenOf = (ev, t) => !t.row ? md(t.date || '') : (rowOf(ev, t.row) || {}).time || '';
@@ -1177,7 +1205,7 @@ function memberList(ev, g, ed) {
 }
 function documents(ev, ed) {
   const items = isDay(ev) ? [] : [['rundown', 'list', 'Rundown', '']];
-  if (hasScript(ev) || (ev.mcs || []).length) items.push(['script', 'doc', 'Script', ed ? 'delscript' : '']);
+  scriptDocs(ev).forEach(d => items.push([d.id ? 'script:' + d.id : 'script', 'doc', d.name, '']));
   Object.entries(ev.awards || {}).forEach(([id, d]) => items.push(['aw:' + id, 'users', 'Participant List', ed ? 'deldoc:aw:' + id : '']));
   if (ev.guests) items.push(['guests', 'guests', 'Guest List', ed ? 'deldoc:guests' : '']);
   const rows = items.map(([id, n, name, del]) => ed
@@ -1207,6 +1235,7 @@ function pRundown(ev) {
 // Script: the CA script format. The MCs first (class and name); each paragraph's MC is chosen from them.
 function pScript(ev) {
   const ed = S.edit, mcs = named(ev);
+  const title = scriptTitle(ev), nameField = ed ? `<div class="fl">${fld('scriptname', ev.scriptName || '', 'Script Name')}</div>` : '';
   const para = (r, s) => {
     if (s.type === 'award' || s.type === 'guests') { const rows = ed ? paraRows(ev, s) : hereRows(ev, s), head = s.type === 'award' ? [sym('users', 'Participant List', 'isym'), awardOf(ev, s).award] : [sym('guests', 'Guest List', 'isym'), 'Guest List'];
       const mute = i => ed && !isHere(ev, s, i);  // in Edit a name not yet ticked is grey; reading shows names plainly
@@ -1225,7 +1254,7 @@ function pScript(ev) {
   const ms = ev.mcs || [], slot = (m, i) => `<span class="mc">${fld(`mc:${i}:0`, m[0], 'Class', 'upper')}${fld(`mc:${i}:1`, m[1], 'MC')}</span>`;
   const slots = [...ms.map(slot), ...(ms.length < 4 && ms.every(m => m[1]) ? [slot(['', ''], ms.length)] : [])].join('<span class="dot">．</span>');
   const mcl = ed ? `<div class="mcs" data-mcs>${slots}</div>` : mcs.length ? `<p class="mcl" style="position:relative">${dot(`${ev.id}:mcs`).replace('udot', 'udot" style="left:-16px;top:calc(.75em - 4px)')}${mcs.map(m => `<span class="nw">${esc(m[0])} ${esc(m[1])}</span>`).join('<span class="dot">．</span>')}</p>` : ''; // tell-ok: MC list as on the printed script
-  return {...docBar(canDoc(ev, 'script'), 'askdoc:script'), title: 'Script', body: docHead('Script', ev, mcl) + `<section class="sec">${blocks || '<p class="empty">No lines yet</p>'}</section>${ed || !blocks ? '' : '<p class="end">{End of Script}</p>'}`};
+  return {...docBar(canDoc(ev, 'script'), 'askdoc:script'), title, body: docHead(title, ev, nameField + mcl) + `<section class="sec">${blocks || '<p class="empty">No lines yet</p>'}</section>${ed || !blocks ? '' : '<p class="end">{End of Script}</p>'}`};
 }
 function pAwards(ev, id) {
   const ed = S.edit, d = ev.awards[id];
@@ -1293,7 +1322,7 @@ function pAccount(id) {
 /* ---------- Sheets ---------- */
 function sheet() {
   const s = S.sheet; if (!s) return '';
-  const ev = cur() && cur().ev ? EV() : null;
+  const ev = cur() && cur().ev ? activeEvent() : null;
   const bar = (l, t, r) => `<div class="sbar">${l || '<span></span>'}<h2>${t}</h2>${r || '<span></span>'}</div>`;
   // A sheet opened from another sheet (a card from a card) goes Back to it; a first sheet closes. A tap outside always closes.
   const close = s.prev ? `<button class="nb round glass" data-a="sback" aria-label="Back">${ic('back')}</button>` : `<button class="nb round glass" data-a="close" aria-label="Close">${ic('x')}</button>`, cancel = act => `<button class="nb glass" data-a="${act || 'close'}">Cancel</button>`;
@@ -1354,8 +1383,8 @@ function sheet() {
 }
 // Menus: glass, a symbol before each item (MC Scripts' add menu)
 function menuItems(k, arg) {
-  const ev = EV();
-  if (k === 'adddoc') return [canDoc(ev, 'script') && !hasScript(ev) && !(ev.mcs || []).length ? ['newscript', 'doc', 'Script'] : null, canDoc(ev, 'awards') && !Object.keys(ev.awards || {}).length ? ['newawards', 'users', 'Participant List'] : null, canDoc(ev, 'guests') && !ev.guests ? ['newguests', 'guests', 'Guest List'] : null].filter(Boolean);
+  const ev = activeEvent();
+  if (k === 'adddoc') return [canDoc(ev, 'script') ? ['newscript', 'doc', 'Script'] : null, canDoc(ev, 'awards') && !Object.keys(ev.awards || {}).length ? ['newawards', 'users', 'Participant List'] : null, canDoc(ev, 'guests') && !ev.guests ? ['newguests', 'guests', 'Guest List'] : null].filter(Boolean);
   // A list not done yet stays in the menu, greyed, as a menu shows what cannot be chosen yet (review 26/10/04)
   if (k === 'addsay') { const aw = !listDone(ev, '整理得獎名單'), lists = Object.entries(ev.awards || {}).flatMap(([lid, l]) => l.awards.filter(a => a.award && unread(ev, {type: 'award', list: lid, award: a.id}).length).map(a => [`addsay:${arg}:award:${lid}:${a.id}`, 'users', a.award, aw]));
     const guests = ev.guests && unread(ev, {type: 'guests'}).length ? [[`addsay:${arg}:guests`, 'guests', 'Guest List', !listDone(ev, '整理嘉賓名單')]] : [];
@@ -1380,7 +1409,7 @@ function route() {
   if (p.p === 'members') return pMembers();
   if (p.p === 'help') return pHelp();
   if (p.p === 'group') return pAccount(p.id);
-  const ev = EV(); if (!ev) { S.stack = [{p: 'events'}]; S.edit = false; return pEvents(); }
+  const ev = activeEvent(); if (!ev) { S.edit = false; if (p.script && EV()) { S.stack.pop(); return route(); } S.stack = [{p: 'events'}]; return pEvents(); }
   if (p.p === 'event') return pEvent(ev);
   if (p.id === 'rundown') return pRundown(ev);
   if (p.id === 'script') return pScript(ev);
@@ -1482,6 +1511,11 @@ function gaps(ev) {
   if (c.p === 'event') { if (blank(ev.name)) add('[data-b="ev:name"]', 'Name the event'); if (!ev.date) add('[data-b="ev:date"]', 'Choose the date'); }
   if (c.p !== 'doc') return g;
   if (c.id === 'script') {
+    const title = (ev.scriptName || '').trim();
+    if (c.script && !title) add('[data-b="scriptname"]', 'Name this Script');
+    if (title && !safeScriptName(ev)) add('[data-b="scriptname"]', 'Choose a Script name that can be used in a file');
+    const others = scriptDocs(EV()).filter(d => d.id !== (c.script || ''));
+    if (others.some(d => d.name.trim().toLowerCase() === scriptTitle(ev).toLowerCase())) add('[data-b="scriptname"]', 'Choose a different Script name');
     const says = ev.rows.flatMap(r => r.say.filter(x => hasSource(ev, x)).map(x => [r, x])), names = named(ev).map(m => m[1]);
     (ev.mcs || []).forEach((m, i) => { if (!blank(m[0]) && blank(m[1])) add(`[data-b="mc:${i}:1"]`, 'Every MC needs a name'); if (!blank(m[1]) && blank(m[0])) add(`[data-b="mc:${i}:0"]`, 'Every MC needs a class'); });
     if (!names.length) add('[data-b="mc:0:1"]', 'Name the MCs');
@@ -1517,7 +1551,7 @@ const nextMc = (ev, r) => { const ms = named(ev).map(m => m[1]); if (!ms.length)
 
 /* ---------- Writing a value: one place for every field ---------- */
 function getVal(b) {
-  const p = b.split(':'), ev = cur() && cur().ev ? EV() : null;
+  const p = b.split(':'), ev = cur() && cur().ev ? activeEvent() : null;
   if (p[0] === 'row') return rowOf(ev, p[1])[p[2]] || '';
   if (p[0] === 'ev') return ev[p[1]] || '';
   if (p[0] === 'draft') return S.draft[p[1]] || '';
@@ -1525,7 +1559,7 @@ function getVal(b) {
   return '';
 }
 function setVal(b, val, el) {
-  const p = b.split(':'), ev = cur() && cur().ev ? EV() : null, list = v => v.split(/[、,，]/).map(x => x.trim()).filter(Boolean);
+  const p = b.split(':'), ev = cur() && cur().ev ? activeEvent() : null, list = v => v.split(/[、,，]/).map(x => x.trim()).filter(Boolean);
   const date = el && el.dataset && el.dataset.date !== undefined ? val : null;
   switch (p[0]) {
     case 'ev': ev[p[1]] = p[1] === 'date' ? date : p[1] === 'leading' || p[1] === 'support' ? list(val) : val; return !!el && el.tagName === 'SELECT';
@@ -1534,6 +1568,7 @@ function setVal(b, val, el) {
       if (p[2] === 'sec') { if (val) { t.row = val; delete t.date; } else { delete t.row; t.date = t.date || dayBefore(ev); } return true; } t[p[2]] = p[2] === 'date' ? date : val; return p[2] === 'date' || p[2] === 'row'; }
     case 'row': rowOf(ev, p[1])[p[2]] = val; return p[2] === 'time';
     case 'say': rowOf(ev, p[1]).say.find(s => s.id === p[2])[p[3]] = val; return p[3] === 'sp';
+    case 'scriptname': ev.scriptName = val; return false;
     case 'mc': { ev.mcs = ev.mcs || []; const i = +p[1]; if (!ev.mcs[i]) ev.mcs[i] = ['', '']; ev.mcs[i][+p[2]] = p[2] === '0' ? val.toUpperCase() : val; return false; }
     case 'aw': ev.awards[p[1]].awards.find(x => x.id === p[2]).award = val; return false;
     case 'ar': ev.awards[p[1]].awards.find(x => x.id === p[2]).rows[+p[3]][+p[4]] = p[4] === '0' ? val.toUpperCase() : val; return false;
@@ -1593,7 +1628,7 @@ function replaceGroup(ev, from, g) {
 document.addEventListener('click', async e => {
   const folded = foldOthers(e.target), b = e.target.closest('[data-a]'); if (!b) { if (folded) refold(e.target); return; }
   if (b.dataset.a === 'bg' && e.target !== b) { if (folded) refold(e.target); return; }
-  const [a, ...r] = b.dataset.a.split(':'), arg = r.join(':'), ev = cur() && cur().ev ? EV() : null;
+  const [a, ...r] = b.dataset.a.split(':'), arg = r.join(':'), ev = cur() && cur().ev ? activeEvent() : null;
   if (b.closest('.menu')) S.menu = null;
   switch (a) {
     case 'be': S.toSee = new Set(); S.who = arg; store.set('who', arg); S.stack = [{p: 'events'}]; render(); loadFeedback(); break;
@@ -1603,22 +1638,22 @@ document.addEventListener('click', async e => {
     case 'fbnotme': S.who = null; store.del('who'); S.fb = null; render(); break;
     case 'open': go({p: 'event', ev: arg}); break;
     case 'back': back(); break;
-    case 'doc': go({p: 'doc', ev: ev.id, id: arg}); break;
+    case 'doc': go({p: 'doc', ev: ev.id, id: arg.startsWith('script:') ? 'script' : arg, ...(arg.startsWith('script:') ? {script: arg.slice(7)} : {})}); break;
     case 'members': S.sheet = null; go({p: 'members'}); break;
     case 'help': S.sheet = null; S.find = ''; go({p: 'help'}); break;
     case 'hv': helpOpen(arg); break;
     case 'hdl': helpDownload(); break;
     case 'group': go({p: 'group', id: arg}); break;
-    case 'edit': S.edit = true; S.need = false; S.snap = snapOf(); render(); break;
+    case 'edit': S.edit = true; S.need = false; S.snap = snapOf(); if (cur().id === 'script') prepareScript(EV()); render(); break;
     // Done saves at once (not after the usual pause), so a teacher's new account comes back while the page is still open
     case 'done': if (document.activeElement) document.activeElement.blur();
       if (cur().p === 'group') { const short = Object.values(PASSWORDS).find(x => x && x.trim() && [...x.replace(/\s+/g, '')].length < 8); if (short) { toast('A password needs 8 characters or more'); break; }
         CHAIRS = CHAIRS.map(x => x.trim()).filter(Boolean); ADMINS = ADMINS.map(x => x.trim()).filter(Boolean); S.edit = false; savePasswords(); render(); break; }
       tidyMcs(ev); if (ev && cur().p === 'event') ev.tasks = ev.tasks.filter(t => t.role || t.text.trim());
-      if (ev) ev.rows = ev.rows.filter(r => r.time || r.title.trim() || (r.remark || '').trim() || r.say.length || ev.tasks.some(t => t.row === r.id));
+      if (ev) { const base = EV(); base.rows = base.rows.filter(r => r.time || r.title.trim() || (r.remark || '').trim() || r.say.length || (base.scripts || []).some(d => d.rows.some(x => x.id === r.id && x.say.length)) || base.tasks.some(t => t.row === r.id)); }
       { const one = named(ev || {}); if (ev && one.length === 1) ev.rows.forEach(r => r.say.forEach(x => { if (x.type === 'line') x.sp = one[0][1]; })); }  // one MC speaks every line
       { const g = gaps(ev); if (g.length) { render(); showGaps(g); break; } }
-      S.edit = false; if (ev && snapOf() !== S.snap) log(ev, 'Edited ' + (cur().p === 'doc' ? 'a document' : 'the event')); render(); persistSoon(0); catchUp(); break;
+      S.edit = false; if (ev && snapOf() !== S.snap) log(EV(), 'Edited ' + (cur().p === 'doc' ? 'a document' : 'the event')); render(); persistSoon(0); catchUp(); break;
     case 'cancel': if (snapOf() === S.snap) { S.edit = false; render(); catchUp(); } else { S.alert = {t: 'Discard Changes?', m: 'Your changes will be lost.', no: 'Keep Editing', verb: 'Discard', act: 'discard'}; layer(); } break;
     case 'keep': S.alert = null; layer(); break;
     case 'discard': restore(S.snap); S.alert = null; S.edit = false; render(); catchUp(); break;
@@ -1667,8 +1702,14 @@ document.addEventListener('click', async e => {
       break; }
     case 'unrow': { const [rid, sid, i] = arg.split(':'), x = rowOf(ev, rid).say.find(y => y.id === sid); x.rows = paraRows(ev, x).map(y => y[0]).filter(j => j !== +i); render(); break; }
     case 'delsay': { const [rid, sid] = arg.split(':'), rw = rowOf(ev, rid); rw.say = rw.say.filter(s => s.id !== sid); render(); break; }
-    case 'delscript': ev.rows.forEach(rw => rw.say = []); ev.mcs = []; render(); break;
-    case 'newscript': { if (!ev.rows.length) ev.rows.push({id: uid(), time: ev.asmTime, title: '', place: ev.venue, say: []}); ev.mcs = [['', '']]; openNew('script'); break; }
+    case 'delscript': ev.rows.forEach(rw => rw.say = []); ev.mcs = []; delete ev.scriptName; render(); break;
+    case 'newscript': {
+      const base = EV(), before = JSON.stringify(base), extra = scriptDocs(base).length > 0;
+      if (!base.rows.length) base.rows.push({id: uid(), time: base.asmTime, title: '', place: base.venue, say: []});
+      if (extra) { const d = {id: uid(), name: '', mcs: [['', '']], rows: base.rows.map(r => ({id: r.id, say: []}))};
+        (base.scripts = base.scripts || []).push(d); openNew('script', d.id); S.snap = before; }
+      else { base.mcs = [['', '']]; openNew('script'); }
+      break; }
     case 'newawards': { const lid = uid(); ev.awards[lid] = {name: 'Participant List', awards: [{id: uid(), award: '', rows: [['', '']]}]}; openNew('aw:' + lid); break; }
     case 'newguests': ev.guests = [{id: uid(), name: '', role: ''}]; openNew('guests'); break;
     case 'deldoc': if (arg === 'guests') ev.guests = null; else delete ev.awards[arg.slice(3)]; tidyMcs(ev); render(); break;
@@ -1707,7 +1748,8 @@ document.addEventListener('click', async e => {
     case 'exportsheet': exportPdf(ev, true); break;
     case 'exportev': exportEvent(ev); break;
     case 'askdoc': S.alert = {t: `Delete This ${arg === 'script' ? 'Script' : arg === 'guests' ? 'Guest List' : 'Participant List'}?`, m: 'It goes for everyone.', verb: 'Delete', act: 'deldocpage:' + arg}; layer(); break;
-    case 'deldocpage': if (arg === 'script') { ev.rows.forEach(rw => rw.say = []); ev.mcs = []; } else { if (arg === 'guests') ev.guests = null; else delete ev.awards[arg.slice(3)]; tidyMcs(ev); }
+    case 'deldocpage': if (arg === 'script') { if (cur().script) EV().scripts = (EV().scripts || []).filter(d => d.id !== cur().script); else { ev.rows.forEach(rw => rw.say = []); ev.mcs = []; delete ev.scriptName; } } else { if (arg === 'guests') ev.guests = null; else delete ev.awards[arg.slice(3)]; tidyMcs(ev); }
+      if (arg === 'script') log(EV(), 'Deleted a Script');
       S.alert = null; S.edit = false; S.stack.pop(); render(); toast('Deleted'); break;
     case 'gremove': ev.groups = ev.groups.filter(x => x.name !== arg); dropTasks(ev, arg); S.alert = null; render(); break;
     case 'signout': signOut(); break;
@@ -1742,7 +1784,7 @@ document.addEventListener('click', async e => {
   if (folded) refold(e.target);
 });
 // Adding a document ends the event's Edit and opens the new document in Edit
-const openNew = id => { const ev = EV(); S.edit = false; go({p: 'doc', ev: ev.id, id}); S.edit = true; S.snap = snapOf(); render(); };
+const openNew = (id, script) => { const ev = EV(); S.edit = false; go({p: 'doc', ev: ev.id, id, ...(script ? {script} : {})}); S.edit = true; S.snap = snapOf(); render(); };
 const focus = sel => { const f = app.querySelector(sel) || lay.querySelector(sel); if (f && !matchMedia('(pointer:coarse)').matches) f.focus(); };
 /* ---------- @ in a Remark: a list of people to tag, filtered as you type (Teams' mention picker) ---------- */
 const TAGGED = /^(ev:remarks|(task|row):[^:]+:remark)$/;
@@ -1807,7 +1849,7 @@ document.addEventListener('input', e => {
 // A Script paragraph is one paragraph (26/10/04): Return starts the next one below, carrying the words after the cursor;
 // at the end of a paragraph the new one goes to the next MC, as Add does. Line breaks that arrive by pasting split the same way.
 function sayParts(t, caret) {
-  const [, rid, sid] = t.dataset.b.split(':'), ev = EV(), rw = ev && rowOf(ev, rid), x = rw && rw.say.find(y => y.id === sid); if (!x) return;
+  const [, rid, sid] = t.dataset.b.split(':'), ev = activeEvent(), rw = ev && rowOf(ev, rid), x = rw && rw.say.find(y => y.id === sid); if (!x) return;
   const v = t.value, chunks = caret === undefined ? v.split(/\n+/).map(c => c.trim()) : [v.slice(0, caret).replace(/\s+$/, ''), v.slice(caret).replace(/^\s+/, '')];
   const keep = caret === undefined ? chunks.filter(Boolean) : chunks; if (!keep.length) return;
   x.text = keep[0];
@@ -1828,8 +1870,8 @@ document.addEventListener('keydown', e => {
 });
 // Leaving the teachers: empty names go, and a new empty field appears for the next teacher
 document.addEventListener('focusout', e => { const m = e.target.closest && e.target.closest('[data-teach]'); if (!m || (e.relatedTarget && m.contains(e.relatedTarget))) return;
-  setTimeout(() => { const ev = EV(); if (!ev || m.contains(document.activeElement)) return; ev.leading = ev.leading.filter(Boolean); ev.support = ev.support.filter(Boolean); render(); }, 0); });
-document.addEventListener('focusout', e => { const m = e.target.closest && e.target.closest('[data-mcs]'); if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) setTimeout(() => { const ev = EV(); tidyMcs(ev); if (!m.contains(document.activeElement)) render(); }, 0); });
+  setTimeout(() => { const ev = activeEvent(); if (!ev || m.contains(document.activeElement)) return; ev.leading = ev.leading.filter(Boolean); ev.support = ev.support.filter(Boolean); render(); }, 0); });
+document.addEventListener('focusout', e => { const m = e.target.closest && e.target.closest('[data-mcs]'); if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) setTimeout(() => { const ev = activeEvent(); tidyMcs(ev); if (!m.contains(document.activeElement)) render(); }, 0); });
 // A typed time or date: tidied when the field is left; something that is not a time or a date goes back to what it was
 document.addEventListener('change', e => {
   const t = e.target; if (!t.dataset || (t.dataset.time === undefined && t.dataset.date === undefined)) return;
@@ -1855,7 +1897,7 @@ const placeOf = (sibs, at) => { let sec = null;
   return {sec: sec || 'before', sub: !!sec}; };
 const toOfKey = g => g === 'All' ? ['All'] : g ? [g] : [];
 function insertAt(list, at, rc) {  // at: the index among the list's rows and headings that the new row goes before
-  const ev = EV(), sibs = [...list.children].filter(x => x.dataset && (x.dataset.drag || x.dataset.head)), kindKey = (sibs.find(x => x.dataset.drag) || {}).dataset;
+  const ev = activeEvent(), sibs = [...list.children].filter(x => x.dataset && (x.dataset.drag || x.dataset.head)), kindKey = (sibs.find(x => x.dataset.drag) || {}).dataset;
   const before = sibs[at], above = (() => { for (let j = at - 1; j >= 0; j--) { if (sibs[j].dataset.head) return null; return sibs[j]; } return null; })();
   const below = before && !before.dataset.head ? before : null;
   if (list.classList.contains('slist')) { let rid = null; for (let j = at - 1; j >= 0; j--) if (sibs[j].dataset.line) { rid = sibs[j].dataset.line; break; }
@@ -1904,14 +1946,14 @@ document.addEventListener('keydown', dropIns);
 let DRAG = null;
 // A Script paragraph to its new line and place: after the paragraph above it, or before the one below, or first on the line
 function placeSay(id, rid, afterId, beforeId) {
-  const ev = EV(), to = ev && rowOf(ev, rid), from = ev && ev.rows.find(r => r.say.some(x => x.id === id)); if (!to || !from) return;
+  const ev = activeEvent(), to = ev && rowOf(ev, rid), from = ev && ev.rows.find(r => r.say.some(x => x.id === id)); if (!to || !from) return;
   const para = from.say.find(x => x.id === id); from.say = from.say.filter(x => x !== para);
   const a = afterId ? to.say.findIndex(x => x.id === afterId) : -1, b = beforeId ? to.say.findIndex(x => x.id === beforeId) : -1;
   to.say.splice(a >= 0 ? a + 1 : b >= 0 ? b : 0, 0, para);
   render(); focus(`[data-id="${id}"] [data-grip]`);
 }
 function moveRow(kindKey, id, beforeId, afterId) {
-  const ev = EV(); if (!ev) return;
+  const ev = activeEvent(); if (!ev) return;
   const key = kindKey === 'rows' ? 'rows' : 'tasks', list = ev[key], item = list.find(x => x.id === id); if (!item) return;
   const rest = list.filter(x => x !== item), at = beforeId ? rest.findIndex(x => x.id === beforeId) : rest.findIndex(x => x.id === afterId) + 1;
   rest.splice(at < 0 ? rest.length : at, 0, item); ev[key] = rest;
@@ -1959,7 +2001,7 @@ function drop(row, sibs, from, to) {
   if (row.dataset.drag === 'say') { let rid = null; for (let j = i - 1; j >= 0; j--) if (order[j].dataset.line) { rid = order[j].dataset.line; break; }
     placeSay(row.dataset.id, rid, above && above.dataset.id, below && below.dataset.id); return; }
   if (row.dataset.drag === 'task') {
-    const ev = EV(), t = ev.tasks.find(x => x.id === row.dataset.id), ref = above || below, rt = ref && ev.tasks.find(x => x.id === ref.dataset.id);
+    const ev = activeEvent(), t = ev.tasks.find(x => x.id === row.dataset.id), ref = above || below, rt = ref && ev.tasks.find(x => x.id === ref.dataset.id);
     const pl = placeOf(order, i), head = pl.sub ? pl.sec : null;
     if (pl.g !== undefined) { const to = toOfKey(pl.g); if (J(to) !== J(t.to)) { t.to = to; t.names = []; if (!pl.sub) toggleOpen(`${ev.id}:g:${pl.g}`); } }
     if (head === 'day') { const line = rt ? rt.row : (ev.rows[0] || {}).id; if (line) { t.row = line; delete t.date; } }
@@ -2051,6 +2093,7 @@ function merge3(b, m, t) {
   return mergeObj(b || {}, m, t, {
     groups: (B, M, T) => mergeList(B, M, T, 'name', (b2, m2, t2) => mergeObj(b2, m2, t2)),
     rows: (B, M, T) => mergeList(B, M, T, 'id', (b2, m2, t2) => mergeObj(b2, m2, t2, {say: (B3, M3, T3) => mergeList(B3, M3, T3, 'id')})),
+    scripts: (B, M, T) => mergeList(B, M, T, 'id', (b2, m2, t2) => mergeObj(b2, m2, t2, {rows: (B3, M3, T3) => mergeList(B3, M3, T3, 'id', (b3, m3, t3) => mergeObj(b3, m3, t3, {say: (B4, M4, T4) => mergeList(B4, M4, T4, 'id')}))})),
     tasks: (B, M, T) => mergeList(B, M, T, 'id', (b2, m2, t2) => mergeObj(b2, m2, t2)),
     awards: (B, M, T) => { const o = {}; new Set([...Object.keys(M || {}), ...Object.keys(T || {})]).forEach(k => { const b2 = (B || {})[k], m2 = (M || {})[k], t2 = (T || {})[k];
       if (m2 && t2) o[k] = mergeObj(b2, m2, t2, {awards: (B3, M3, T3) => mergeList(B3, M3, T3, 'id')}); else if (m2) { if (!b2 || J(m2) !== J(b2)) o[k] = m2; } else if (t2 && !b2) o[k] = t2; }); return o; },
@@ -2478,7 +2521,7 @@ const eventFolderName = ev => `${ev.date.replace(/\//g, '')} ${ev.name.replace(/
 // Puts the event's Word files into a folder; false when it has no document yet
 async function eventFolder(ev, dir) {
   const lists = Object.keys(ev.awards || {}), zh = /[㐀-鿿]/.test(ev.name), type = (zh ? DOC_ZH : DOC_EN).awards;
-  const ids = [...(ev.rows.length ? ['rundown'] : []), ...(hasScript(ev) ? ['script'] : []), ...lists.map(id => 'aw:' + id), ...(ev.guests ? ['guests'] : [])];
+  const ids = [...(ev.rows.length ? ['rundown'] : []), ...scriptDocs(ev).map(d => d.id ? 'script:' + d.id : 'script'), ...lists.map(id => 'aw:' + id), ...(ev.guests ? ['guests'] : [])];
   if (!ids.length) return false;
   const used = new Set();
   {
@@ -2533,11 +2576,12 @@ function scriptState(ev) {
     ...r.say.flatMap(s => s.type === 'line' ? [{id: s.id, type: 'line', mc: byName(spOf(ev, s)), text: s.text}] : s.type === 'cue' ? [{id: s.id, type: 'cue', text: s.text}]
       : s.type === 'award' ? [{id: s.id + 'n', type: 'cue', text: awardOf(ev, s).award}, {id: s.id, type: 'award', text: hereRows(ev, s).map(x => x[1] + ' ' + x[2]).join('\n')}]
       : [{id: s.id, type: 'cue', text: hereRows(ev, s).map(x => x[1] + (x[2] ? '　' + x[2] : '')).join('\n')}])]);
-  return {event: ev.name, date: iso(ev.date), titleDate: dmy(ev.date), mcs, blocks};
+  return {event: [ev.name, (ev.scriptName || '').trim()].filter(Boolean).join('｜'), date: iso(ev.date), titleDate: dmy(ev.date), mcs, blocks};
 }
 async function wordFile(ev, id) {
+  if (id.startsWith('script:')) { ev = scriptView(ev, id.slice(7)); id = 'script'; }
   const JSZip = await loadZip(), type = id.startsWith('aw:') ? 'awards' : id, zh = /[㐀-鿿]/.test(ev.name), docName = (zh ? DOC_ZH : DOC_EN)[type];
-  const ymd = ev.date.replace(/\//g, ''), name = `${ev.name.trim() || 'Event'} ${ymd} ${docName}.docx`;
+  const ymd = ev.date.replace(/\//g, ''), name = `${ev.name.trim() || 'Event'} ${ymd} ${type === 'script' ? scriptFilePart(ev) : ''}${docName}.docx`;
   let bytes;
   if (type === 'script') {
     // The Script goes through MC Scripts' own Word layout
@@ -2574,7 +2618,7 @@ async function exportPdf(ev, cards) {
     pdfLibs = pdfLibs || Promise.all([loadScript('/pdf/pdf-lib-1.17.1.min.js'), loadScript('/pdf/fontkit-1.1.1.umd.min.js')]).catch(e => { pdfLibs = null; throw e; });
     await pdfLibs;
     const bytes = await ScriptGen[cards ? 'buildCardsPdf' : 'buildScriptPdf'](window.PDFLib, window.fontkit, subsetFont, scriptState(ev)), zh = /[㐀-鿿]/.test(ev.name);
-    const name = `${ev.name.trim() || 'Event'} ${ev.date.replace(/\//g, '')} ${(zh ? DOC_ZH : DOC_EN)[cards ? 'cue' : 'script']}.pdf`;
+    const name = `${ev.name.trim() || 'Event'} ${ev.date.replace(/\//g, '')} ${scriptFilePart(ev)}${(zh ? DOC_ZH : DOC_EN)[cards ? 'cue' : 'script']}.pdf`;
     saveFile(name, new Blob([bytes], {type: 'application/pdf'})); toast('Saved ' + name);
   } catch (e) { toast(SYNC.offline ? 'No connection. Try again when online' : 'The PDF could not be made'); }
 }
