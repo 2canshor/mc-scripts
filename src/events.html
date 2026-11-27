@@ -74,6 +74,10 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 /* ---------- Content layer: one leading edge for title, headers and row text ---------- */
 .page{max-width:760px;margin:0 auto;padding:84px 0 120px}
 .page.root{padding-top:calc(16px + env(safe-area-inset-top,0px))}
+/* Events alone scrolls inside the viewport: native bounce belongs to its content, not the glass controls. */
+html.events-scroll,html.events-scroll body{height:100%;overflow:hidden;overscroll-behavior-y:none}
+.events-scroll #app{position:fixed;inset:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;padding-inline:inherit}
+.events-scroll.locked #app{overflow-y:hidden}
 h1{font-size:31px;font-weight:600;line-height:1.25;margin:0;word-break:normal;line-break:strict;text-wrap:pretty}
 .root h1{min-height:52px;display:flex;align-items:center;padding-right:64px}
 h1 .sep,.sep{color:var(--secondary);font-weight:400}
@@ -1883,6 +1887,9 @@ function menuItems(k, arg) {
 
 /* ---------- Render ---------- */
 const app = document.getElementById('app'), barEl = document.getElementById('bar'), lay = document.getElementById('layer');
+let eventsY = 0;
+const pageY = () => document.documentElement.classList.contains('events-scroll') ? app.scrollTop : scrollY;
+const scrollPage = y => { if (document.documentElement.classList.contains('events-scroll')) app.scrollTop = y; else scrollTo(0, y); };
 function route() {
   const p = cur();
   if (!S.acct) return pSignIn();
@@ -1900,14 +1907,17 @@ function route() {
   if (p.id === 'guests') return pGuests(ev);
   return pAwards(ev, p.id.slice(3));
 }
-function render() {
-  const y0 = scrollY;  // a redraw keeps the reader where they were (go() scrolls to the top before it)
+function render(y0 = pageY()) {
+  const wasEvents = document.documentElement.classList.contains('events-scroll');
+  if (wasEvents) eventsY = app.scrollTop;
   S.toSee = new Set(); const o = route();
+  document.documentElement.classList.toggle('events-scroll', !!o.root);
   app.innerHTML = `<main class="page${o.root ? ' root' : ''}${o.fixed ? ' fixed' : ''}${S.edit ? ' editing' : ''}">${o.body}</main>`;
   const keep = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find !== undefined;
   if (!keep) barEl.innerHTML = (o.l ? `<div class="ctl l">${o.l}</div>` : '') + (o.r ? `<div class="ctl r">${o.r}</div>` : '') + `<div class="edge"></div><div class="bt" aria-hidden="true">${S.edit ? '' : esc(o.title || '')}</div>` +
     (o.fab ? `<button class="fab" data-a="${o.fab.act}" aria-label="${o.fab.label}">${ic('plus')}</button>` : '') + (o.fab && !o.search ? '<div class="edge b"></div>' : '') + (o.search ? `<div class="edge b"></div><label class="search glass${o.fab ? ' withfab' : ''}">${ic('search')}<input data-find placeholder="Search" value="${esc(S.find)}" aria-label="${o.search === 'help' ? 'Search videos' : 'Search events'}" enterkeyhint="search"></label>` : '');
-  markGaps(); fitAll(app); fitPage(); if (Math.abs(scrollY - y0) > 1) scrollTo(0, y0); onScroll(); layer(); persistSoon();
+  markGaps(); fitAll(app); fitPage(); const y = o.root && !wasEvents ? eventsY : y0;
+  if (Math.abs(pageY() - y) > 1) scrollPage(y); onScroll(); layer(); persistSoon();
   // one date column for every event row, as wide as the widest date
   const ds = [...app.querySelectorAll('.g-ev>.t')]; app.style.removeProperty('--dw'); if (ds.length) app.style.setProperty('--dw', Math.ceil(Math.max(...ds.map(d => d.getBoundingClientRect().width))) + 'px');
 }
@@ -1917,8 +1927,8 @@ function layer() {
     m = `<div class="mbg" data-a="closemenu"></div><div class="menu glass" role="menu" style="left:${S.menu.x}px;${S.menu.up ? `bottom:${S.menu.y}px` : `top:${S.menu.y}px`};max-height:${S.menu.h}px">${items.map(([a, i, l, off]) => `<button role="menuitem" data-a="${a}"${off ? ' disabled' : ''}>${ic(...i.split(':'))}<span>${esc(l)}</span></button>`).join('')}</div>`; }
   const al = S.alert ? `<div class="alert" role="alertdialog" aria-modal="true"><div><h2>${esc(S.alert.t)}</h2><p>${esc(S.alert.m)}</p><div class="b"><button data-a="keep">${esc(S.alert.no || 'Cancel')}</button><button class="d" data-a="${S.alert.act}">${esc(S.alert.verb)}</button></div></div></div>` : '';
   lay.innerHTML = sheet() + m + al + (S.toast ? `<div class="toast glass${S.toastAct ? ' act' : ''}" role="status"><span class="msg">${esc(S.toast)}</span>${S.toastAct ? `<button class="tb" data-a="${esc(S.toastAct[0])}">${esc(S.toastAct[1])}</button>` : ''}</div>` : '');
-  const y0 = scrollY; document.documentElement.classList.toggle('locked', !!(S.sheet || S.menu || S.alert));
-  fitAll(lay); if (Math.abs(scrollY - y0) > 1) scrollTo(0, y0); squircles();
+  const y0 = pageY(); document.documentElement.classList.toggle('locked', !!(S.sheet || S.menu || S.alert));
+  fitAll(lay); if (Math.abs(pageY() - y0) > 1) scrollPage(y0); squircles();
 }
 // Apple's continuous corner for every open callout: a path of straight sides and three curves per corner (the corner runs
 // 1.528 times its radius along each side), redrawn whenever the callout changes size
@@ -1961,7 +1971,8 @@ function fit(t) {
 }
 // The space kept under the content for the floating controls makes a page scroll only when the content itself needs it
 function fitPage() { const pg = app.firstElementChild; if (!pg || pg.classList.contains('fixed')) return; pg.style.paddingBottom = '';
-  const pad = parseFloat(getComputedStyle(pg).paddingBottom), end = document.documentElement.scrollHeight - pad, room = innerHeight - end;
+  const inner = document.documentElement.classList.contains('events-scroll'), height = inner ? app.clientHeight : innerHeight;
+  const pad = parseFloat(getComputedStyle(pg).paddingBottom), end = (inner ? Math.max(height, pg.offsetHeight) : document.documentElement.scrollHeight) - pad, room = height - end;
   if (room >= (barEl.querySelector('.fab,.search') ? 84 : 24)) pg.style.paddingBottom = room + 'px'; }
 addEventListener('resize', () => fitPage());
 const fitAll = root => { root.querySelectorAll('textarea.fld').forEach(fit); root.querySelectorAll('.tline').forEach(indent); };
@@ -1976,14 +1987,15 @@ function indent(l) { const pre = l.querySelector('.tpre'), t = l.querySelector('
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitAll(app); fitAll(lay); fitPage(); });
 // Past the top, content fades under the controls; once the large title has gone, its name shows in the bar
 function onScroll() {
-  const h = app.querySelector('h1'), b = document.body;
-  b.classList.toggle('scrolled', scrollY > 2);
-  b.classList.toggle('titled', !!h && scrollY > 8 && h.getBoundingClientRect().bottom < 60);
+  const h = app.querySelector('h1'), b = document.body, y = pageY();
+  b.classList.toggle('scrolled', y > 2);
+  b.classList.toggle('titled', !!h && y > 8 && h.getBoundingClientRect().bottom < 60);
 }
 addEventListener('scroll', onScroll, {passive: true});
+app.addEventListener('scroll', onScroll, {passive: true});
 // iOS Safari ignores user-scalable=no for pinching: stop the pinch gesture wherever it starts
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive: false}));
-const go = p => { if (p.p === 'event') { seeNow(p.ev); S.toSee.delete(p.ev); } else if (p.p === 'doc') { seeNow(`${p.ev}:d:${p.id}`); S.toSee.delete(`${p.ev}:d:${p.id}`); } seePage(); S.stack.push(p); S.edit = false; scrollTo(0, 0); render(); };
+const go = p => { if (p.p === 'event') { seeNow(p.ev); S.toSee.delete(p.ev); } else if (p.p === 'doc') { seeNow(`${p.ev}:d:${p.id}`); S.toSee.delete(`${p.ev}:d:${p.id}`); } seePage(); S.stack.push(p); S.edit = false; render(0); };
 const back = () => { seePage(); if ((cur() || {}).p === 'help') S.find = ''; S.stack.pop(); S.edit = false; render(); };
 // Edit and Cancel: a snapshot of what the page can change
 const snapOf = () => JSON.stringify(cur().p === 'group' ? {ROSTER, PASSWORDS, CHAIRS, ADMINS} : EV());
@@ -2307,7 +2319,7 @@ document.addEventListener('input', e => {
   const t = e.target, d = t.dataset || {};
   if (TAGGED.test(d.b || '') || MENT) mentionCheck(t);
   if (/^say:[^:]+:[^:]+:text$/.test(d.b || '') && /\n/.test(t.value)) { sayParts(t); return; }
-  if (d.find !== undefined) { S.find = t.value; const o = route(); app.innerHTML = `<main class="page${o.root ? ' root' : ''}">${o.body}</main>`; return; }
+  if (d.find !== undefined) { S.find = t.value; const o = route(); app.innerHTML = `<main class="page${o.root ? ' root' : ''}">${o.body}</main>`; if (o.root) { fitPage(); onScroll(); } return; }
   if (!d.b) return;
   if (t.tagName === 'TEXTAREA') fit(t);
   { const rk = t.closest('.rmkl'); if (rk) rk.classList.toggle('empty', !t.value.trim()); }  // a Remark with words stays shown
@@ -2494,7 +2506,7 @@ const store = {
   set: (k, v) => { try { localStorage.setItem('ev4:' + k, JSON.stringify(v)); } catch (e) {} },
   del: k => { try { localStorage.removeItem('ev4:' + k); } catch (e) {} }
 };
-const PAGE_VER = 'f99b97e27b6a';
+const PAGE_VER = '66a46faab686';
 const SYNC = {token: null, loaded: false, offline: false, base: {}, rev: {}, seq: 0, busy: new Set(), timer: 0, rosterBase: '', chairBase: '', adminBase: '', pending: false, later: new Set()};
 async function api(path, opts = {}) {
   const headers = {'content-type': 'application/json', 'x-page': '4'};
@@ -2636,7 +2648,7 @@ function afterUpdate() {
   let a = null; try { a = JSON.parse(sessionStorage.getItem('ev4:updated')); sessionStorage.removeItem('ev4:updated'); } catch (e) {}
   if (!a) return false;
   const ok = x => x && (!x.ev || EVENTS.some(e => e.id === x.ev));
-  if (Array.isArray(a.stack) && a.stack.length && a.stack.every(ok)) { S.stack = a.stack; requestAnimationFrame(() => scrollTo(0, a.y || 0)); }
+  if (Array.isArray(a.stack) && a.stack.length && a.stack.every(ok)) { S.stack = a.stack; requestAnimationFrame(() => scrollPage(a.y || 0)); }
   return true;
 }
 async function loadAll() {
@@ -2694,7 +2706,7 @@ const idleNow = () => { const a = document.activeElement; return !S.edit && !S.s
 function newVersion() {
   if (!NEWVER.on) { NEWVER.on = true; NEWVER.t = setInterval(newVersion, 1000); }
   if (idleNow()) {
-    try { sessionStorage.setItem('ev4:updated', J({stack: S.stack, y: scrollY})); } catch (e) {}
+    try { sessionStorage.setItem('ev4:updated', J({stack: S.stack, y: pageY()})); } catch (e) {}
     clearInterval(NEWVER.t); location.reload(); return;
   }
   if (!NEWVER.told) { NEWVER.told = true; toast('Updates when you finish', null, 8000); }
@@ -2841,7 +2853,7 @@ function signedOut(msg) {
   SYNC.token = null; SYNC.loaded = false; SYNC.base = {}; SYNC.rev = {}; SYNC.seq = 0; SYNC.rosterBase = ''; SYNC.chairBase = ''; SYNC.adminBase = '';
   store.del('token'); store.del('acct'); store.del('who'); store.del('cache'); store.del('xacct');
   XACCT = null; STANDINS = []; S.xaccts = null; S.made = null; EVENTS = []; ROSTER = {}; CHAIRS = []; ADMINS = []; PWSHOW = null; S.pwOpen = new Set(); S.acct = null; S.who = null; S.stack = []; S.sheet = null; S.menu = null; S.alert = null; S.edit = false; S.find = '';
-  render(); if (msg) toast(msg);
+  render(0); eventsY = 0; if (msg) toast(msg);
 }
 function signOut() {
   const t = SYNC.token;
