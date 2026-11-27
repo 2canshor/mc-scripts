@@ -2096,6 +2096,9 @@ const goneText = g => g.length === 1 ? `${g[0]}'s account deleted` : `${g.length
 function newAccounts(all, gone) {
   const list = all.filter(x => !SHOWN.has(x.id)); if (!list.length) return;
   list.forEach(x => SHOWN.add(x.id)); S.newAccts = list; S.xaccts = null;
+  // A teacher card may already have loaded the password map before this account existed.
+  // Merge the newly issued entries so that card's Account/Copy row appears immediately.
+  if (PWSHOW) list.forEach(x => { if (x.password) PWSHOW[x.id] = x.password; });
   toast((list.length === 1 ? `${list[0].id}'s account made` : `${list.length} teacher accounts made`) + (gone && gone.length === 1 ? `, ${gone[0]}'s deleted` : gone && gone.length ? `, ${gone.length} deleted` : ''), ['copyacct:new', 'Copy']);
   api('fresh', {method: 'DELETE'}).catch(() => {});
 }
