@@ -73,9 +73,10 @@ async function dropAccount(env, id) {
   await env.DB.batch(["xaccounts", "accounts", "vault"].map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE id = ?`).bind(id))
     .concat([env.DB.prepare("DELETE FROM sessions WHERE account = ?").bind(id), env.DB.prepare("DELETE FROM login_fail WHERE account = ?").bind(id)]));
 }
-// A teacher code: two to five capital letters (LFL, SMK). CA's own teachers are the Editors (setting "admins").
+// A teacher code: two to five letters, optionally followed by one distinguishing digit (LFL, WKW2).
+// CA's own teachers are the Editors (setting "admins").
 const codeOf = (s) => String(s || "").trim().toUpperCase().replace(/\s+/g, "");
-const isCode = (c) => /^[A-Z]{2,5}$/.test(c);
+const isCode = (c) => /^[A-Z]{2,5}[0-9]?$/.test(c);
 // One Leading Teacher (Carson, 26/10/02): a CA teacher if one is given (the first of them), otherwise the first named;
 // the others become Supporting; LFL is added as Supporting when no CA teacher is named at all.
 function oneLeading(leading, support, ca) {
@@ -91,12 +92,32 @@ async function ensureTeachers(env, ev, by) {
   const ca = ((await settingOf(env, "admins")) || []).map(codeOf), made = [];
   for (const c of [...new Set([...(ev.leading || []), ...(ev.support || [])].map(codeOf))].filter((c) => isCode(c) && !ca.includes(c))) {
     if (await accountOf(env, c)) continue;
+    // Two saves/first-page loads may discover the same missing account. Only the insert's owner
+    // makes its password, so the second request cannot overwrite the first request's sign-in.
+    const claimed = await env.DB.prepare("INSERT INTO xaccounts (id, kind, code, created, by) VALUES (?1, 'teacher', ?1, ?2, ?3) ON CONFLICT (id) DO NOTHING RETURNING id").bind(c, Date.now(), by).first();
+    if (!claimed) continue;
     const pw = newPassword();
-    await env.DB.prepare("INSERT OR IGNORE INTO xaccounts (id, kind, code, created, by) VALUES (?1, 'teacher', ?1, ?2, ?3)").bind(c, Date.now(), by).run();
     await setPassword(env, c, pw); made.push({ id: c, password: pw });
   }
-  if (made.length) { const f = (await settingOf(env, "fresh")) || []; await saveSetting(env, "fresh", [...f.filter((x) => !made.some((m) => m.id === x)), ...made.map((m) => m.id)]); }
+  if (made.length) await env.DB.prepare("INSERT INTO settings (k, v) VALUES ('fresh', ?1) ON CONFLICT (k) DO UPDATE SET v = (SELECT json_group_array(value) FROM (SELECT value FROM json_each(settings.v) UNION SELECT value FROM json_each(excluded.v)))").bind(JSON.stringify(made.map((m) => m.id))).run();
   return made;
+}
+// Repair the suffix codes already saved while the letters-only check silently skipped them.
+// Run once for the Event Lead/Editor through normal state loading; do not rewrite events or
+// revive letter-only accounts, and respect account deletions made after this repair.
+async function recoverTeacherSuffixAccounts(env, by) {
+  const mark = "teacher_suffix_accounts_v1";
+  if (await settingOf(env, mark)) return;
+  const { results } = await env.DB.prepare("SELECT data FROM events WHERE deleted = 0").all();
+  const codes = new Set();
+  for (const row of results) {
+    let ev; try { ev = JSON.parse(row.data); } catch { continue; }
+    if (!ev || typeof ev !== "object") continue;
+    for (const c of [...(Array.isArray(ev.leading) ? ev.leading : []), ...(Array.isArray(ev.support) ? ev.support : [])].map(codeOf))
+      if (isCode(c) && /[0-9]$/.test(c)) codes.add(c);
+  }
+  await ensureTeachers(env, { leading: [...codes], support: [] }, by);
+  await saveSetting(env, mark, true);
 }
 // A teacher's account goes when no event names them any more (Carson, 26/10/02): checked for the teachers an event
 // had before a save or a delete. Returns the ids deleted.
@@ -585,6 +606,7 @@ export async function handleEvents(request, env, url, path) {
   if (path === "state" && request.method === "GET") {
     if (request.headers.get("x-page") !== PAGE) return json({ error: "reload" }, 503);
     const since = Math.max(0, Number(url.searchParams.get("since")) || 0);
+    if (acct.type === "lead" && (!since || url.searchParams.has("full"))) await recoverTeacherSuffixAccounts(env, await whoOf(env, acct));
     try { await importApplications(env, false); } catch (e) { /* the events already there still load */ }
     const { results } = await env.DB.prepare("SELECT id, data, deleted, seq FROM events WHERE seq > ? ORDER BY seq").bind(since).all();
     const rows = results.map((r) => { const ev = r.deleted ? null : upgrade(JSON.parse(r.data)), show = ev && canSee(acct, ev);
